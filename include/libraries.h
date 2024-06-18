@@ -12,9 +12,11 @@
 #include <LoRa.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Adafruit_LC709203F.h>
 #include <Arduino_MKRGPS.h>
 #include <Arduino_PMIC.h>
 #include <RTCZero.h>
 #include <IridiumSBD.h>    
+#include <SparkFun_u-blox_GNSS_Arduino_Library.h> //http://librarymanager/All#SparkFun_u-blox_GNSS
 
 #endif
