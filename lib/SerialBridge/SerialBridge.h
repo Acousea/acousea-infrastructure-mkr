@@ -1,63 +1,48 @@
-#ifndef SERIAL_BRIDGE_H
-#define SERIAL_BRIDGE_H
+#ifndef COMMUNICATOR_RELAY_H
+#define COMMUNICATOR_RELAY_H
 
 #include <Arduino.h>
 #include <vector>
 #include "../Communicator/ICommunicator.h"
 #include "../Processor/IProcessor.h"
 
+
 // Clase principal que actúa como puente
-class SerialBridge {
+class CommunicatorRelay {
 private:
-    ICommunicator* communicator;
-    IProcessor* processor;
-    const uint8_t syncByte = 0x20;
-    const uint8_t mask = 0b01000000;
+    ICommunicator* primaryCommunicator; // El comunicador principal
+    ICommunicator* secondaryCommunicator; // El comunicador secundario
+    IProcessor* processor;        
 
 public:
-    SerialBridge(ICommunicator* communicator, IProcessor* processor) 
-        : communicator(communicator), processor(processor) {}
+    CommunicatorRelay(ICommunicator* primaryCommunicator, ICommunicator* secondaryCommunicator, IProcessor* processor) 
+        : primaryCommunicator(primaryCommunicator), secondaryCommunicator(secondaryCommunicator), processor(processor) {}
 
-    void relayFromSerial() {
-        if (Serial.available() >= 4) {
-            uint8_t sync = Serial.read();
-            if (sync != syncByte) return;            
+    void relayFromPrimary() {
+        if (primaryCommunicator->available()) {
+            auto packet = primaryCommunicator->read();
 
-            uint8_t address = Serial.read();
-            uint8_t codOp = Serial.read();
-            uint8_t length = Serial.read();
-
-            uint8_t payload[length];
-            Serial.readBytes(payload, length);
-
-            // Construir el mensaje completo
-            uint8_t message[4 + length] = {sync, address, codOp, length};
-            memcpy(message + 4, payload, length);
-
-            
-            if (address == Address::PI3 || address == Address::DRIFTER) { // Si la dirección es 01 o 11, el mensaje debe ser reenviado al comunicador
-                communicator->send(message, sizeof(message));
+            uint8_t address = packet.getAddress();
+            if (address == Packet::Address::PI3 || address == Packet::Address::LOCALIZER) {
+                secondaryCommunicator->send(packet);
             } else {
-                processor->processMessage(message, 4 + length);
+                processor->processPacket(packet);
             }
         }
     }
 
-    void relayToSerial() {
-        while (communicator->available()) {
-            std::vector<uint8_t> packet = communicator->read();
-            uint8_t sync = packet[0];
-            if (sync != syncByte) return;
+    void relayFromSecondary() {
+        while (secondaryCommunicator->available()) {
+            auto packet = secondaryCommunicator->read();
 
-            uint8_t address = packet[1];
-            
-            if (address == Address::PI3 || address == Address::DRIFTER) { // Si la dirección es 01 o 11, el mensaje debe ser reenviado al comunicador
-                Serial.write(packet.data(), packet.size());
+            uint8_t address = packet.getAddress();
+            if (address == Packet::Address::PI3 || address == Packet::Address::LOCALIZER) {
+                primaryCommunicator->send(packet);
             } else {
-                processor->processMessage(packet.data(), packet.size());
+                processor->processPacket(packet);
             }
         }
     }
 };
 
-#endif
+#endif // COMMUNICATOR_BRIDGE_H

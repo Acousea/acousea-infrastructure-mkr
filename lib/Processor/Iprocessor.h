@@ -5,7 +5,7 @@
 
 class IProcessor {
 public:
-    virtual void processMessage(uint8_t* data, size_t length) = 0;
+    virtual void processPacket(const Packet& packet) = 0;
 };
 
 #endif

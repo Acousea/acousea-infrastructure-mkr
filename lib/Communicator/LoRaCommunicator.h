@@ -7,21 +7,28 @@
 
 class LoraCommunicator : public ICommunicator {
 public:
-    void send(const uint8_t* data, size_t length) override {
-        Serial1.write(data, length);
+    void send(const Packet& packet) override {
+        // TODO: Implement LoRa send
+        // Print through serial monitor
+        Serial.print("LORA_COMMUNICATOR: Sending packet: ");
+        for (size_t i = 0; i < packet.getFullPacketLength(); i++) {
+            Serial.print(packet.getFullPacket()[i], HEX);
+            Serial.print(" ");
+        }
+        Serial.println();
+
     }
 
     bool available() override {
-        // return Serial1.available();
+        // TODO: Implement LoRa available
         return false;
     }
 
-    std::vector<uint8_t> read() override {
-        std::vector<uint8_t> data;
-        while (Serial1.available()) {
-            data.push_back(Serial1.read());
-        }
-        return data;
+    Packet read() override {
+        // TODO: Implement LoRa read
+        // Create mock buffer of length 4
+        uint8_t mock_data[4] = {0x20, 0x01, 0x02, 0x03};
+        return Packet(mock_data, 0);
     }
 };
 

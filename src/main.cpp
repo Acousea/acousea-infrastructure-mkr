@@ -3,62 +3,70 @@
 #include "../lib/Communicator/ICommunicator.h"
 #include "../lib/Communicator/LoraCommunicator.h"
 #include "../lib/Communicator/IridiumCommunicator.h"
+#include "../lib/Communicator/SerialCommunicator.h"
 #include "../lib/SerialBridge/SerialBridge.h"
 #include "../lib/Processor/MessageProcessor.h"
+#include "../lib/Display/AdafruitDisplay.h"
+#include "../lib/Display/SerialUSBDisplay.h"
+
+// Must define OperationMode class to manage the state of the system
 
 // Instancias de comunicadores
 LoraCommunicator loraCommunicator;
-IridiumCommunicator iridiumCommunicator;
+IridiumCommunicator iridiumCommunicator;                 // FIXME:  Iridium Communicator must have mySerial3 injection
+SerialCommunicator serialCommunicator(&mySerial3, 9600); // Serial1 is the hardware serial port PINS 0 and 1
 
-// Instancia del procesador de mensajes
-MessageProcessor messageProcessor(&display);
+// // Instancia de la pantalla
+AdafruitDisplay adafruitDisplay(&adafruit_SSD1306);
+SerialUSBDisplay serialUSBDisplay;
 
-// Puntero al comunicador actual (Lora por defecto)
-ICommunicator *currentCommunicator = &loraCommunicator;
+// // Instancia del procesador de mensajes
+MessageProcessor messageProcessor(&serialUSBDisplay);
+
+// // Puntero al comunicador actual (Lora por defecto)
+ICommunicator *currentCommunicator = &iridiumCommunicator;
 
 // Instancia del puente serial
-SerialBridge bridge(currentCommunicator, &messageProcessor);
+CommunicatorRelay relay(&serialCommunicator, currentCommunicator, &messageProcessor);
 
 void setup()
 {
     // Inicializa la comunicación serial a 9600 baudios
-    Serial.begin(9600);
+    serialUSBDisplay.init(9600);
 
-    // Espera a que se establezca la conexión serial
-    while (!Serial); // Espera sin hacer nada
+    // Inicializa el comunicador Serial
+    serialCommunicator.init();
 
-    if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS))
-    { // Dirección I2C para el OLED
-        Serial.println(F("SSD1306 allocation failed"));
-        while (true);
-    }
-    // Print start message
-    display.display();
-    delay(2000); // Pausa inicial para la pantall
-    display.clearDisplay();
-
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.dim(true);
-    display.setCursor(0, 0);
-    display.print("Message Processor: ");
-    display.display();
+    // Inicializa la pantalla Adafruit
+    // adafruitDisplay.init();
 }
 
 void loop()
 {
+    static long lastTime = 0;
+    // Print debugging message every 1 second
+    if (millis() - lastTime > 1000)
+    {
+        lastTime = millis();
+        // serialUSBDisplay.print("Listening...");
+        SerialUSB.println("Listening...");
+    }
+
     // Reenviar mensajes desde el puerto serial al comunicador
-    bridge.relayFromSerial();
+    relay.relayFromPrimary();
 
     // Pequeño retraso para evitar saturar el puerto serial
     delay(100);
 
     // Reenviar mensajes desde el comunicador al puerto serial
-    bridge.relayToSerial();
+    relay.relayFromSecondary();
 
     // Pequeño retraso para evitar saturar el puerto serial
     delay(100);
+}
 
-
+// Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)
+void SERCOM3_Handler()
+{
+    mySerial3.IrqHandler();
 }

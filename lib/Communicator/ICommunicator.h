@@ -2,14 +2,14 @@
 #define ICOMMUNICATOR_H
 
 #include <Arduino.h>
-#include <vector>
+#include "Packet.h"
 
 // Definición de la interfaz de comunicador
 class ICommunicator {
 public:
-    virtual void send(const uint8_t* data, size_t length) = 0;
+    virtual void send(const Packet& packet) = 0;
     virtual bool available() = 0;
-    virtual std::vector<uint8_t> read() = 0;
+    virtual Packet read() = 0;
 };
 
-#endif
+#endif // ICOMMUNICATOR_H
