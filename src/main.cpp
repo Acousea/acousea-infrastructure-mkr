@@ -1,13 +1,15 @@
 #include "libraries.h"
 #include <config.h>
+#include <map>
 #include "../lib/Communicator/ICommunicator.h"
 #include "../lib/Communicator/LoraCommunicator.h"
 #include "../lib/Communicator/IridiumCommunicator.h"
 #include "../lib/Communicator/SerialCommunicator.h"
 #include "../lib/SerialBridge/SerialBridge.h"
-#include "../lib/Processor/MessageProcessor.h"
+#include "../lib/Processor/PacketProcessor.h"
 #include "../lib/Display/AdafruitDisplay.h"
 #include "../lib/Display/SerialUSBDisplay.h"
+#include "../lib/Routines/PingRoutine.h"
 
 // Must define OperationMode class to manage the state of the system
 
@@ -20,14 +22,21 @@ SerialCommunicator serialCommunicator(&mySerial3, 9600); // Serial1 is the hardw
 AdafruitDisplay adafruitDisplay(&adafruit_SSD1306);
 SerialUSBDisplay serialUSBDisplay;
 
+// // Instancias de rutinas
+PingRoutine pingRoutine;
+
+std::map<uint8_t, IRoutine*> serviceRoutines = {
+    {0x02, &pingRoutine}    // Mapear el código de operación 0x02 a la rutina PingRoutine
+};
+
 // // Instancia del procesador de mensajes
-MessageProcessor messageProcessor(&serialUSBDisplay);
+PacketProcessor messageProcessor(&serialUSBDisplay, serviceRoutines);
 
 // // Puntero al comunicador actual (Lora por defecto)
 ICommunicator *currentCommunicator = &iridiumCommunicator;
 
 // Instancia del puente serial
-CommunicatorRelay relay(&serialCommunicator, currentCommunicator, &messageProcessor);
+auto relay = CommunicatorRelay::createDrifterRelay(currentCommunicator, &serialCommunicator ,&messageProcessor);
 
 void setup()
 {
@@ -53,13 +62,13 @@ void loop()
     }
 
     // Reenviar mensajes desde el puerto serial al comunicador
-    relay.relayFromPrimary();
+    relay->relayFromPrimary();
 
     // Pequeño retraso para evitar saturar el puerto serial
     delay(100);
 
     // Reenviar mensajes desde el comunicador al puerto serial
-    relay.relayFromSecondary();
+    relay->relayFromSecondary();
 
     // Pequeño retraso para evitar saturar el puerto serial
     delay(100);

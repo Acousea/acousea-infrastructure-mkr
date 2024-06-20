@@ -12,7 +12,7 @@ private:
 
 public:
     SerialCommunicator(Uart* serialPort, int baudRate) : serialPort(serialPort), baudRate(baudRate) {
-          // Set the pins to use mySerial3
+        // Set the pins to use mySerial3
         pinPeripheral(1, PIO_SERCOM); //Assign RX function to pin 1
         pinPeripheral(0, PIO_SERCOM); //Assign TX function to pin 0
     }
@@ -25,8 +25,7 @@ public:
         serialPort->write(packet.getFullPacket(), packet.getFullPacketLength());
     }
 
-    bool available() override {
-        // SerialUSB.println("SerialCommunicator::Checking available bytes");
+    bool available() override {       
         return serialPort->available() >= Packet::PACKET_HEADER_LENGTH;
     }
 
@@ -36,14 +35,7 @@ public:
 
         while (serialPort->available() && index < Packet::MAX_PACKET_LENGTH) {
             buffer[index++] = serialPort->read();
-        }
-
-        // SerialUSB.print("Received packet: ");
-        // for (size_t i = 0; i < index; i++) {
-        //     SerialUSB.print(buffer[i], HEX);
-        //     SerialUSB.print(" ");
-        // }
-        // SerialUSB.println("--------");
+        }       
         
         return Packet(buffer, index);
     }

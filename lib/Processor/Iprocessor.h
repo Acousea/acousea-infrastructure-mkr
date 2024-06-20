@@ -5,7 +5,7 @@
 
 class IProcessor {
 public:
-    virtual void processPacket(const Packet& packet) = 0;
+    virtual Packet processPacket(const Packet& packet) = 0;
 };
 
 #endif

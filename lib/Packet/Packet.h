@@ -12,15 +12,18 @@ public:
     Packet(const uint8_t *data, size_t length);
 
     typedef enum : uint8_t {
-        BACKEND = 0,      // 0b00000000
-        LOCALIZER = 0x40, // 0b01000000
-        DRIFTER = 0x80,   // 0b10000000
-        PI3 = 0xC0        // 0b11000000
+        BACKEND = 0,         // 0b00000000
+        LOCALIZER = 0x01,    // 0b00000001
+        DRIFTER = 0x02,      // 0b00000010
+        PI3 = 0x03,          // 0b00000011
+        SENDER_MASK = 0xC0,  // 0b11000000
+        RECEIVER_MASK = 0x30 // 0b00110000
     } Address;
 
     // Getters
     uint8_t getSyncByte() const;
-    uint8_t getAddress() const;
+    uint8_t getSenderAddress() const;
+    uint8_t getRecipientAddress() const;
     uint8_t getOpCode() const;
     uint8_t getPayloadLength() const;
     const uint8_t *getPayload() const;
@@ -30,7 +33,8 @@ public:
 
     // Setters
     void setSyncByte(uint8_t syncByte);
-    void setAddress(uint8_t address);
+    void setSenderAddress(uint8_t senderAddress);
+    void setRecipientAddress(uint8_t recipientAddress);
     void setOpCode(uint8_t opCode);
     void setPayloadLength(uint8_t payloadLength);
     void setPayload(const uint8_t *payload, uint8_t length);
@@ -46,7 +50,8 @@ private:
 
 private:
     uint8_t syncByte;
-    uint8_t address;
+    uint8_t senderAddress;
+    uint8_t recipientAddress;    
     uint8_t opCode;
     uint8_t payloadLength;
     uint8_t payload[MAX_PAYLOAD_LENGTH];
