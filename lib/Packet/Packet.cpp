@@ -3,7 +3,8 @@
 // Constructor
 Packet::Packet(const uint8_t* data, size_t length) {
     if (length < PACKET_HEADER_LENGTH) {
-        throw std::invalid_argument("Data length is too short");
+        SerialUSB.println("Packet::Constructor(): Data length is less than packet header length");
+        return;
     }
     syncByte = data[0];    
     senderAddress = (data[1] & Address::SENDER_MASK) >> 6;
@@ -12,14 +13,21 @@ Packet::Packet(const uint8_t* data, size_t length) {
     payloadLength = data[3];
 
     if (payloadLength > MAX_PAYLOAD_LENGTH) {
-        throw std::invalid_argument("Payload length is too long");
+        SerialUSB.println("Packet::Constructor(): Payload length is too long");
+        return;
     }
 
     if (length < (size_t) (PACKET_HEADER_LENGTH + payloadLength)) {
-        throw std::invalid_argument("Data length does not match payload length");
+        SerialUSB.println("Packet::Constructor(): Data length is less than packet header length + payload length");
+        return;        
     }
 
     memcpy(payload, data + PACKET_HEADER_LENGTH, payloadLength);
+    validPacket = true;
+}
+
+bool Packet::isValid() const {
+    return validPacket;
 }
 
 bool Packet::isValidAddress(uint8_t address) {
@@ -81,14 +89,16 @@ void Packet::setSyncByte(uint8_t syncByte) {
 
 void Packet::setSenderAddress(uint8_t senderAddress) {
     if (!isValidAddress(senderAddress)) {
-        throw std::invalid_argument("Invalid sender address");
+        SerialUSB.println("Packet::setSenderAddress(): Invalid sender address");
+        return;       
     }
     this->senderAddress = senderAddress;
 }
 
 void Packet::setRecipientAddress(uint8_t recipientAddress) {
     if (!isValidAddress(recipientAddress)) {
-        throw std::invalid_argument("Invalid recipient address");
+        SerialUSB.println("Packet::setRecipientAddress(): Invalid recipient address");
+        return;        
     }
     this->recipientAddress = recipientAddress;
 }
@@ -99,14 +109,16 @@ void Packet::setOpCode(uint8_t opCode) {
 
 void Packet::setPayloadLength(uint8_t payloadLength) {
     if (payloadLength > MAX_PAYLOAD_LENGTH) {
-        throw std::invalid_argument("Payload length is too long");
+        SerialUSB.println("Packet::setPayloadLength(): Payload length is too long");
+        return;        
     }
     this->payloadLength = payloadLength;
 }
 
 void Packet::setPayload(const uint8_t* payload, uint8_t length) {
     if (length > MAX_PAYLOAD_LENGTH) {
-        throw std::invalid_argument("Payload length is too long");
+        SerialUSB.println("Packet::setPayload(): Payload length is too long");
+        return;        
     }
     this->payloadLength = length;
     memcpy(this->payload, payload, length);

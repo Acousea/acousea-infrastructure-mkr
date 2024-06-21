@@ -6,6 +6,7 @@
 #include "IProcessor.h"
 #include "../Display/IDisplay.h"
 #include "../Routines/IRoutine.h"
+#include "../Packet/ErrorPacket.h"
 
 class PacketProcessor : public IProcessor {
 private:
@@ -17,14 +18,17 @@ public:
         : display(display), routines(routines) {}
 
     Packet processPacket(const Packet& packet) override {
-        display->print("Message Processor: ");
+        display->print("Packet Processor: ");
         display->print(packet.getFullPacketVector());
 
         uint8_t opCode = packet.getOpCode();
+        SerialUSB.println("OpCode: " + String(opCode, HEX) + " " + String(opCode, DEC));
         if (routines.find(opCode) != routines.end()) {
             return routines[opCode]->execute(packet);
         } else {
-            throw std::invalid_argument("Invalid OpCode: no routine found for OpCode");            
+            display->print("Exception: Invalid OpCode: no routine found for OpCode");
+            return ErrorPacket(packet.getRecipientAddress(), packet.getSenderAddress(), 
+                               ErrorPacket::ErrorCode::INVALID_OPCODE);
         }
     }
 };

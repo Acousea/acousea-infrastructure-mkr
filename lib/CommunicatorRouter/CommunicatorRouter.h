@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <vector>
 #include "../Communicator/ICommunicator.h"
+#include "../Communicator/SerialCommunicator.h"
 #include "../Processor/IProcessor.h"
 
 /**
@@ -29,26 +30,34 @@
  * 
  *  In this scenario, the primary and secondary communicators can be inverted, depending on the device running the code.
  */
-class CommunicatorRelay {
+class CommunicatorRouter {
 private:
     ICommunicator* primaryCommunicator; // El comunicador principal
     ICommunicator* secondaryCommunicator; // El comunicador secundario
     IProcessor* processor;            
     Packet::Address peerAddress; 
     
-    CommunicatorRelay(ICommunicator* primaryCommunicator, ICommunicator* secondaryCommunicator, IProcessor* processor) 
-        : primaryCommunicator(primaryCommunicator), secondaryCommunicator(secondaryCommunicator), processor(processor) {}
+    CommunicatorRouter(ICommunicator* primaryCommunicator, ICommunicator* secondaryCommunicator, IProcessor* processor, Packet::Address peerAddress) 
+        : primaryCommunicator(primaryCommunicator), secondaryCommunicator(secondaryCommunicator), processor(processor), peerAddress(peerAddress) {}
 
 public:
-    static CommunicatorRelay* createLocalizerRelay(SerialCommunicator* primaryCommunicator, ICommunicator* secondaryCommunicator, IProcessor* processor) {
-        return new CommunicatorRelay(primaryCommunicator, secondaryCommunicator, processor);
+    static CommunicatorRouter* createLocalizerRouter(SerialCommunicator* primaryCommunicator, ICommunicator* secondaryCommunicator, IProcessor* processor) {
+        return new CommunicatorRouter(primaryCommunicator, secondaryCommunicator, processor, Packet::Address::DRIFTER);
     }
 
-    static CommunicatorRelay* createDrifterRelay(ICommunicator* primaryCommunicator, SerialCommunicator* secondaryCommunicator, IProcessor* processor) {
-        return new CommunicatorRelay(primaryCommunicator, secondaryCommunicator, processor);
+    static CommunicatorRouter* createDrifterRouter(ICommunicator* primaryCommunicator, SerialCommunicator* secondaryCommunicator, IProcessor* processor) {
+        return new CommunicatorRouter(primaryCommunicator, secondaryCommunicator, processor, Packet::Address::LOCALIZER);
+    }
+
+    void doBidirectionalRouting() {
+        routeFromPrimaryToSecondary();        
+        delay(100); // Pequeño retraso para evitar saturar el puerto serial
+
+        routeFromSecondaryToPrimary();
+        delay(100); // Pequeño retraso para evitar saturar el puerto serial
     }
     
-    void relayFromPrimary() { // 
+    void routeFromPrimaryToSecondary() { // 
         if (!primaryCommunicator->available()) {
             return;
         }        
@@ -56,7 +65,7 @@ public:
         route(packet);        
     }
 
-    void relayFromSecondary() {
+    void routeFromSecondaryToPrimary() {
         if (!secondaryCommunicator->available()) {
             return;
         }
@@ -70,18 +79,14 @@ public:
             primaryCommunicator->send(packet);
         } else if (address == this->peerAddress) {
             if (this->peerAddress == Packet::Address::LOCALIZER) {
-                primaryCommunicator->send(packet);
-            } else {
-                secondaryCommunicator->send(packet);
+                primaryCommunicator->send(packet); // Localizer
+            } else { 
+                secondaryCommunicator->send(packet); // Drifter
             }
         } else if (address == Packet::Address::PI3) {
-            primaryCommunicator->send(packet);
+            secondaryCommunicator->send(packet);
         } else {
-            try {
-                route(processor->processPacket(packet));
-            } catch (const std::exception& e) {
-                SerialUSB.println(e.what());
-            }            
+            route(processor->processPacket(packet));           
         }
     }
 };

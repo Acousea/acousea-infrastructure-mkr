@@ -20,7 +20,13 @@ public:
         RECEIVER_MASK = 0x30 // 0b00110000
     } Address;
 
+    typedef enum: uint8_t {
+        PING = '0',        
+        ERROR = '1',
+    } OpCode;
+
     // Getters
+    bool isValid() const;
     uint8_t getSyncByte() const;
     uint8_t getSenderAddress() const;
     uint8_t getRecipientAddress() const;
@@ -47,6 +53,7 @@ public:
 
 private:
     bool isValidAddress(uint8_t address);
+    bool validPacket = false; 
 
 private:
     uint8_t syncByte;

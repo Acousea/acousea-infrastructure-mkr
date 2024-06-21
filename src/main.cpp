@@ -5,7 +5,7 @@
 #include "../lib/Communicator/LoraCommunicator.h"
 #include "../lib/Communicator/IridiumCommunicator.h"
 #include "../lib/Communicator/SerialCommunicator.h"
-#include "../lib/SerialBridge/SerialBridge.h"
+#include "../lib/CommunicatorRouter/CommunicatorRouter.h"
 #include "../lib/Processor/PacketProcessor.h"
 #include "../lib/Display/AdafruitDisplay.h"
 #include "../lib/Display/SerialUSBDisplay.h"
@@ -14,7 +14,8 @@
 // Must define OperationMode class to manage the state of the system
 
 // Instancias de comunicadores
-LoraCommunicator loraCommunicator;
+
+LoraCommunicator& loraCommunicator = LoraCommunicator::getInstance(defaultLoraConfig);
 IridiumCommunicator iridiumCommunicator;                 // FIXME:  Iridium Communicator must have mySerial3 injection
 SerialCommunicator serialCommunicator(&mySerial3, 9600); // Serial1 is the hardware serial port PINS 0 and 1
 
@@ -25,18 +26,19 @@ SerialUSBDisplay serialUSBDisplay;
 // // Instancias de rutinas
 PingRoutine pingRoutine;
 
-std::map<uint8_t, IRoutine*> serviceRoutines = {
-    {0x02, &pingRoutine}    // Mapear el código de operación 0x02 a la rutina PingRoutine
+std::map<uint8_t, IRoutine *> serviceRoutines = {
+    {Packet::OpCode::PING, &pingRoutine} // Mapear el código de operación 0x02 a la rutina PingRoutine
 };
 
 // // Instancia del procesador de mensajes
 PacketProcessor messageProcessor(&serialUSBDisplay, serviceRoutines);
 
 // // Puntero al comunicador actual (Lora por defecto)
-ICommunicator *currentCommunicator = &iridiumCommunicator;
+ICommunicator *currentCommunicator = &loraCommunicator;
 
 // Instancia del puente serial
-auto relay = CommunicatorRelay::createDrifterRelay(currentCommunicator, &serialCommunicator ,&messageProcessor);
+// auto router = CommunicatorRouter::createLocalizerRouter(&serialCommunicator, currentCommunicator, &messageProcessor);
+auto router = CommunicatorRouter::createDrifterRouter(currentCommunicator, &serialCommunicator, &messageProcessor);
 
 void setup()
 {
@@ -61,17 +63,8 @@ void loop()
         SerialUSB.println("Listening...");
     }
 
-    // Reenviar mensajes desde el puerto serial al comunicador
-    relay->relayFromPrimary();
-
-    // Pequeño retraso para evitar saturar el puerto serial
-    delay(100);
-
-    // Reenviar mensajes desde el comunicador al puerto serial
-    relay->relayFromSecondary();
-
-    // Pequeño retraso para evitar saturar el puerto serial
-    delay(100);
+    // Reenviar mensajes desde el puerto serial al comunicador y viceversa
+    router->doBidirectionalRouting();
 }
 
 // Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)
