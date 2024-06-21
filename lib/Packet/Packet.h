@@ -17,7 +17,9 @@ public:
         DRIFTER = 0x02,      // 0b00000010
         PI3 = 0x03,          // 0b00000011
         SENDER_MASK = 0xC0,  // 0b11000000
-        RECEIVER_MASK = 0x30 // 0b00110000
+        RECEIVER_MASK = 0x30, // 0b00110000
+        LORA_PACKET = 0x08,  // 0b00001000
+        IRIDIUM_PACKET = 0x04, // 0b00000100        
     } Address;
 
     typedef enum: uint8_t {
@@ -30,6 +32,7 @@ public:
     uint8_t getSyncByte() const;
     uint8_t getSenderAddress() const;
     uint8_t getRecipientAddress() const;
+    uint8_t getPacketType() const;
     uint8_t getOpCode() const;
     uint8_t getPayloadLength() const;
     const uint8_t *getPayload() const;
@@ -58,7 +61,8 @@ private:
 private:
     uint8_t syncByte;
     uint8_t senderAddress;
-    uint8_t recipientAddress;    
+    uint8_t recipientAddress;  
+    uint8_t packetType;  
     uint8_t opCode;
     uint8_t payloadLength;
     uint8_t payload[MAX_PAYLOAD_LENGTH];

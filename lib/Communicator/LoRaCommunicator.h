@@ -7,9 +7,6 @@
 #include "ICommunicator.h"
 #include "Packet.h"
 
-
-
-
 class LoraCommunicator : public ICommunicator {
 public:
     static LoraCommunicator& getInstance(const LoRaConfig& config = defaultLoraConfig) {

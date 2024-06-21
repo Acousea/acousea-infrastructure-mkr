@@ -17,7 +17,7 @@ public:
     PacketProcessor(IDisplay* display, const std::map<uint8_t, IRoutine*>& routines)
         : display(display), routines(routines) {}
 
-    Packet processPacket(const Packet& packet) override {
+    Packet process(const Packet& packet) override {
         display->print("Packet Processor: ");
         display->print(packet.getFullPacketVector());
 

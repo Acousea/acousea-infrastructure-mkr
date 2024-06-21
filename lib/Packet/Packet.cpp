@@ -9,6 +9,7 @@ Packet::Packet(const uint8_t* data, size_t length) {
     syncByte = data[0];    
     senderAddress = (data[1] & Address::SENDER_MASK) >> 6;
     recipientAddress = (data[1] & Address::RECEIVER_MASK) >> 4;    
+    packetType = data[1] & (Address::LORA_PACKET | Address::IRIDIUM_PACKET);
     opCode = data[2];
     payloadLength = data[3];
 
@@ -47,6 +48,10 @@ uint8_t Packet::getRecipientAddress() const {
     return recipientAddress;
 }
 
+uint8_t Packet::getPacketType() const {
+    return packetType;
+}
+
 uint8_t Packet::getOpCode() const {
     return opCode;
 }
@@ -61,7 +66,7 @@ const uint8_t* Packet::getPayload() const {
 
 const uint8_t* Packet::getFullPacket() const {
     fullPacket[0] = syncByte;
-    fullPacket[1] = (senderAddress << 6) | (recipientAddress << 4);
+    fullPacket[1] = (senderAddress << 6) | (recipientAddress << 4) | packetType;
     fullPacket[2] = opCode;
     fullPacket[3] = payloadLength;
     memcpy(fullPacket + 4, payload, payloadLength);
@@ -71,7 +76,7 @@ const uint8_t* Packet::getFullPacket() const {
 std::vector<uint8_t> Packet::getFullPacketVector() const {
     std::vector<uint8_t> fullPacketVec;
     fullPacketVec.push_back(syncByte);
-    fullPacketVec.push_back((senderAddress << 6) | (recipientAddress << 4));
+    fullPacketVec.push_back((senderAddress << 6) | (recipientAddress << 4) | packetType) ;
     fullPacketVec.push_back(opCode);
     fullPacketVec.push_back(payloadLength);
     fullPacketVec.insert(fullPacketVec.end(), payload, payload + payloadLength);

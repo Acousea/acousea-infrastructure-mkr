@@ -6,6 +6,7 @@
 #include "../Communicator/ICommunicator.h"
 #include "../Communicator/SerialCommunicator.h"
 #include "../Processor/IProcessor.h"
+#include "../RoutingTable/RoutingTable.h"
 
 /**
  * @brief Relay class that acts as a bridge between two communicators and a processor
@@ -32,62 +33,54 @@
  */
 class CommunicatorRouter {
 private:
-    ICommunicator* primaryCommunicator; // El comunicador principal
-    ICommunicator* secondaryCommunicator; // El comunicador secundario
-    IProcessor* processor;            
-    Packet::Address peerAddress; 
-    
-    CommunicatorRouter(ICommunicator* primaryCommunicator, ICommunicator* secondaryCommunicator, IProcessor* processor, Packet::Address peerAddress) 
-        : primaryCommunicator(primaryCommunicator), secondaryCommunicator(secondaryCommunicator), processor(processor), peerAddress(peerAddress) {}
+    Packet::Address localAddress; // Dirección local del dispositivo
+    RoutingTable* routingTable; // La tabla de ruteo
+    IProcessor* processor;             
+    std::vector<ICommunicator*> relayedCommunicators;
 
 public:
-    static CommunicatorRouter* createLocalizerRouter(SerialCommunicator* primaryCommunicator, ICommunicator* secondaryCommunicator, IProcessor* processor) {
-        return new CommunicatorRouter(primaryCommunicator, secondaryCommunicator, processor, Packet::Address::DRIFTER);
+   CommunicatorRouter(Packet::Address localAddress, RoutingTable* routingTable, IProcessor* processor) 
+        : localAddress(localAddress), routingTable(routingTable), processor(processor) {}
+
+    // Constructor que recibe un vector de comunicadores
+    CommunicatorRouter(Packet::Address localAddress, RoutingTable* routingTable, IProcessor* processor, std::vector<ICommunicator*> communicators) 
+        : localAddress(localAddress), routingTable(routingTable), processor(processor), relayedCommunicators(communicators) {}
+
+    void addRelayedCommunicator(ICommunicator* communicator) {
+        relayedCommunicators.push_back(communicator);
     }
 
-    static CommunicatorRouter* createDrifterRouter(ICommunicator* primaryCommunicator, SerialCommunicator* secondaryCommunicator, IProcessor* processor) {
-        return new CommunicatorRouter(primaryCommunicator, secondaryCommunicator, processor, Packet::Address::LOCALIZER);
-    }
+    void operate() {
+        relayCommunicators();        
+        delay(100); // Pequeño retraso para evitar saturar el puerto serial               
+    }    
 
-    void doBidirectionalRouting() {
-        routeFromPrimaryToSecondary();        
-        delay(100); // Pequeño retraso para evitar saturar el puerto serial
-
-        routeFromSecondaryToPrimary();
-        delay(100); // Pequeño retraso para evitar saturar el puerto serial
+    void setLocalAddress(Packet::Address address) {
+        localAddress = address;
     }
     
-    void routeFromPrimaryToSecondary() { // 
-        if (!primaryCommunicator->available()) {
-            return;
-        }        
-        auto packet = primaryCommunicator->read();
-        route(packet);        
-    }
-
-    void routeFromSecondaryToPrimary() {
-        if (!secondaryCommunicator->available()) {
-            return;
+    void relayCommunicators() {
+        for (auto communicator = relayedCommunicators.begin(); communicator != relayedCommunicators.end(); ++communicator) {
+            if ((*communicator)->available()) {
+                route((*communicator)->read()); // Route the packet
+                delay(100);                     // Small delay to avoid saturating the serial port
+            }
         }
-        auto packet = secondaryCommunicator->read();
-        route(packet);           
     }
 
     void route(const Packet& packet) {
-        uint8_t address = packet.getRecipientAddress();
-        if (address == Packet::Address::BACKEND) {
-            primaryCommunicator->send(packet);
-        } else if (address == this->peerAddress) {
-            if (this->peerAddress == Packet::Address::LOCALIZER) {
-                primaryCommunicator->send(packet); // Localizer
-            } else { 
-                secondaryCommunicator->send(packet); // Drifter
-            }
-        } else if (address == Packet::Address::PI3) {
-            secondaryCommunicator->send(packet);
+        uint8_t address = packet.getRecipientAddress() | packet.getPacketType();
+        if (address == localAddress) {
+            route(processor->process(packet)); // Process the packet and re-route it
         } else {
-            route(processor->processPacket(packet));           
+            ICommunicator* communicator = routingTable->getRoute(address);
+            if (communicator != nullptr) {
+                communicator->send(packet);
+            } else { // Discard the pacekt                
+                SerialUSB.println("Exception: Invalid Address: no route found for address");
+            }            
         }
+        
     }
 };
 
