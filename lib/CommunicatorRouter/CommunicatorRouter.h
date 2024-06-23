@@ -51,8 +51,7 @@ public:
     }
 
     void operate() {
-        relayCommunicators();        
-        delay(100); // Pequeño retraso para evitar saturar el puerto serial               
+        relayCommunicators();                
     }    
 
     void setLocalAddress(Packet::Address address) {
@@ -60,19 +59,28 @@ public:
     }
     
     void relayCommunicators() {
-        for (auto communicator = relayedCommunicators.begin(); communicator != relayedCommunicators.end(); ++communicator) {
+        for (auto communicator = relayedCommunicators.begin(); communicator != relayedCommunicators.end(); ++communicator) {            
             if ((*communicator)->available()) {
-                route((*communicator)->read()); // Route the packet
-                delay(100);                     // Small delay to avoid saturating the serial port
+                SerialUSB.println("CommunicatorRouter::operate() -> Communicator available");
+                route((*communicator)->read()); // Route the packet                
             }
         }
     }
 
     void route(const Packet& packet) {
-        uint8_t address = packet.getRecipientAddress() | packet.getPacketType();
-        if (address == localAddress) {
+        // Print the packet HEX
+        SerialUSB.print("CommunicatorRouter::route() -> Packet: ");
+        packet.print();
+        
+        uint8_t address = packet.getAddresses();
+        if ((GET_RECEIVER(address) == localAddress) && processor != nullptr) {
+            SerialUSB.print("CommunicatorRouter::route-if() -> Processing packet...");
+            SerialUSB.println(address, HEX);
             route(processor->process(packet)); // Process the packet and re-route it
         } else {
+            // Print address as HEX
+            SerialUSB.print("CommunicatorRouter::route-else() -> Address: ");
+            SerialUSB.println(address, HEX);            
             ICommunicator* communicator = routingTable->getRoute(address);
             if (communicator != nullptr) {
                 communicator->send(packet);

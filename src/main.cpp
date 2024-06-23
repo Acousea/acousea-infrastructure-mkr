@@ -13,15 +13,19 @@
 #include "../lib/Display/SerialUSBDisplay.h"
 #include "../lib/Routines/PingRoutine.h"
 #include "../lib/RoutingTable/RoutingTable.h"
+#include "../lib/Battery/PMICManager.h"
+
+
 
 // FIXME: Must define OperationMode class to manage the state of the system
+PMICManager pmicManager;
 
 // Instancias de comunicadores
-LoraCommunicator &loraCommunicator = LoraCommunicator::getInstance(defaultLoraConfig);
+LoraCommunicator loraCommunicator;
 MockLoraCommunicator mockLoraCommunicator;
 IridiumCommunicator iridiumCommunicator;
 MockIridiumCommunicator mockIridiumCommunicator;
-SerialCommunicator serialCommunicator(&mySerial3, 9600); // Serial1 is the hardware serial port PINS 0 and 1
+SerialCommunicator serialCommunicator(&Serial1, 9600); // Serial1 is the hardware serial port PINS 13 and 14
 
 // Instancia de la pantalla
 AdafruitDisplay adafruitDisplay(&adafruit_SSD1306);
@@ -33,20 +37,22 @@ std::map<uint8_t, IRoutine *> serviceRoutines = {
     {Packet::OpCode::PING, &pingRoutine} // Mapear el código de operación 0x02 a la rutina PingRoutine
 };
 
-// FIXME: Must define specific routes for lora and iridium packets
 std::map<uint8_t, ICommunicator*> localizerRoutes = {
-    {(Packet::Address::BACKEND | Packet::Address::LORA_PACKET), &serialCommunicator},
-    {(Packet::Address::BACKEND | Packet::Address::IRIDIUM_PACKET), &serialCommunicator},
-    {(Packet::Address::DRIFTER | Packet::Address::LORA_PACKET), &mockLoraCommunicator},
-    {(Packet::Address::PI3 | Packet::Address::LORA_PACKET), &mockLoraCommunicator},
-    {(Packet::Address::DRIFTER | Packet::Address::IRIDIUM_PACKET), &mockIridiumCommunicator},
-    {(Packet::Address::PI3 | Packet::Address::IRIDIUM_PACKET), &mockIridiumCommunicator}};
+    {(RECEIVER(Packet::Address::BACKEND) | Packet::Address::LORA_PACKET), &serialCommunicator},
+    {(RECEIVER(Packet::Address::BACKEND) | Packet::Address::IRIDIUM_PACKET), &serialCommunicator},
+    {(RECEIVER(Packet::Address::DRIFTER) | Packet::Address::LORA_PACKET), &loraCommunicator},
+    {(RECEIVER(Packet::Address::PI3) | Packet::Address::LORA_PACKET), &loraCommunicator},
+    {(RECEIVER(Packet::Address::DRIFTER) | Packet::Address::IRIDIUM_PACKET), &iridiumCommunicator},
+    {(RECEIVER(Packet::Address::PI3) | Packet::Address::IRIDIUM_PACKET), &iridiumCommunicator}};
 RoutingTable localizerRoutingTable(localizerRoutes);
 
 std::map<uint8_t, ICommunicator *> drifterRoutes = {
-    {Packet::Address::BACKEND, &loraCommunicator},
-    {Packet::Address::LOCALIZER, &loraCommunicator},
-    {Packet::Address::PI3, &serialCommunicator}};
+    {(RECEIVER(Packet::Address::BACKEND) | Packet::Address::LORA_PACKET), &loraCommunicator},
+    {(RECEIVER(Packet::Address::BACKEND) | Packet::Address::IRIDIUM_PACKET), &iridiumCommunicator},
+    {(RECEIVER(Packet::Address::LOCALIZER) | Packet::Address::LORA_PACKET), &loraCommunicator},
+    {(RECEIVER(Packet::Address::LOCALIZER) | Packet::Address::IRIDIUM_PACKET), &iridiumCommunicator},
+    {(RECEIVER(Packet::Address::PI3) | Packet::Address::LORA_PACKET), &serialCommunicator},
+    {(RECEIVER(Packet::Address::PI3) | Packet::Address::IRIDIUM_PACKET), &serialCommunicator}};
 RoutingTable drifterRoutingTable(drifterRoutes);
 
 // Instancia del procesador de mensajes
@@ -56,7 +62,7 @@ PacketProcessor messageProcessor(&serialUSBDisplay, serviceRoutines);
 auto localizerRouter = CommunicatorRouter(Packet::Address::LOCALIZER,
                                           &localizerRoutingTable,
                                           &messageProcessor,
-                                          {&serialCommunicator, &mockLoraCommunicator, &mockIridiumCommunicator});
+                                          {&serialCommunicator, &loraCommunicator, &iridiumCommunicator});
 
 auto drifterRouter = CommunicatorRouter(Packet::Address::DRIFTER,
                                         &drifterRoutingTable,
@@ -71,8 +77,11 @@ void setup()
     // Inicializa el comunicador Serial
     serialCommunicator.init();
 
+    // Inicializa el administrador de energía
+    pmicManager.init();
+
     // Inicializa el comunicador LoRa
-    // loraCommunicator.init();
+    loraCommunicator.init();
 
     // Inicializa el comunicador Iridium
     // iridiumCommunicator.init();
@@ -88,16 +97,22 @@ void loop()
     if (millis() - lastTime > 1000)
     {
         lastTime = millis();
-        // serialUSBDisplay.print("Listening...");
-        SerialUSB.println("Listening...");
+        // Reenviar mensajes desde el puerto serial al comunicador y viceversa        
+        // SerialUSB.println("Drifter Listening...");
+        // drifterRouter.operate();
+        SerialUSB.println("Localizer Listening...");
+        localizerRouter.operate();
     }
-
-    // Reenviar mensajes desde el puerto serial al comunicador y viceversa
-    localizerRouter.operate();
+    
 }
 
 // Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)
 void SERCOM3_Handler()
 {
     mySerial3.IrqHandler();
+}
+
+void onReceiveWrapper(int packetSize) {
+    SerialUSB.println("OnReceiveWrapper Callback");        
+    loraCommunicator.onReceive(packetSize);           
 }

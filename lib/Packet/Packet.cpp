@@ -7,10 +7,8 @@ Packet::Packet(const uint8_t* data, size_t length) {
         return;
     }
     syncByte = data[0];    
-    senderAddress = (data[1] & Address::SENDER_MASK) >> 6;
-    recipientAddress = (data[1] & Address::RECEIVER_MASK) >> 4;    
-    packetType = data[1] & (Address::LORA_PACKET | Address::IRIDIUM_PACKET);
-    opCode = data[2];
+    opCode = data[1];
+    addresses = data[2];
     payloadLength = data[3];
 
     if (payloadLength > MAX_PAYLOAD_LENGTH) {
@@ -32,7 +30,14 @@ bool Packet::isValid() const {
 }
 
 bool Packet::isValidAddress(uint8_t address) {
-    return address == Address::BACKEND || address == Address::LOCALIZER || address == Address::DRIFTER || address == Address::PI3;
+    uint8_t sender = (address & Packet::Address::SENDER_MASK) >> 6;
+    uint8_t receiver = (address & Packet::Address::RECEIVER_MASK) >> 4;
+    return (sender == Packet::Address::BACKEND || sender == Packet::Address::LOCALIZER || sender == Packet::Address::DRIFTER || sender == Packet::Address::PI3) &&
+           (receiver == Packet::Address::LORA_PACKET || receiver == Packet::Address::IRIDIUM_PACKET);    
+}
+
+void Packet::swapSenderReceiverAddresses() const {
+    addresses = SENDER(GET_RECEIVER(addresses)) | RECEIVER(GET_SENDER(addresses)) | (addresses & 0x0F);
 }
 
 // Getters
@@ -40,16 +45,8 @@ uint8_t Packet::getSyncByte() const {
     return syncByte;
 }
 
-uint8_t Packet::getSenderAddress() const {
-    return senderAddress;
-}
-
-uint8_t Packet::getRecipientAddress() const {
-    return recipientAddress;
-}
-
-uint8_t Packet::getPacketType() const {
-    return packetType;
+uint8_t Packet::getAddresses() const {
+    return addresses;
 }
 
 uint8_t Packet::getOpCode() const {
@@ -66,8 +63,8 @@ const uint8_t* Packet::getPayload() const {
 
 const uint8_t* Packet::getFullPacket() const {
     fullPacket[0] = syncByte;
-    fullPacket[1] = (senderAddress << 6) | (recipientAddress << 4) | packetType;
-    fullPacket[2] = opCode;
+    fullPacket[1] = opCode;
+    fullPacket[2] = addresses;
     fullPacket[3] = payloadLength;
     memcpy(fullPacket + 4, payload, payloadLength);
     return fullPacket;
@@ -76,8 +73,8 @@ const uint8_t* Packet::getFullPacket() const {
 std::vector<uint8_t> Packet::getFullPacketVector() const {
     std::vector<uint8_t> fullPacketVec;
     fullPacketVec.push_back(syncByte);
-    fullPacketVec.push_back((senderAddress << 6) | (recipientAddress << 4) | packetType) ;
     fullPacketVec.push_back(opCode);
+    fullPacketVec.push_back(addresses);
     fullPacketVec.push_back(payloadLength);
     fullPacketVec.insert(fullPacketVec.end(), payload, payload + payloadLength);
     return fullPacketVec;
@@ -92,25 +89,20 @@ void Packet::setSyncByte(uint8_t syncByte) {
     this->syncByte = syncByte;
 }
 
-void Packet::setSenderAddress(uint8_t senderAddress) {
-    if (!isValidAddress(senderAddress)) {
-        SerialUSB.println("Packet::setSenderAddress(): Invalid sender address");
-        return;       
-    }
-    this->senderAddress = senderAddress;
-}
-
-void Packet::setRecipientAddress(uint8_t recipientAddress) {
-    if (!isValidAddress(recipientAddress)) {
-        SerialUSB.println("Packet::setRecipientAddress(): Invalid recipient address");
+void Packet::setAddresses(uint8_t addresses){
+    if (!isValidAddress(addresses)) {
+        SerialUSB.println("Packet::setAddresses(): Invalid addresses");
         return;        
     }
-    this->recipientAddress = recipientAddress;
+    this->addresses = addresses;
+
 }
+
 
 void Packet::setOpCode(uint8_t opCode) {
     this->opCode = opCode;
 }
+
 
 void Packet::setPayloadLength(uint8_t payloadLength) {
     if (payloadLength > MAX_PAYLOAD_LENGTH) {
@@ -127,4 +119,21 @@ void Packet::setPayload(const uint8_t* payload, uint8_t length) {
     }
     this->payloadLength = length;
     memcpy(this->payload, payload, length);
+}
+
+
+void Packet::print() const {
+    SerialUSB.print(syncByte, HEX);
+    SerialUSB.print(" ");
+    SerialUSB.print(opCode, HEX);
+    SerialUSB.print(" ");
+    SerialUSB.print(addresses, HEX);
+    SerialUSB.print(" ");
+    SerialUSB.print(payloadLength, HEX);
+    SerialUSB.print(" ");
+    for (uint8_t i = 0; i < payloadLength; i++) {
+        SerialUSB.print(payload[i], HEX);
+        SerialUSB.print(" ");
+    }
+    SerialUSB.println();
 }

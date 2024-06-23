@@ -20,15 +20,13 @@ public:
     Packet process(const Packet& packet) override {
         display->print("Packet Processor: ");
         display->print(packet.getFullPacketVector());
-
-        uint8_t opCode = packet.getOpCode();
-        SerialUSB.println("OpCode: " + String(opCode, HEX) + " " + String(opCode, DEC));
+        uint8_t opCode = packet.getOpCode();        
         if (routines.find(opCode) != routines.end()) {
             return routines[opCode]->execute(packet);
         } else {
             display->print("Exception: Invalid OpCode: no routine found for OpCode");
-            return ErrorPacket(packet.getRecipientAddress(), packet.getSenderAddress(), 
-                               ErrorPacket::ErrorCode::INVALID_OPCODE);
+            packet.swapSenderReceiverAddresses();
+            return ErrorPacket(packet.getAddresses(), ErrorPacket::ErrorCode::INVALID_OPCODE);
         }
     }
 };

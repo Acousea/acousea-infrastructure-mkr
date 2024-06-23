@@ -14,15 +14,15 @@ public:
         INVALID_SYNC_BYTE = 0x06
     };
 
-    ErrorPacket(uint8_t senderAddress, uint8_t recipientAddress, ErrorCode errorCode)
-        : Packet(buildErrorPacket(senderAddress, recipientAddress, static_cast<uint8_t>(errorCode)), 
+    ErrorPacket(uint8_t addresses, ErrorCode errorCode)
+        : Packet(buildErrorPacket(addresses, static_cast<uint8_t>(errorCode)), 
                                   PACKET_HEADER_LENGTH + 1) {}
 
 private:
-    static const uint8_t* buildErrorPacket(uint8_t senderAddress, uint8_t recipientAddress, uint8_t errorCode) {
+    static const uint8_t* buildErrorPacket(uint8_t addresses, uint8_t errorCode) {
         static uint8_t errorData[Packet::PACKET_HEADER_LENGTH + 1];
         errorData[0] = Packet::SYNC_BYTE;
-        errorData[1] = (senderAddress << 6) | (recipientAddress << 4);
+        errorData[1] = addresses;
         errorData[2] = Packet::OpCode::ERROR;
         errorData[3] = 0x01;  // Payload length set to 1 for error code
         errorData[4] = errorCode;  // Error code as payload

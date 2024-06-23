@@ -17,7 +17,7 @@ public:
     }
 
     ICommunicator* getRoute(uint8_t address) const {
-        auto it = routes.find(address);
+        auto it = routes.find(Packet::Address::RECEIVER_AND_PACKET_TYPE_MASK & address);
         if (it != routes.end()) {
             return it->second;
         }

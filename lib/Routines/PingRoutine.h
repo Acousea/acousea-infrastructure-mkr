@@ -12,9 +12,8 @@ public:
 
     Packet execute(const Packet& packet) override {
         Packet modifiedPacket = packet; // Crear una copia del paquete
-        // Invert the sender and recipient addresses
-        modifiedPacket.setRecipientAddress(modifiedPacket.getSenderAddress()); // Modificar la dirección
-        modifiedPacket.setSenderAddress(Packet::Address::DRIFTER); // Modificar la dirección                
+        // Invert the sender and recipient addresses while saving the rest of the addresses byte
+        modifiedPacket.swapSenderReceiverAddresses(); 
         return modifiedPacket; // Devolver el paquete modificado
     }
 };
