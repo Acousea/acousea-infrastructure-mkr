@@ -1,25 +1,25 @@
-#ifndef SERIAL_COMMUNICATOR_H
-#define SERIAL_COMMUNICATOR_H
+#ifndef SERIAL_PORT_H
+#define SERIAL_PORT_H
 
 #include <Arduino.h>
-#include "ICommunicator.h"
+#include "IPort.h"
 #include "Packet.h"
 
-class SerialCommunicator : public ICommunicator {
+class SerialPort : public IPort {
 private:
     Uart* serialPort;
     int baudRate;
 
 public:
-    SerialCommunicator(Uart* serialPort, int baudRate) : serialPort(serialPort), baudRate(baudRate) {
+    SerialPort(Uart* serialPort, int baudRate) : serialPort(serialPort), baudRate(baudRate) {
         // Set the pins to use mySerial3
         pinPeripheral(1, PIO_SERCOM); //Assign RX function to pin 1
         pinPeripheral(0, PIO_SERCOM); //Assign TX function to pin 0
     }
 
-    void init(){
+    void init() override{
         serialPort->begin(baudRate);
-        SerialUSB.println("SerialCommunicator::Serial port initialized");
+        SerialUSB.println("SerialPort::Serial port initialized");
     }
     void send(const Packet& packet) override {
         serialPort->write(packet.getFullPacket(), packet.getFullPacketLength());
@@ -41,4 +41,4 @@ public:
     }
 };
 
-#endif // SERIAL_COMMUNICATOR_H
+#endif // SERIAL_PORT_H

@@ -1,5 +1,42 @@
 #include "Packet.h"
 
+// Constructor that receives an opCode, addresses, and payload
+Packet::Packet(uint8_t opCode, uint8_t addresses, const uint8_t* payload, uint8_t length) {
+    if (length > MAX_PAYLOAD_LENGTH) {
+        SerialUSB.println("Packet::Constructor(): Payload length is too long");
+        return;
+    }
+    this->syncByte = SYNC_BYTE;
+    this->opCode = opCode;
+    if (!isValidAddress(addresses)) {
+        SerialUSB.println("Packet::Constructor(): Invalid addresses");
+        return;        
+    }
+    this->addresses = addresses;
+    this->payloadLength = length;
+    memcpy(this->payload, payload, length);
+    validPacket = true;
+}
+
+// Constructor that receives opCode, addresses and std::vector<uint8_t> payload
+Packet::Packet(uint8_t opCode, uint8_t addresses, const std::vector<uint8_t>& payload) {
+    if (payload.size() > MAX_PAYLOAD_LENGTH) {
+        SerialUSB.println("Packet::Constructor(): Payload length is too long");
+        return;
+    }
+    this->syncByte = SYNC_BYTE;
+    this->opCode = opCode;
+    if (!isValidAddress(addresses)) {
+        SerialUSB.println("Packet::Constructor(): Invalid addresses");
+        return;        
+    }
+    this->addresses = addresses;
+    this->payloadLength = payload.size();
+    memcpy(this->payload, payload.data(), payload.size());
+    validPacket = true;
+}
+
+
 // Constructor
 Packet::Packet(const uint8_t* data, size_t length) {
     if (length < PACKET_HEADER_LENGTH) {
@@ -32,8 +69,10 @@ bool Packet::isValid() const {
 bool Packet::isValidAddress(uint8_t address) {
     uint8_t sender = (address & Packet::Address::SENDER_MASK) >> 6;
     uint8_t receiver = (address & Packet::Address::RECEIVER_MASK) >> 4;
+    uint8_t packetType = (address & Packet::Address::PACKET_TYPE_MASK);
     return (sender == Packet::Address::BACKEND || sender == Packet::Address::LOCALIZER || sender == Packet::Address::DRIFTER || sender == Packet::Address::PI3) &&
-           (receiver == Packet::Address::LORA_PACKET || receiver == Packet::Address::IRIDIUM_PACKET);    
+            (receiver == Packet::Address::BACKEND || receiver == Packet::Address::LOCALIZER || receiver == Packet::Address::DRIFTER || receiver == Packet::Address::PI3) &&
+            (packetType == Packet::PacketType::LORA_PACKET || packetType == Packet::PacketType::IRIDIUM_PACKET);
 }
 
 void Packet::swapSenderReceiverAddresses() const {
@@ -47,6 +86,10 @@ uint8_t Packet::getSyncByte() const {
 
 uint8_t Packet::getAddresses() const {
     return addresses;
+}
+
+uint8_t Packet::getSwappedAddresses() const {
+    return SENDER(GET_RECEIVER(addresses)) | RECEIVER(GET_SENDER(addresses)) | (addresses & 0x0F);
 }
 
 uint8_t Packet::getOpCode() const {

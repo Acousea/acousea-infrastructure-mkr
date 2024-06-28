@@ -1,15 +1,16 @@
-#ifndef ICOMMUNICATOR_H
-#define ICOMMUNICATOR_H
+#ifndef IPORT_H
+#define IPORT_H
 
 #include <Arduino.h>
 #include "Packet.h"
 
 // Definición de la interfaz de comunicador
-class ICommunicator {
+class IPort {
 public:
+    virtual void init() = 0;
     virtual void send(const Packet& packet) = 0;
     virtual bool available() = 0;
     virtual Packet read() = 0;
 };
 
-#endif // ICOMMUNICATOR_H
+#endif // IPORT_H

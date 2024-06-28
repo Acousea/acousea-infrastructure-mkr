@@ -34,9 +34,10 @@ public:
         SerialUSB.println(message);
     }
 
-    void print(int value) override {
-        SerialUSB.println(value);
+   void print(const char *message) override {
+        SerialUSB.println(message);
     }
+        
 };
 
 #endif

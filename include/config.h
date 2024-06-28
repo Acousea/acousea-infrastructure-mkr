@@ -30,65 +30,22 @@
 #define SBD_REPORTING_DRIFTING_SEC  900    //   3600
 #define SBD_REPORTING_RECOVERY_SEC  120    //   300
 
-uint32_t sbd_reporting_period_sec = SBD_REPORTING_LAUNCH_SEC;
-uint32_t vr2c_sampling_period_sec = 600;
+
 uint32_t lora_comm_period_sec     = 180;     // 120;
 uint32_t gnss_logging_period_sec  = 180;     // 300;
 
-time_t last_sbd_reporting_epoch = 0;
-time_t last_lora_comm_epoch = 0;
-time_t last_vr2c_sampling_epoch = 0;
 
-uint16_t lora_msg_sent = 0;
-
-typedef enum {
-  IGNITION_MODE = 0, 
-  LAUNCH_MODE,
-  DRIFTING_MODE,
-  RECOVERY_MODE
-} drifter_mode_t;
-
-
-  
-
-#define LAUNCH_NUM_CYCLES         3
-
-// This is the initial mode. It will last until IGNITION_NUM_CYCLES, then 
-// automatically it will transit into DRIFTING_MODE
-drifter_mode_t drifter_mode = IGNITION_MODE;
-uint32_t drifter_num_cycles = 0;
-uint32_t drifter_SBD_num_cycles = 0;
 
 // ----------------------------------------------------------------------------------
 // mySerial3
 // ----------------------------------------------------------------------------------
 // Create the new UART instance assigning it to pin 1 and 0
-Uart mySerial3 (&sercom3, 1, 0, SERCOM_RX_PAD_1, UART_TX_PAD_0); 
+// Uart mySerial3 (&sercom3, 1, 0, SERCOM_RX_PAD_1, UART_TX_PAD_0); 
 
 // ----------------------------------------------------------------------------------
-// Adafruit's LC709203F
+// Adafruit's LC709203F (Li-ION battery fuel gauge)
 // ----------------------------------------------------------------------------------
 Adafruit_LC709203F lc;
-
-// ------------------------------------------------------------------------------------
-// OLED DISPLAY
-// ------------------------------------------------------------------------------------
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
-
-// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-// The pins for I2C are defined by the Wire-library. 
-// On an arduino UNO:       A4(SDA), A5(SCL)
-// On an arduino MEGA 2560: 20(SDA), 21(SCL)
-// On an arduino LEONARDO:   2(SDA),  3(SCL), ...
-
-// Reset pin # (or -1 if sharing Arduino reset pin)
-#define OLED_RESET     -1 
-
-// See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-#define SCREEN_ADDRESS 0x3D 
-Adafruit_SSD1306 adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
 
 // ---------------------------------------------------------------------------------
 // IRIDIUM 9602 SBD MODEM
@@ -125,16 +82,6 @@ Adafruit_SSD1306 adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET
 // RTCZero rtc;
 // volatile uint16_t _rtcFlag = 0;
 
-// // ------------------------------------------------------------------------------------
-// // GNSS
-// // GPS object is declared in the Arduino_MKRGPS library
-// // Pin 7 Is used as the extinct pin
-// // ------------------------------------------------------------------------------------
-// #define GNSS_MAX_FIX_TIME_MS   900000    // 15 minutes
-// #define GNSS_WAIT_TIME_MS      120000    // msecs, 2 minutes
-// #define GNSS_WAKEUP_PIN        4
-
-// SFE_UBLOX_GNSS myGNSS;
 
 // // ------------------------------------------------------------------------------------
 // // LoRA
@@ -159,97 +106,11 @@ Adafruit_SSD1306 adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET
 
 // // LoRaModem modem;
 
-// // -----------------------------------------------------------------------------------
-// // VEMCO green cable  - R1IN   - R1OUT MAX232 - MKR RX
-// // VEMCO white cable  - T1OUT  - T1IN MAX232  - MKR TX
-// // VEMCO shield cable - NC
-// // VEMCO DC+ cable    - 12V
-// // VEMCO DC- cable    - GND    - GND MAX232   - MKR GND
-// //                               3.3V MAX232  - MKR VIN
-// // -----------------------------------------------------------------------------------
-// #define USE_VR2C                    true
-
-// #define _DEBUG_VR2C         
-
-// #define VRC2_MINI_BAUDS             9600
-// #define vr2c_serial                 Serial1
-
-// //#define SSR_VR2C_MINI_PIN           DIGITAL8
-
-// #define VR2C_STATUS_MSG               51
-// #define VR2C_DETECTION_MSG            52
-
-// #define VR2C_MAX_MSG_SZ               200
-// #define VR2C_STATUS_REPORT_SEC        300UL
-
-// // The VRC2 disables serial transceivers after 30secs of the last transmission or
-// // after a QUIT command
-// #define VR2C_SERIAL_RXTX_TIMEOUT_MS   28000UL // It should be 30000
-// uint32_t lastTxTimestamp_ms = 0UL;
-// uint32_t lastSyncTimestamp_ms = 0UL;
-
-// #define VR2C_SERIAL_MSG_TIMEOUT_MS    400UL
-// #define SERIAL_CHAR_TIMEOUT           20UL
-
-// const char vrc2_mini_serial_no[7] = "450315"; // "450270";
-// uint8_t vr2c_device_summation = 0;
-
-// typedef struct
-// { 
-//   uint32_t receiver_serialno;
-//   uint16_t seqno;
-//   uint8_t year, month, day, hour, minute, second;
-//   char letter;
-//   uint8_t freq;
-//   uint16_t tagMap;
-//   uint32_t tagID;
-//   uint8_t hasSensors; // This may be 0, 1, 2
-//   uint8_t sensorADC[2];
-//   uint32_t timestamp_ms;
-//   float latitude;
-//   float longitude;
-// } vemco_detection_t;
-
-// typedef struct
-// {
-//   uint32_t receiver_serialno;
-//   uint16_t seqno;
-//   uint8_t year, month, day, hour, minute, second;
-//   uint32_t dc;
-//   uint32_t pc;
-//   float lv_v;
-//   float bv_v;
-//   float bu_percent;
-//   float i_ma;
-//   float temperature_c;  
-//   float du_percent;
-//   float ru_percent; 
-//   float tilt_g[3];
-// } vemco_sst_t;
-
-// #define MAX_TAG_MAPS   10
-// #define MAX_TAGS       10
-
-// typedef struct 
-// {
-//   uint8_t num_tag_maps;           // How many maps detected (up to MAX_TAG_MAPS)
-//   uint16_t tagMap[MAX_TAG_MAPS];  // Tag maps (up to MAX_TAG_MAPS)
-  
-//   uint16_t detectedTags;          // How many tags detected (up to MAX_TAGS)
-//   uint16_t tagID[MAX_TAGS];       // ID of detected tags (up to MAX_TAGS)
-//   uint8_t  tagMapIndex[MAX_TAGS]; // Index of map in TagMap
-//   uint16_t detections[MAX_TAGS];  // No. of detections fot this tag
-//   uint16_t detectionsTotal;       // Sum of all detections
-//   bool overflow;                  // True if the no of tags exceeded MAX_TAGS
-// } tagSummary_t;
-
 // typedef struct 
 // {
 //   time_t epoch;
 //   float latitude_deg, longitude_deg;
 //   uint8_t battery_soc;
-  
-//   bool includes_vr2c_data;
 //   tagSummary_t tagSummary;
 // } data_info_t;
 
@@ -267,7 +128,7 @@ Adafruit_SSD1306 adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET
 // // current mode time periods
 // // ----------------------------------------------------------------------
 // typedef struct {
-//   drifter_mode_t mode;   // 0, means "keep current mode". This is useful to change timing
+//   OPERATION_MODES mode;   // 0, means "keep current mode". This is useful to change timing
 //                          // without changing mode
 //   uint32_t sbd_reporting_period_sec; 
 //   uint32_t lora_comm_period_sec;
@@ -284,8 +145,6 @@ Adafruit_SSD1306 adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET
 //     mode_chg_t mode;
 //   } data;
 // } lora_rx_msg_t;
-
-
 
 
 // // ----------------------------------------------------------------------

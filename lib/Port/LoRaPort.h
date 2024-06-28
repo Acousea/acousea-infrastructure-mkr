@@ -1,10 +1,10 @@
-#ifndef LORA_COMMUNICATOR_H
-#define LORA_COMMUNICATOR_H
+#ifndef LORA_PORT_H
+#define LORA_PORT_H
 
 #include <Arduino.h>
 #include <deque>
 #include <LoRa.h>
-#include "ICommunicator.h"
+#include "IPort.h"
 #include "Packet.h"
 
 typedef struct {
@@ -43,11 +43,11 @@ LoRaConfig defaultLoraConfig = {
 // Prototipo del callback
 void onReceiveWrapper(int packetSize);
 
-class LoraCommunicator : public ICommunicator {
+class LoraPort : public IPort {
 public:
-    LoraCommunicator(const LoRaConfig& config = defaultLoraConfig) : config(config) {}
+    LoraPort(const LoRaConfig& config = defaultLoraConfig) : config(config) {}
 
-    void init() {
+    void init() override {
         configureLora(config);
         LoRa.setSyncWord(config.syncWord);
         LoRa.setPreambleLength(config.preambleLength);
@@ -63,19 +63,15 @@ public:
 
     void send(const Packet& packet) override {
         while(!LoRa.beginPacket()) {
-            SerialUSB.println("LORA_COMMUNICATOR::send() -> LoRa.beginPacket() Waiting for transmission to end...");
+            SerialUSB.println("LORA_PORT::send() -> LoRa.beginPacket() Waiting for transmission to end...");
             delay(10);
         }
         LoRa.write(packet.getFullPacket(), packet.getFullPacketLength());
         LoRa.endPacket(); // Transmit the packet synchrously (blocking) -> Avoids setting onTxDone callback (has bugs in the library)
-        LoRa.receive(); // Start listening for incoming packets again
-        // Print through serial monitor for debugging
-        Serial.print("LORA_COMMUNICATOR: Sending packet: ");
-        for (size_t i = 0; i < packet.getFullPacketLength(); i++) {
-            Serial.print(packet.getFullPacket()[i], HEX);
-            Serial.print(" ");
-        }
-        Serial.println();
+        // Start listening for incoming packets again
+        LoRa.receive(); 
+        
+        packet.print(); 
     }
 
     bool available() override {
@@ -102,7 +98,7 @@ public:
         uint8_t* data = buffer.data();
         Packet packet(data, packetSize);
         if (!packet.isValid()) {
-            SerialUSB.println("LORA_COMMUNICATOR::onReceive() -> Invalid packet received");
+            SerialUSB.println("LORA_PORT::onReceive() -> Invalid packet received");
             return;
         }
         if (receivedPackets.size() >= MAX_QUEUE_SIZE) {
@@ -131,4 +127,4 @@ private:
 
 
 
-#endif // LORA_COMMUNICATOR_H
+#endif // LORA_PORT_H

@@ -7,8 +7,8 @@
 
 
 // Define receiver macro to shift the address to the left
-#define RECEIVER(x) (x << 4)
 #define SENDER(x) (x << 6)
+#define RECEIVER(x) (x << 4)
 
 // Define macros to get the sender and receiver addresses shifting the bits to the right
 #define GET_SENDER(x) (x & 0xC0) >> 6
@@ -17,6 +17,13 @@
 class Packet
 {
 public:
+
+    // Constructor that receives an opCode, addresses, and payload
+    Packet(uint8_t opCode, uint8_t addresses, const uint8_t *payload, uint8_t length);
+
+    // Constructor that receives opCode, addresses and std::vector<uint8_t> payload
+    Packet(uint8_t opCode, uint8_t addresses, const std::vector<uint8_t> &payload);
+
     // Constructor
     Packet(const uint8_t *data, size_t length);
 
@@ -27,22 +34,37 @@ public:
         PI3 = 0x03,          // 0b00000011
         SENDER_MASK = 0xC0,  // 0b11000000
         RECEIVER_MASK = 0x30, // 0b00110000
-        LORA_PACKET = 0x08,  // 0b00001000
-        IRIDIUM_PACKET = 0x04, // 0b00000100        
+        PACKET_TYPE_MASK = 0x0C, // 0b00001100
         RECEIVER_AND_PACKET_TYPE_MASK = 0x3C, // 0b00111100
+        NULL_ADDRESS = 0xFF, // 0b11111111
     } Address;
 
     typedef enum: uint8_t {
+        LORA_PACKET = 0x08,  // 0b00001000
+        IRIDIUM_PACKET = 0x04, // 0b00000100        
+    } PacketType;
+
+    typedef enum: uint8_t {
+        NULL_PACKET = 0x00,  // 0b00000000
         PING = '0',        
-        ERROR = '1',
+        ERROR = '1',    
+        CHANGE_OPERATION_MODE = 'C',    
+        SUMMARY_REPORT = 'S',
+        SUMMARY_SIMPLE_REPORT = 's',
     } OpCode;
+
+    typedef enum: uint8_t {
+        ACKNOWLEDGE = 'A',
+        NACKNOWLEDGE = 'N',        
+    } ResponseCode;
 
     void swapSenderReceiverAddresses() const;
     void print() const;
     // Getters
     bool isValid() const;
     uint8_t getSyncByte() const;    
-    uint8_t getAddresses() const;    
+    uint8_t getAddresses() const; 
+    uint8_t getSwappedAddresses() const;   
     uint8_t getOpCode() const;
     uint8_t getPayloadLength() const;
     const uint8_t *getPayload() const;

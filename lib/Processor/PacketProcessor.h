@@ -3,12 +3,11 @@
 
 #include <Arduino.h>
 #include <map>
-#include "IProcessor.h"
 #include "../Display/IDisplay.h"
 #include "../Routines/IRoutine.h"
 #include "../Packet/ErrorPacket.h"
 
-class PacketProcessor : public IProcessor {
+class PacketProcessor {
 private:
     IDisplay* display;
     std::map<uint8_t, IRoutine*> routines;
@@ -17,7 +16,7 @@ public:
     PacketProcessor(IDisplay* display, const std::map<uint8_t, IRoutine*>& routines)
         : display(display), routines(routines) {}
 
-    Packet process(const Packet& packet) override {
+    Packet process(const Packet& packet) {
         display->print("Packet Processor: ");
         display->print(packet.getFullPacketVector());
         uint8_t opCode = packet.getOpCode();        

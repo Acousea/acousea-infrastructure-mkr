@@ -3,10 +3,11 @@
 
 #include <Arduino.h>
 #include <Arduino_PMIC.h>
+#include "IBattery.h"
 
-class PMICManager {
+class PMICBatteryController : public IBattery {
 public:
-    bool init() {
+    bool init() override {
         if (!PMIC.begin()) {
             Serial.println("ERROR: Failed to initialize PMIC!");
             return false;
@@ -23,6 +24,11 @@ public:
 
         // Verificar si hubo algún error durante la configuración
         return !error;
+    }
+
+    uint8_t percentage() override {
+        // Warning: It's not possible to get the battery percentage from the PMIC
+        return 0;
     }
 
     void printStatus() const {
