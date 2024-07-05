@@ -9,10 +9,15 @@
  */
 
 class LocalizerWorkingMode : public IOperationMode {
+private:
+    Router* router;
+    IGPS* gps;
+
 
 public:
     // Constructor that receives a reference to the display
-    LocalizerWorkingMode(IDisplay* display) : IOperationMode(display) {}
+    LocalizerWorkingMode(IDisplay* display, Router* router, IGPS* gps) 
+        : IOperationMode(display), router(router), gps(gps) {}
 
     void init() override {        
         display->print("Initializing Drifting Mode..."); // Cambio de "Initializing Drifting Mode..." a "Initializing Drifting Mode...
@@ -22,6 +27,7 @@ public:
     void run() override {
         display->print("Running Drifting Mode...");
         // Código específico para ejecutar en modo drifting
+        router->relayPorts();
     }
 
     void stop() override {

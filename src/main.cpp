@@ -1,6 +1,13 @@
 #include "dependencies.h"
 
-void setupDrifter(){
+#define DRIFTER_MODE 0
+#define LOCALIZER_MODE 1
+// #define MODE LOCALIZER_MODE // Cambiar a DRIFTER_MODE o LOCALIZER_MODE según sea necesario
+#define MODE DRIFTER_MODE // Cambiar a DRIFTER_MODE o LOCALIZER_MODE según sea necesario
+
+
+void setupDrifter()
+{
     // Inicializa la comunicación serial a 9600 baudios
     serialUSBDisplay.init(9600);
 
@@ -18,30 +25,31 @@ void setupDrifter(){
 
     // Inicializa el comunicador Iridium
     iridiumPort.init();
-
-
 }
 
-void operateDrifter(){
+void operateDrifter()
+{
     SerialUSB.println("Operating Drifter...");
-    switch (operationManager.getMode()) {
-        case LAUNCHING_MODE:
-            drifterLaunchingMode.run();
-            break;
-        case WORKING_MODE:
-            drifterWorkingMode.run();
-            break;
-        case RECOVERY_MODE:
-            drifterRecoveryMode.run();
-            break;
-        default:
-            SerialUSB.println("Unknown operation mode");            
-            operationManager.setMode(LAUNCHING_MODE);
-            break;
-        }
+    switch (operationManager.getMode())
+    {
+    case LAUNCHING_MODE:
+        drifterLaunchingMode.run();
+        break;
+    case WORKING_MODE:
+        drifterWorkingMode.run();
+        break;
+    case RECOVERY_MODE:
+        drifterRecoveryMode.run();
+        break;
+    default:
+        SerialUSB.println("Unknown operation mode");
+        operationManager.setMode(LAUNCHING_MODE);
+        break;
+    }
 }
 
-void setupLocalizer(){
+void setupLocalizer()
+{
 
     // Inicializa la comunicación serial a 9600 baudios
     serialUSBDisplay.init(9600);
@@ -60,51 +68,51 @@ void setupLocalizer(){
 
     // Inicializa el comunicador Iridium
     iridiumPort.init();
-
-
 }
 
-void operateLocalizer(){
+void operateLocalizer()
+{
     SerialUSB.println("Operating Localizer...");
-    switch (operationManager.getMode()) {
-        case LAUNCHING_MODE:
-            localizerLaunchingMode.run();
-            break;
-        case WORKING_MODE:
-            localizerWorkingMode.run();
-            break;
-        case RECOVERY_MODE:
-            localizerRecoveryMode.run();
-            break;
-        default:
-            SerialUSB.println("Unknown operation mode");            
-            operationManager.setMode(LAUNCHING_MODE);
-            break;
-        }
+    switch (operationManager.getMode())
+    {
+    case LAUNCHING_MODE:
+        localizerLaunchingMode.run();
+        break;
+    case WORKING_MODE:
+        localizerWorkingMode.run();
+        break;
+    case RECOVERY_MODE:
+        localizerRecoveryMode.run();
+        break;
+    default:
+        SerialUSB.println("Unknown operation mode");
+        operationManager.setMode(LAUNCHING_MODE);
+        break;
+    }
 }
 
 void setup()
-{   
+{
+#if MODE == DRIFTER_MODE
     setupDrifter();
-    // setupLocalizer();       
+#elif MODE == LOCALIZER_MODE
+    setupLocalizer();
+#endif
 }
-
-
-// Reenviar mensajes desde el puerto serial al comunicador y viceversa
-// SerialUSB.println("Drifter Listening...");
-// drifterRouter.relayPorts();
-// SerialUSB.println("Localizer Listening...");
-// localizerRouter.relayPorts();
 
 void loop()
 {
-    static long lastTime = 0;    
+    static long lastTime = 0;
     // Operate every 1 second
-    if (millis() - lastTime >= 1000) {        
-        lastTime = millis();        
+    if (millis() - lastTime >= 1000)
+    {
+        lastTime = millis();
+#if MODE == DRIFTER_MODE
         operateDrifter();
-        // operateLocalizer();      
-    }    
+#elif MODE == LOCALIZER_MODE
+        operateLocalizer();
+#endif
+    }
 }
 
 // Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)

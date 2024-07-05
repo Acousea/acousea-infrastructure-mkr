@@ -119,11 +119,10 @@ auto drifterRouter = Router(Packet::Address::DRIFTER,
 // Instancias de modos de operación (DRIFTER)
 DrifterLaunchingMode drifterLaunchingMode(&serialUSBDisplay, &drifterRouter, &mockGPS,  &rtcController);
 DrifterWorkingMode drifterWorkingMode(&serialUSBDisplay, &drifterRouter, &mockGPS, &rtcController,  &summaryService);
-DrifterRecoveryMode drifterRecoveryMode(&serialUSBDisplay);
+DrifterRecoveryMode drifterRecoveryMode(&serialUSBDisplay, &drifterRouter, &mockGPS,  &rtcController);
 
 // Instancias de modos de operación (LOCALIZER)
-LocalizerLaunchingMode localizerLaunchingMode(&serialUSBDisplay, &drifterRouter, &mockGPS);
-LocalizerWorkingMode localizerWorkingMode(&serialUSBDisplay);
-LocalizerRecoveryMode localizerRecoveryMode(&serialUSBDisplay);
-
+LocalizerLaunchingMode localizerLaunchingMode(&serialUSBDisplay, &localizerRouter, &mockGPS);
+LocalizerWorkingMode localizerWorkingMode(&serialUSBDisplay, &localizerRouter, &mockGPS);
+LocalizerRecoveryMode localizerRecoveryMode(&serialUSBDisplay, &localizerRouter, &mockGPS);
 #endif // DEPENDENCIES_H

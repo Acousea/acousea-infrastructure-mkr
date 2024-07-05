@@ -55,16 +55,18 @@ public:
 
         lastIridiumReport = millis();
 
+        // TODO: Send these packets
         // Build SimpleReport struct
-        SimpleReport simpleReport;
+        // SimpleReport simpleReport;
 
-        simpleReport.battery_percentage = 100;
-        simpleReport.epoch = rtcController->getEpoch();
-        simpleReport.location = gps->read();
+        // simpleReport.battery_percentage = 100;
+        // simpleReport.operation_mode = OPERATION_MODE::LAUNCHING_MODE;
+        // simpleReport.epoch = rtcController->getEpoch();
+        // simpleReport.location = gps->read();
 
-        // Build SimpleReportPackets
-        SimpleReportPacket simpleReportPacketIridium(simpleReport, Packet::PacketType::IRIDIUM_PACKET);
-        SimpleReportPacket simpleReportPacketLoRa(simpleReport, Packet::PacketType::LORA_PACKET);       
+        // // Build SimpleReportPackets
+        // SimpleReportPacket simpleReportPacketIridium(simpleReport, Packet::PacketType::IRIDIUM_PACKET);
+        // SimpleReportPacket simpleReportPacketLoRa(simpleReport, Packet::PacketType::LORA_PACKET);       
 
         display->print("Sending simple status report ");            
             

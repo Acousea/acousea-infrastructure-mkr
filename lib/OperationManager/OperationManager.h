@@ -2,13 +2,8 @@
 #define OPERATION_MANAGER_H
 
 #include <Arduino.h>
+#include "IOperationMode.h"
 
-typedef enum : uint8_t {
-    KEEP_CURRENT_MODE = 0,
-    LAUNCHING_MODE = 1,
-    WORKING_MODE = 2,
-    RECOVERY_MODE = 3    
-} OPERATION_MODE;
 
 class OperationManager {
 private:

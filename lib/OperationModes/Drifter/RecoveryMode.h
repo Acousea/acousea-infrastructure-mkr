@@ -19,8 +19,8 @@ class DrifterRecoveryMode : public IOperationMode {
 
 private:
     Router* router;
-    IGPS* gps;    
-    OperationManager* operationManager;
+    IGPS* gps;        
+    RTCController* rtcController;
 
 private: // Variables to establish periods
     const unsigned long SBD_REPORTING_RECOVERY_PERIOD_SEC = 120;
@@ -29,12 +29,11 @@ private: // Variables to establish periods
     unsigned long lastIridiumReport = 0;
     unsigned long lastCycle = 0;
     unsigned long lastCycleTime = 0;
-
     
-
 public:
     // Constructor that receives a reference to the display
-    DrifterRecoveryMode(IDisplay* display) : IOperationMode(display) {}
+    DrifterRecoveryMode(IDisplay* display, Router* router, IGPS* gps, RTCController* rtcController) 
+    : IOperationMode(display), router(router), gps(gps), rtcController(rtcController) {}
 
     void init() override {        
         display->print("Initializing Recovery Mode..."); // Cambio de "Initializing Recovery Mode..." a "Initializing Recovery Mode...
@@ -44,6 +43,7 @@ public:
     void run() override {
         display->print("Running Recovery Mode...");
         // Código específico para ejecutar en modo recovery
+        router->relayPorts();
     }
 
     void stop() override {

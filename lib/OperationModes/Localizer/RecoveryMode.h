@@ -17,10 +17,14 @@
 
 
 class LocalizerRecoveryMode : public IOperationMode {
+private:
+    Router* router;
+    IGPS* gps;
 
 public:
     // Constructor that receives a reference to the display
-    LocalizerRecoveryMode(IDisplay* display) : IOperationMode(display) {}
+    LocalizerRecoveryMode(IDisplay* display, Router* router, IGPS* gps) 
+        : IOperationMode(display), router(router), gps(gps) {}
 
     void init() override {        
         display->print("Initializing Recovery Mode..."); // Cambio de "Initializing Recovery Mode..." a "Initializing Recovery Mode...
@@ -30,6 +34,7 @@ public:
     void run() override {
         display->print("Running Recovery Mode...");
         // Código específico para ejecutar en modo recovery
+        router->relayPorts();
     }
 
     void stop() override {

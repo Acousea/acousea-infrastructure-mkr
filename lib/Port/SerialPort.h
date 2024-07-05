@@ -11,11 +11,7 @@ private:
     int baudRate;
 
 public:
-    SerialPort(Uart* serialPort, int baudRate) : serialPort(serialPort), baudRate(baudRate) {
-        // Set the pins to use mySerial3
-        pinPeripheral(1, PIO_SERCOM); //Assign RX function to pin 1
-        pinPeripheral(0, PIO_SERCOM); //Assign TX function to pin 0
-    }
+    SerialPort(Uart* serialPort, int baudRate) : serialPort(serialPort), baudRate(baudRate) {}
 
     void init() override{
         serialPort->begin(baudRate);

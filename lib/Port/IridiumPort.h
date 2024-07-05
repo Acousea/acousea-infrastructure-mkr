@@ -21,49 +21,56 @@ IridiumSBD sbd_modem(IridiumSerial, SBD_SLEEP_PIN, SBD_RING_PIN);
 class IridiumPort : public IPort {
 public:
     void init() override {
+        // Set the pins to use mySerial3
+        pinPeripheral(0, PIO_SERCOM); // Assign TX function to pin 0
+        pinPeripheral(1, PIO_SERCOM); // Assign RX function to pin 1
+        pinMode(SBD_RING_PIN, INPUT);
+        pinMode(SBD_SLEEP_PIN, OUTPUT);
+        // digitalWrite(SBD_RING_PIN, LOW);
+        digitalWrite(SBD_SLEEP_PIN, HIGH);
+        sbd_modem.setPowerProfile(IridiumSBD::DEFAULT_POWER_PROFILE);
+        sbd_modem.enableRingAlerts(true);
+
         IridiumSerial.begin(SBD_MODEM_BAUDS);
-        int err = sbd_modem.begin();
+        SerialUSB.println("IridiumPort::init(): ");
+        int err = sbd_modem.begin();        
         if (err != ISBD_SUCCESS) {
             handleError(err);
         }
-        sbd_modem.setPowerProfile(IridiumSBD::DEFAULT_POWER_PROFILE);
-        sbd_modem.enableRingAlerts(true);
+        SerialUSB.println("IridiumPort::init(): Iridium modem initialized");
     }
 
     void send(const Packet& packet) override {
-        SerialUSB.print("IridiumPort::send(): Sending packet: ");
-        for (size_t i = 0; i < packet.getFullPacketLength(); i++) {
-            SerialUSB.print(packet.getFullPacket()[i], HEX);
-            SerialUSB.print(" ");
-        }
-        SerialUSB.println();
+        SerialUSB.println("IridiumPort::send() -> Sending packet...");
+        packet.print();
+
         uint8_t rxBuffer[MAX_RECEIVED_PACKET_SIZE];
         size_t rxBufferSize = sizeof(rxBuffer);
         int err = sbd_modem.sendReceiveSBDBinary(packet.getFullPacket(), packet.getFullPacketLength(), rxBuffer, rxBufferSize);
         if (err != ISBD_SUCCESS) {
             handleError(err);
-        } else if (rxBufferSize > 0) {
+            return;
+        }
+        // Store received packet if available
+        if (rxBufferSize > 0) {
             storeReceivedPacket(rxBuffer, rxBufferSize);
         }
+
+        // Check for additional waiting messages if any
+        if (sbd_modem.getWaitingMessageCount() > 0) {
+            receiveIncomingMessages();
+        }        
     }
 
     bool available() override {
+        checkSignalQuality();
+        receiveIncomingMessages();
+        // checkForNewMessages();
         return !receivedPackets.empty();
     }
 
-    // FIXME: Must implement logic to read the received packets from the modem
-    /**
-     *  uint8_t rxBuffer[340];
-        size_t rxBufferSize = sizeof(rxBuffer);
-        int err = sbd_modem.sendReceiveSBDBinary(NULL, 0, rxBuffer, rxBufferSize);
-        if (err != ISBD_SUCCESS) {
-            handleError(err);
-            return NullPacket();
-        }
-        return Packet(rxBuffer, rxBufferSize);
-     */
     Packet read() override {
-        if (!available()) {
+        if (receivedPackets.empty()) {
             return NullPacket();
         }
         Packet receivedPacket = receivedPackets.front();
@@ -129,6 +136,14 @@ private:
     }
 
     void storeReceivedPacket(const uint8_t* data, size_t length) {
+        // Print the received data
+        SerialUSB.print("IridiumPort::storeReceivedPacket() -> Received data: ");
+        for (size_t i = 0; i < length; i++) {
+            SerialUSB.print(data[i], HEX);
+            SerialUSB.print(" ");
+        }
+        SerialUSB.println();
+
         Packet packet(data, length);
         if (!packet.isValid()) {
             SerialUSB.println("IridiumPort::storeReceivedPacket() -> Invalid packet received");
@@ -139,6 +154,54 @@ private:
             receivedPackets.pop_front();
         }
         receivedPackets.push_back(packet);
+    }
+
+    void receiveIncomingMessages() {
+        SerialUSB.println("IridiumPort::receiveIncomingMessages() -> Checking for incoming messages...");
+        uint8_t rxBuffer[MAX_RECEIVED_PACKET_SIZE];
+        size_t rxBufferSize;
+        do {
+            rxBufferSize = sizeof(rxBuffer);
+            int err = sbd_modem.sendReceiveSBDBinary(NULL, 0, rxBuffer, rxBufferSize);
+            if (err != ISBD_SUCCESS) {
+                handleError(err);
+                break;
+            } else {
+                if (rxBufferSize > 0) storeReceivedPacket(rxBuffer, rxBufferSize);
+                else SerialUSB.println("IridiumPort::receiveIncomingMessages() -> No data read.");
+            }            
+        } while (sbd_modem.getWaitingMessageCount() > 0);
+    }
+
+    void checkForNewMessages() {
+        SerialUSB.println("IridiumPort::checkForNewMessages() -> Checking for new messages (alert || count > 0)...");
+        bool ringAlert = sbd_modem.hasRingAsserted();
+        int incomingMessages = sbd_modem.getWaitingMessageCount();
+        if (!ringAlert && incomingMessages <= 0) {
+            return;
+        } 
+        
+        if (ringAlert) {
+            SerialUSB.println("IridiumPort::checkRingAlerts() -> Ring alert detected. Checking for incoming messages.");            
+        } 
+        
+        if (incomingMessages > 0) {
+            SerialUSB.println("IridiumPort::checkRingAlerts() -> Incoming messages count > 0. Checking for incoming messages.");
+        }
+        
+        receiveIncomingMessages();
+    }
+
+    void checkSignalQuality() {
+        SerialUSB.println("IridiumPort::checkSignalQuality() -> Checking signal quality...");
+        int signalQuality = -1;
+        int err = sbd_modem.getSignalQuality(signalQuality);
+        if (err != ISBD_SUCCESS) {
+            handleError(err);
+            return;
+        }
+        SerialUSB.print("Signal quality (0-5): ");
+        SerialUSB.println(signalQuality);
     }
 };
 

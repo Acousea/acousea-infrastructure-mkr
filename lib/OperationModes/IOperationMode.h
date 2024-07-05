@@ -4,6 +4,14 @@
 #include <Arduino.h>
 #include <../Display/IDisplay.h>
 
+typedef enum : uint8_t {
+    KEEP_CURRENT_MODE = 0,
+    LAUNCHING_MODE = 1,
+    WORKING_MODE = 2,
+    RECOVERY_MODE = 3    
+} OPERATION_MODE;
+
+
 class IOperationMode {
 public:
     // Constructor that receives a reference to the display 

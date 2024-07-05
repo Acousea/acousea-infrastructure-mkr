@@ -62,6 +62,8 @@ public:
     }
 
     void send(const Packet& packet) override {
+        SerialUSB.println("LORA_PORT::send() -> Sending packet...");
+        packet.print(); 
         while(!LoRa.beginPacket()) {
             SerialUSB.println("LORA_PORT::send() -> LoRa.beginPacket() Waiting for transmission to end...");
             delay(10);
@@ -69,9 +71,7 @@ public:
         LoRa.write(packet.getFullPacket(), packet.getFullPacketLength());
         LoRa.endPacket(); // Transmit the packet synchrously (blocking) -> Avoids setting onTxDone callback (has bugs in the library)
         // Start listening for incoming packets again
-        LoRa.receive(); 
-        
-        packet.print(); 
+        LoRa.receive();        
     }
 
     bool available() override {

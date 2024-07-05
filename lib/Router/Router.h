@@ -76,18 +76,18 @@ public:
      */
     void route(const Packet& packet) {
         // Print the packet HEX
+        SerialUSB.println("Local Address: " + String(localAddress, HEX));        
         display->print("Router::route() -> Packet: ");
         packet.print();
         
         uint8_t address = packet.getAddresses();
         if ((GET_RECEIVER(address) == localAddress) && processor != nullptr) {
-            display->print("Router::route-if() -> Processing packet...");
-            SerialUSB.println(address, HEX);
+            display->print("Router::route-if() -> Processing packet...");            
             route(processor->process(packet)); // Process the packet and re-route it
         } else {
             // Print address as HEX
-            display->print("Router::route-else() -> Relaying packet to address: ");
-            SerialUSB.println(address, HEX);            
+            SerialUSB.print("Router::route-else() -> Relaying packet to address: ");
+            SerialUSB.println(GET_RECEIVER(address), HEX);      
             IPort* port = routingTable->getRoute(address);
             if (port != nullptr) {
                 port->send(packet);

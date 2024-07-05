@@ -24,10 +24,12 @@ public:
     void init() override {        
         display->print("Initializing Launching Mode..."); // Cambio de "Initializing Launching Mode..." a "Initializing Launching Mode...
         // Código de inicialización específico para el modo launching
+
     }
 
     void run() override {
         display->print("Running Launching Mode...");        
+        router->relayPorts();  
     }
 
     void stop() override {

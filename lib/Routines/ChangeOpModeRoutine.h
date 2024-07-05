@@ -20,7 +20,7 @@ public:
         OPERATION_MODE newMode = static_cast<OPERATION_MODE>(newModeByte);
         operationManager.setMode(newMode);
         // Devolver un paquete de respuesta o un paquete de confirmación
-        return Packet(packet.getOpCode(), packet.getSwappedAddresses(), {Packet::ResponseCode::ACKNOWLEDGE});
+        return Packet(packet.getOpCode(), packet.getSwappedAddresses(), {Packet::ResponseCode::ACKNOWLEDGE, newModeByte});
     }
 };
 

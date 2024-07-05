@@ -31,7 +31,6 @@ private:
     Router* router;
     IGPS* gps;
     RTCController* rtcController;
-    OperationManager* operationManager;
     SummaryService* summaryService;
 
 private: // Variables to establish periods
@@ -60,10 +59,10 @@ public:
 
         if (millis() - lastIridiumReport >= SBD_REPORTING_DRIFTING_PERIOD_SEC * 1000) {
             display->print("Sending report request...");
-            sendReportRequest();
+            // sendReportRequest();
             lastIridiumReport = millis();
         }   
-        sendReportWhenAvailable();       
+        // sendReportWhenAvailable();       
     }
 
     void stop() override {
@@ -88,7 +87,7 @@ public:
         GPSLocation location = gps->read();
         Summary summary = summaryService->popSummary();     
         time_t dateTimestamp = rtcController->getEpoch();
-        Report report = {dateTimestamp, location, summary};
+        Report report = {dateTimestamp, OPERATION_MODE::WORKING_MODE, location, summary};
         Packet reportPacket = ReportPacket(report, Packet::PacketType::IRIDIUM_PACKET);
 
         router->send(reportPacket);

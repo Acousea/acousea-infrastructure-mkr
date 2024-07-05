@@ -8,6 +8,7 @@
 /// FIXME: Sizeof  SimpleReport: 24 (8 + 1 + 8) = 17 -> 24 - 17 = 7 bytes of padding (memory alignment)
 typedef struct SimpleReport {
     time_t epoch;
+    uint8_t operation_mode;
     uint8_t battery_percentage;
     GPSLocation location;    
 } SimpleReport;

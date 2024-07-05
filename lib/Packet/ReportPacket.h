@@ -7,6 +7,7 @@
 
 typedef struct Report {
     time_t dateTimestamp;
+    uint8_t operation_mode;
     GPSLocation location;
     Summary summary;
 } Report;
