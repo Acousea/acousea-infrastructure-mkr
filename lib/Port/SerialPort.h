@@ -18,6 +18,12 @@ public:
         SerialUSB.println("SerialPort::Serial port initialized");
     }
     void send(const Packet& packet) override {
+        SerialUSB.print("SerialPort::Sending packet: ");
+        for (unsigned int i = 0; i < packet.getFullPacketLength(); i++) {
+            SerialUSB.print(packet.getFullPacket()[i], HEX);
+            SerialUSB.print(" ");
+        }
+        SerialUSB.println();
         serialPort->write(packet.getFullPacket(), packet.getFullPacketLength());
     }
 

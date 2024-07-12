@@ -34,6 +34,10 @@ public:
         return (uint8_t) adafruitLC.cellPercent();
     }
 
+    uint8_t status() override {
+        return adafruitLC.getBattProfile();
+    }
+
     float voltage() {
         return adafruitLC.cellVoltage();
     }

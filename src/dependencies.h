@@ -74,10 +74,9 @@ ChangeOperationModeRoutine changeOpModeRoutine(operationManager);
 SummaryService summaryService;
 SummaryRoutine summaryRoutine(&summaryService);
 std::map<uint8_t, IRoutine *> serviceRoutines = {
-    {Packet::OpCode::PING, &pingRoutine}, 
+    {Packet::OpCode::PING, &pingRoutine},
     {Packet::OpCode::CHANGE_OPERATION_MODE, &changeOpModeRoutine},
-    {Packet::OpCode::SUMMARY_REPORT, &summaryRoutine}
-};
+    {Packet::OpCode::SUMMARY_REPORT, &summaryRoutine}};
 
 // Tablas de enrutamiento
 std::map<uint8_t, IPort *> localizerRoutes = {
@@ -114,15 +113,14 @@ auto drifterRouter = Router(Packet::Address::DRIFTER,
                             &serialUSBDisplay,
                             {&serialPort, &loraPort, &iridiumPort});
 
-
-
 // Instancias de modos de operación (DRIFTER)
-DrifterLaunchingMode drifterLaunchingMode(&serialUSBDisplay, &drifterRouter, &mockGPS,  &rtcController);
-DrifterWorkingMode drifterWorkingMode(&serialUSBDisplay, &drifterRouter, &mockGPS, &rtcController,  &summaryService);
-DrifterRecoveryMode drifterRecoveryMode(&serialUSBDisplay, &drifterRouter, &mockGPS,  &rtcController);
+DrifterLaunchingMode drifterLaunchingMode(&serialUSBDisplay, &drifterRouter, &mockGPS,&adafruitLCBatteryController, &rtcController);
+DrifterWorkingMode drifterWorkingMode(&serialUSBDisplay, &drifterRouter, &mockGPS, &adafruitLCBatteryController, &rtcController, &summaryService);
+DrifterRecoveryMode drifterRecoveryMode(&serialUSBDisplay, &drifterRouter, &mockGPS,&adafruitLCBatteryController, &rtcController);
 
 // Instancias de modos de operación (LOCALIZER)
 LocalizerLaunchingMode localizerLaunchingMode(&serialUSBDisplay, &localizerRouter, &mockGPS);
 LocalizerWorkingMode localizerWorkingMode(&serialUSBDisplay, &localizerRouter, &mockGPS);
 LocalizerRecoveryMode localizerRecoveryMode(&serialUSBDisplay, &localizerRouter, &mockGPS);
+
 #endif // DEPENDENCIES_H

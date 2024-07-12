@@ -31,6 +31,10 @@ public:
         return 0;
     }
 
+    uint8_t status() override {
+        return PMIC.chargeStatus();
+    }
+
     void printStatus() const {
         Serial.print("Charge status: ");
         Serial.println(getChargeStatusMessage(PMIC.chargeStatus()));

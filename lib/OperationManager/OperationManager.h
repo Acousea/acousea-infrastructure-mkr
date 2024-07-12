@@ -13,7 +13,7 @@ private:
     uint8_t cycleCounter = 0;
 
 public:
-    OperationManager() : currentMode(LAUNCHING_MODE) {}
+    OperationManager() : currentMode(WORKING_MODE) {}
 
     // Calling setMode on KEEP_CURRENT_MODE will keep the current mode    
     void setMode(OPERATION_MODE mode) {        

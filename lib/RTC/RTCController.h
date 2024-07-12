@@ -19,7 +19,7 @@ public:
         }
     }
 
-    unsigned long getEpoch() {
+    uint32_t getEpoch() {
         return rtc.getEpoch();
     }
 

@@ -48,7 +48,7 @@ public:
         NULL_PACKET = 0x00,  // 0b00000000
         PING = '0',        
         ERROR = '1',    
-        CHANGE_OPERATION_MODE = 'C',    
+        CHANGE_OPERATION_MODE = 'O',    
         SUMMARY_REPORT = 'S',
         SUMMARY_SIMPLE_REPORT = 's',
     } OpCode;

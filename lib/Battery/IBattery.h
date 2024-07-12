@@ -9,6 +9,7 @@ class IBattery
 public:
     virtual bool init() = 0;
     virtual uint8_t percentage() = 0;
+    virtual uint8_t status() = 0;
 
 };
 

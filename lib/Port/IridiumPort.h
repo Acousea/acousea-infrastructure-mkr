@@ -6,6 +6,7 @@
 #include <IridiumSBD.h>
 #include "IPort.h"
 #include "../Packet/NullPacket.h"
+#include "wiring_private.h"
 
 // Define the necessary hardware connections for the Iridium modem
 #define SBD_SLEEP_PIN 2 // OUTPUT, pull to GND to switch off
@@ -24,12 +25,11 @@ public:
         // Set the pins to use mySerial3
         pinPeripheral(0, PIO_SERCOM); // Assign TX function to pin 0
         pinPeripheral(1, PIO_SERCOM); // Assign RX function to pin 1
-        pinMode(SBD_RING_PIN, INPUT);
-        pinMode(SBD_SLEEP_PIN, OUTPUT);
-        // digitalWrite(SBD_RING_PIN, LOW);
+        pinMode(SBD_RING_PIN, INPUT_PULLUP); // TODO: Might need to set this as INPUT_PULLUP (Ring Indicator signal (active low))
+        pinMode(SBD_SLEEP_PIN, OUTPUT);        
         digitalWrite(SBD_SLEEP_PIN, HIGH);
         sbd_modem.setPowerProfile(IridiumSBD::DEFAULT_POWER_PROFILE);
-        sbd_modem.enableRingAlerts(true);
+        sbd_modem.enableRingAlerts(true); // Documentations says this should go before begin() 
 
         IridiumSerial.begin(SBD_MODEM_BAUDS);
         SerialUSB.println("IridiumPort::init(): ");
@@ -37,6 +37,7 @@ public:
         if (err != ISBD_SUCCESS) {
             handleError(err);
         }
+        sbd_modem.enableRingAlerts(true); // Documentations says this should go before begin(), but not sure if it works
         SerialUSB.println("IridiumPort::init(): Iridium modem initialized");
     }
 
@@ -63,9 +64,9 @@ public:
     }
 
     bool available() override {
-        checkSignalQuality();
-        receiveIncomingMessages();
-        // checkForNewMessages();
+        // checkSignalQuality();
+        checkRingAlertsAndWaitingMsgCount();
+        // receiveIncomingMessages();
         return !receivedPackets.empty();
     }
 
@@ -173,10 +174,11 @@ private:
         } while (sbd_modem.getWaitingMessageCount() > 0);
     }
 
-    void checkForNewMessages() {
-        SerialUSB.println("IridiumPort::checkForNewMessages() -> Checking for new messages (alert || count > 0)...");
+    void checkRingAlertsAndWaitingMsgCount() {
         bool ringAlert = sbd_modem.hasRingAsserted();
         int incomingMessages = sbd_modem.getWaitingMessageCount();
+        SerialUSB.println("IridiumPort::checkRingAlertsAndWaitingMsgCount() -> Ring alert: " + String(ringAlert) + 
+                         ", Incoming messages: " + String(incomingMessages));
         if (!ringAlert && incomingMessages <= 0) {
             return;
         } 
@@ -204,5 +206,17 @@ private:
         SerialUSB.println(signalQuality);
     }
 };
+# define DIAGNOSTICS 1
+#if DIAGNOSTICS
+void ISBDConsoleCallback(IridiumSBD *device, char c)
+{
+  Serial.write(c);
+}
+
+void ISBDDiagsCallback(IridiumSBD *device, char c)
+{
+  Serial.write(c);
+}
+#endif
 
 #endif // IRIDIUMPORT_H

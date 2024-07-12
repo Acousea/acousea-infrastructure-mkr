@@ -5,12 +5,12 @@
 #include "../GPS/IGPS.h"
 #include "../Services/SummaryService.h"
 
-/// FIXME: Sizeof  SimpleReport: 24 (8 + 1 + 8) = 17 -> 24 - 17 = 7 bytes of padding (memory alignment)
 typedef struct SimpleReport {
-    time_t epoch;
-    uint8_t operation_mode;
+    uint32_t epoch;
+    GPSLocation location;        
     uint8_t battery_percentage;
-    GPSLocation location;    
+    uint8_t battery_status_and_operation_mode;
+    uint16_t reserved = 0; // 2 bytes of padding
 } SimpleReport;
 
 
@@ -18,7 +18,7 @@ class SimpleReportPacket : public Packet {
 public:
     
     SimpleReportPacket(SimpleReport report, Packet::PacketType packetType)
-        : Packet(buildSimpleReportPacket(report, packetType), PACKET_HEADER_LENGTH) {}
+        : Packet(buildSimpleReportPacket(report, packetType), PACKET_HEADER_LENGTH + sizeof(report)) {}
 
 private:
     static const uint8_t* buildSimpleReportPacket(SimpleReport report, Packet::PacketType packetType) {
@@ -28,6 +28,13 @@ private:
         packetData[2] = SENDER(Packet::Address::DRIFTER) | RECEIVER(Packet::Address::BACKEND) | packetType;
         packetData[3] = sizeof(report);  // Payload length set to 1 for error code
         memcpy(packetData + Packet::PACKET_HEADER_LENGTH, &report, sizeof(report));       
+        // Print packet data
+        SerialUSB.print("PacketData BUILD_SIMPLE_REPORT: ");
+        for (unsigned int i = 0; i < sizeof(packetData); i++) {
+            SerialUSB.print(packetData[i], HEX);
+            SerialUSB.print(" ");
+        }
+        SerialUSB.println();
         return packetData;
     }
 };
