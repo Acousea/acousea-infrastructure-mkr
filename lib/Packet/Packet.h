@@ -51,6 +51,8 @@ public:
         CHANGE_OPERATION_MODE = 'O',    
         SUMMARY_REPORT = 'S',
         SUMMARY_SIMPLE_REPORT = 's',
+        SET_REPORTING_PERIODS = 'P',
+        GET_REPORTING_PERIODS = 'p'
     } OpCode;
 
     typedef enum: uint8_t {

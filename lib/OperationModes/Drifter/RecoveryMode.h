@@ -3,6 +3,7 @@
 
 #include "../IOperationMode.h"
 
+
 /**
  * @brief Recovery mode class (DRIFTER)
  * The launching mode is the last mode of operation, immediatly after the working mode.
@@ -23,23 +24,34 @@ private:
     IBattery *battery;
     RTCController *rtcController;
 
-private: // Variables to establish periods
-    const unsigned long SBD_REPORTING_RECOVERY_PERIOD_SEC = 2147483647L; // 120
-    const unsigned long LORA_REPORTING_RECOVERY_PERIOD_SEC = 60; // Just for testing (0 means no reporting)
+private:
+    unsigned long SBD_REPORTING_PERIOD;
+    unsigned long LORA_REPORTING_PERIOD;
     unsigned long lastLoraReport = 0;
     unsigned long lastIridiumReport = 0;
     unsigned long lastCycle = 0;
     unsigned long lastCycleTime = 0;
 
-public:
-    // Constructor that receives a reference to the display
-    DrifterRecoveryMode(IDisplay *display, Router *router, IGPS *gps, IBattery *battery, RTCController *rtcController)
-        : IOperationMode(display), router(router), gps(gps), battery(battery), rtcController(rtcController) {}
 
-    void init() override
+public:
+    DrifterRecoveryMode(IDisplay *display, Router *router, IGPS *gps, IBattery *battery, RTCController *rtcController)
+        : IOperationMode(display), router(router), gps(gps), battery(battery), rtcController(rtcController),
+          SBD_REPORTING_PERIOD(2147483647L), LORA_REPORTING_PERIOD(60) {}
+
+    void init(const ReportingPeriods& rp) override
     {
-        display->print("Initializing Recovery Mode..."); // Cambio de "Initializing Recovery Mode..." a "Initializing Recovery Mode...
-        // Código de inicialización específico para el modo recovery
+        if (rp.sbd_reporting_period != 0) {
+            SBD_REPORTING_PERIOD = rp.sbd_reporting_period * 60 * 1000; // Convert to milliseconds
+        }
+        if (rp.lora_reporting_period != 0) {
+            LORA_REPORTING_PERIOD = rp.lora_reporting_period * 60 * 1000; // Convert to milliseconds
+        }
+
+        std::string initMessage = "Initializing Recovery Mode with SBD Reporting Period: " + std::to_string(rp.sbd_reporting_period) 
+                                   + " min and LORA Reporting Period: " + std::to_string(rp.lora_reporting_period) + " min";
+        display->print(initMessage.c_str());
+        
+        // Additional initialization code for recovery mode
     }
 
     void run() override
@@ -50,7 +62,7 @@ public:
         display->print("Ports relayed...");
 
         // Send SimpleReport both by LORA and IRIDIUM, every REPORTING PERIOD       
-        if (millis() - lastLoraReport > LORA_REPORTING_RECOVERY_PERIOD_SEC * 1000)
+        if (millis() - lastLoraReport > LORA_REPORTING_PERIOD)
         {
             lastLoraReport = millis();
             display->print("Sending SimpleReport by LORA...");
@@ -60,7 +72,7 @@ public:
             router->send(LoRASimpleReportPacket);
         }
 
-        if (millis() - lastIridiumReport > SBD_REPORTING_RECOVERY_PERIOD_SEC * 1000)
+        if (millis() - lastIridiumReport > SBD_REPORTING_PERIOD * 1000)
         {
             lastIridiumReport = millis();
             display->print("Sending SimpleReport by IRIDIUM...");            

@@ -25,6 +25,9 @@
 // Just for testing 
 #warning "Update communication/logging periods"
 
+// Pin definitions
+#define SDCARD_SS_PIN  4
+
 // IMPORTANT: periods must be multiples of 60 seconds and no shorter than 60 secs
 #define SBD_REPORTING_LAUNCH_SEC    300    //   600
 #define SBD_REPORTING_DRIFTING_SEC  900    //   3600

@@ -42,6 +42,13 @@
 #include "../lib/OperationModes/Localizer/WorkingMode.h"
 #include "../lib/OperationModes/Localizer/RecoveryMode.h"
 
+#include "../lib/SDManager/SDManager.h"
+#include "../lib/OperationModes/ReportingPeriodManager/ReportingPeriodManager.h"
+
+#include "../lib/Routines/SetReportingPeriodsRoutine.h"
+#include "../lib/Routines/GetReportingPeriodsRoutine.h"
+
+
 // FIXME: Must define OperationMode class to manage the state of the system
 PMICBatteryController pmicBatteryController;
 AdafruitLCBatteryController adafruitLCBatteryController;
@@ -65,18 +72,31 @@ UBloxGNSS uBloxGPS;
 // Instancia del controlador de tiempo real
 RTCController rtcController(&mockGPS);
 
+SDManager sdManager(SDCARD_SS_PIN);
+ReportingPeriodManager reportingPeriodManager(sdManager, "config.txt");
 // Instancia del administrador de operaciones
 OperationManager operationManager;
+
+// Services
+SummaryService summaryService;
 
 // Instancias de rutinas de servicio
 PingRoutine pingRoutine;
 ChangeOperationModeRoutine changeOpModeRoutine(operationManager);
-SummaryService summaryService;
+GetReportingPeriodsRoutine getRepolrtingPeriodsRoutine(reportingPeriodManager);
+SetReportingPeriodsRoutine setReportingPeriodsRoutine(reportingPeriodManager);
+
 SummaryRoutine summaryRoutine(&summaryService);
 std::map<uint8_t, IRoutine *> serviceRoutines = {
     {Packet::OpCode::PING, &pingRoutine},
     {Packet::OpCode::CHANGE_OPERATION_MODE, &changeOpModeRoutine},
-    {Packet::OpCode::SUMMARY_REPORT, &summaryRoutine}};
+    {Packet::OpCode::SUMMARY_REPORT, &summaryRoutine},
+    {Packet::OpCode::GET_REPORTING_PERIODS, &getRepolrtingPeriodsRoutine},
+    {Packet::OpCode::SET_REPORTING_PERIODS, &setReportingPeriodsRoutine}    
+};
+
+// Instancia del procesador de paquetes
+PacketProcessor packetProcessor(&serialUSBDisplay, serviceRoutines);
 
 // Tablas de enrutamiento
 std::map<uint8_t, IPort *> localizerRoutes = {
@@ -97,8 +117,7 @@ std::map<uint8_t, IPort *> drifterRoutes = {
     {(RECEIVER(Packet::Address::PI3) | Packet::PacketType::IRIDIUM_PACKET), &serialPort}};
 RoutingTable drifterRoutingTable(drifterRoutes);
 
-// Instancia del procesador de paquetes
-PacketProcessor packetProcessor(&serialUSBDisplay, serviceRoutines);
+
 
 // Instancia de los enrutadores
 auto localizerRouter = Router(Packet::Address::LOCALIZER,
@@ -122,5 +141,6 @@ DrifterRecoveryMode drifterRecoveryMode(&serialUSBDisplay, &drifterRouter, &mock
 LocalizerLaunchingMode localizerLaunchingMode(&serialUSBDisplay, &localizerRouter, &mockGPS);
 LocalizerWorkingMode localizerWorkingMode(&serialUSBDisplay, &localizerRouter, &mockGPS);
 LocalizerRecoveryMode localizerRecoveryMode(&serialUSBDisplay, &localizerRouter, &mockGPS);
+ 
 
 #endif // DEPENDENCIES_H

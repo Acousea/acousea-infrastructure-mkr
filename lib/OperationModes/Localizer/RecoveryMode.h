@@ -26,7 +26,7 @@ public:
     LocalizerRecoveryMode(IDisplay* display, Router* router, IGPS* gps) 
         : IOperationMode(display), router(router), gps(gps) {}
 
-    void init() override {        
+    void init(const ReportingPeriods& rp) override {        
         display->print("Initializing Recovery Mode..."); // Cambio de "Initializing Recovery Mode..." a "Initializing Recovery Mode...
         // Código de inicialización específico para el modo recovery
     }

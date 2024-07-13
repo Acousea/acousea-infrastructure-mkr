@@ -14,6 +14,20 @@ void setupDrifter()
     // Inicializa la pantalla Adafruit
     // adafruitDisplay.init();
 
+    // Inicializa el administrador de la tarjeta SD
+    sdManager.begin();
+    
+     // Reset the reporting periods to the default values in the config file
+    reportingPeriodManager.reset();
+
+    // Inicializa el administrador de periodos de reporte
+    reportingPeriodManager.begin();
+
+    // Initialize operation modes with the reporting periods for drifter    
+    drifterLaunchingMode.init(reportingPeriodManager.getReportingPeriods("Launching"));
+    drifterWorkingMode.init(reportingPeriodManager.getReportingPeriods("Working"));
+    drifterRecoveryMode.init(reportingPeriodManager.getReportingPeriods("Recovering"));
+
     // Inicializa el comunicador Serial
     serialPort.init();
 
@@ -30,6 +44,15 @@ void setupDrifter()
 void operateDrifter()
 {
     SerialUSB.println("Operating Drifter...");
+
+    // Check if reporting periods configuration has changed
+    if (reportingPeriodManager.isNewConfigAvailable()){
+        SerialUSB.println("New reporting periods configuration available");        
+        drifterLaunchingMode.init(reportingPeriodManager.getReportingPeriods("Launching"));
+        drifterWorkingMode.init(reportingPeriodManager.getReportingPeriods("Working"));
+        drifterRecoveryMode.init(reportingPeriodManager.getReportingPeriods("Recovering"));
+    }
+    
     switch (operationManager.getMode())
     {
     case LAUNCHING_MODE:
@@ -73,6 +96,15 @@ void setupLocalizer()
 void operateLocalizer()
 {
     SerialUSB.println("Operating Localizer...");
+
+    // Check if reporting periods configuration has changed
+    if (reportingPeriodManager.isNewConfigAvailable()){
+        SerialUSB.println("New reporting periods configuration available");        
+        localizerLaunchingMode.init(reportingPeriodManager.getReportingPeriods("Launching"));
+        localizerWorkingMode.init(reportingPeriodManager.getReportingPeriods("Working"));
+        localizerRecoveryMode.init(reportingPeriodManager.getReportingPeriods("Recovering"));
+    }
+
     switch (operationManager.getMode())
     {
     case LAUNCHING_MODE:

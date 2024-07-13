@@ -36,21 +36,38 @@ private:
     SummaryService* summaryService;
 
 private: // Variables to establish periods
-    const unsigned long SBD_REPORTING_DRIFTING_PERIOD_SEC = 2147483647L; // 900
-    const unsigned long LORA_REPORTING_DRIFTING_PERIOD_SEC = 60;  // Just for testing (0 means no reporting)
+
+    unsigned long SBD_REPORTING_PERIOD;
+    unsigned long LORA_REPORTING_PERIOD;
     unsigned long lastLoraReport = 0;
     unsigned long lastIridiumReport = 0;
     unsigned long lastCycle = 0;
     unsigned long lastCycleTime = 0;
 
+
 public:       
     DrifterWorkingMode(IDisplay* display, Router* router, IGPS* gps, IBattery* battery, RTCController* rtcController, SummaryService* summaryService)     
-    : IOperationMode(display), router(router), gps(gps), battery(battery), rtcController(rtcController), summaryService(summaryService) {}
+    : IOperationMode(display), router(router), gps(gps), battery(battery), rtcController(rtcController), summaryService(summaryService),
+        SBD_REPORTING_PERIOD(2147483647L), LORA_REPORTING_PERIOD(240)
+    {}
 
 
-    void init() override {        
-        display->print("Initializing Working Mode..."); // Cambio de "Initializing Drifting Mode..." a "Initializing Drifting Mode...
-        // Código de inicialización específico para el modo drifting
+    void init(const ReportingPeriods& rp) override
+    {
+        if (rp.sbd_reporting_period != 0) {
+            SBD_REPORTING_PERIOD = rp.sbd_reporting_period * 60 * 1000; // Convert to milliseconds
+        }
+        if (rp.lora_reporting_period != 0) {
+            LORA_REPORTING_PERIOD = rp.lora_reporting_period * 60 * 1000; // Convert to milliseconds
+        }
+
+
+        std::string initMessage = "Initializing Working Mode with SBD Reporting Period: " + std::to_string(rp.sbd_reporting_period) 
+                                    + " min and LORA Reporting Period: " + std::to_string(rp.lora_reporting_period) + " min";
+        display->print(initMessage.c_str());
+        
+        
+        // Additional initialization code for recovery mode
     }
 
     void run() override {
@@ -60,7 +77,7 @@ public:
         display->print("Ports relayed...");        
 
         // if (millis() - lastIridiumReport >= SBD_REPORTING_DRIFTING_PERIOD_SEC * 1000) {
-        if (millis() - lastIridiumReport >= LORA_REPORTING_DRIFTING_PERIOD_SEC * 1000) {
+        if (millis() - lastIridiumReport >= LORA_REPORTING_PERIOD) {
             display->print("Sending report request...");
             sendSummaryReportRequest();
             lastIridiumReport = millis();

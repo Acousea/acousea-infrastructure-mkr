@@ -17,7 +17,7 @@ public:
     LocalizerWorkingMode(IDisplay* display, Router* router, IGPS* gps) 
         : IOperationMode(display), router(router), gps(gps) {}
 
-    void init() override {        
+    void init(const ReportingPeriods& rp) override {        
         display->print("Initializing Working Mode..."); // Cambio de "Initializing Drifting Mode..." a "Initializing Drifting Mode...
         // Código de inicialización específico para el modo drifting
     }
