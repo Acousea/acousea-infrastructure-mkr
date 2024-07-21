@@ -36,24 +36,18 @@ private:
     SummaryService* summaryService;
 
 private: // Variables to establish periods
-
     unsigned long SBD_REPORTING_PERIOD;
     unsigned long LORA_REPORTING_PERIOD;
     unsigned long lastLoraReport = 0;
     unsigned long lastIridiumReport = 0;
-    unsigned long lastCycle = 0;
-    unsigned long lastCycleTime = 0;
 
-
-public:       
-    DrifterWorkingMode(IDisplay* display, Router* router, IGPS* gps, IBattery* battery, RTCController* rtcController, SummaryService* summaryService)     
+public:
+    DrifterWorkingMode(IDisplay* display, Router* router, IGPS* gps, IBattery* battery, RTCController* rtcController, SummaryService* summaryService)
     : IOperationMode(display), router(router), gps(gps), battery(battery), rtcController(rtcController), summaryService(summaryService),
-        SBD_REPORTING_PERIOD(2147483647L), LORA_REPORTING_PERIOD(240)
+        SBD_REPORTING_PERIOD(0), LORA_REPORTING_PERIOD(0)
     {}
 
-
-    void init(const ReportingPeriods& rp) override
-    {
+    void init(const ReportingPeriods& rp) override {
         if (rp.sbd_reporting_period != 0) {
             SBD_REPORTING_PERIOD = rp.sbd_reporting_period * 60 * 1000; // Convert to milliseconds
         }
@@ -61,41 +55,46 @@ public:
             LORA_REPORTING_PERIOD = rp.lora_reporting_period * 60 * 1000; // Convert to milliseconds
         }
 
-
         std::string initMessage = "Initializing Working Mode with SBD Reporting Period: " + std::to_string(rp.sbd_reporting_period) 
                                     + " min and LORA Reporting Period: " + std::to_string(rp.lora_reporting_period) + " min";
-        display->print(initMessage.c_str());
-        
-        
-        // Additional initialization code for recovery mode
+        display->print(initMessage.c_str());        
     }
 
     void run() override {
         display->print("Running Working Mode...");
         router->relayPorts();  
+        display->print("Ports relayed...");
 
-        display->print("Ports relayed...");        
+        unsigned long currentTime = millis();
 
-        // if (millis() - lastIridiumReport >= SBD_REPORTING_DRIFTING_PERIOD_SEC * 1000) {
-        if (millis() - lastIridiumReport >= LORA_REPORTING_PERIOD) {
-            display->print("Sending report request...");
-            sendSummaryReportRequest();
-            lastIridiumReport = millis();
+        if (summaryService->newSummaryAvailable()) {
+            sendSummaryReportWhenAvailable(currentTime);
+        }
+
+        if (LORA_REPORTING_PERIOD != 0 && currentTime - lastLoraReport >= LORA_REPORTING_PERIOD) {
+            display->print("-----> Sending report request for LoRa...");
+            sendSummaryReportRequest(Packet::PacketType::LORA_PACKET);
+            lastLoraReport = currentTime;
         }   
-        sendSummaryReportWhenAvailable();       
+
+        if (SBD_REPORTING_PERIOD != 0 && currentTime - lastIridiumReport >= SBD_REPORTING_PERIOD) {
+            display->print("-----> Sending report request for Iridium...");
+            sendSummaryReportRequest(Packet::PacketType::IRIDIUM_PACKET);
+            lastIridiumReport = currentTime;
+        }
     }
 
     void stop() override {
         display->print("Stopping Working Mode...");
-        // Código de limpieza o parada específica para el modo drifting
+        // Specific cleanup or stop code for drifting mode
     }
 
-    void sendSummaryReportRequest(){
-        Packet packet = SummaryRequestPacket(Packet::PacketType::IRIDIUM_PACKET); // -> Packet to the raspberry, should respond with a summary packet
+    void sendSummaryReportRequest(Packet::PacketType packetType) {
+        Packet packet = SummaryRequestPacket(packetType); // Packet to the raspberry, should respond with a summary packet
         router->send(packet);
     }
 
-    void sendSummaryReportWhenAvailable() {
+    void sendSummaryReportWhenAvailable(unsigned long currentTime) {
         if (!summaryService->newSummaryAvailable()) { // Wait for the summary packet
             display->print("No summary available...");
             return;
@@ -103,14 +102,38 @@ public:
 
         display->print("AudioDetectionStats available. Building and sending report packet...");
 
-        // Obtener datos del GPS y RTC
+        // Get the available summary
+        SummaryResponse summary = summaryService->popSummary();
+
+        // Build the summary report
+        SummaryReport report = buildSummaryReport(summary);
+
+        // Print the summary report
+        printSummaryReport(report);
+
+        // Send the report packet via LoRa if applicable
+        if (LORA_REPORTING_PERIOD != 0 && currentTime - lastLoraReport >= LORA_REPORTING_PERIOD) {
+            display->print("=====> Sending report packet via LoRa...");
+            Packet reportPacketLora = SummaryReportPacket(report, Packet::PacketType::LORA_PACKET);
+            router->send(reportPacketLora);
+            lastLoraReport = currentTime;
+        }
+
+        // Send the report packet via Iridium if applicable
+        if (SBD_REPORTING_PERIOD != 0 && currentTime - lastIridiumReport >= SBD_REPORTING_PERIOD) {
+            display->print("=====> Sending report packet via Iridium...");
+            Packet reportPacketIridium = SummaryReportPacket(report, Packet::PacketType::IRIDIUM_PACKET);
+            router->send(reportPacketIridium);
+            lastIridiumReport = currentTime;
+        }
+    }
+
+    SummaryReport buildSummaryReport(const SummaryResponse& summary) {
+        // Get GPS and RTC data
         GPSLocation location = gps->read();
         uint32_t epoch_time = rtcController->getEpoch();
 
-        // Obtener el resumen disponible
-        SummaryResponse summary = summaryService->popSummary();
-
-        // Construir el DrifterModuleStats con los datos disponibles
+        // Build the DrifterModuleStats with the available data
         DrifterModuleStats drifter_module_stats;
         drifter_module_stats.temperature = summary.pi3_temperature;
         drifter_module_stats.BatteryPercentage = battery->percentage();
@@ -118,21 +141,14 @@ public:
         drifter_module_stats.location = location;
         drifter_module_stats.pi3_storage = summary.pi3_storage;
 
-        // Construir el SummaryReport
+        // Build the SummaryReport
         SummaryReport report;
         report.epoch_time = epoch_time;
         report.pam_device = summary.pam_device;
         report.drifter_module_stats = drifter_module_stats;
-        report.audio_detection = summary.audio_detection;  
+        report.audio_detection = summary.audio_detection;
 
-        // Imprimir el informe de resumen
-        printSummaryReport(report);   
-
-        // Enviar el paquete de informe al backend
-        // Just for testing (must use IRIDIUM_PACKET)
-        Packet reportPacket = SummaryReportPacket(report, Packet::PacketType::LORA_PACKET); 
-        // Packet reportPacket = SummaryReportPacket(report, Packet::PacketType::IRIDIUM_PACKET);
-        router->send(reportPacket);
+        return report;
     }
 
     void printSummaryReport(const SummaryReport &report) {

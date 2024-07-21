@@ -9,15 +9,15 @@ ReportingPeriodManager::ReportingPeriodManager(SDManager& sdManager, const char*
         .name = "Launching",
         .sbd_reporting_period_default = 65535, // 
         .sbd_reporting_period_custom = 0,
-        .lora_reporting_period_default = 1,
+        .lora_reporting_period_default = 3,
         .lora_reporting_period_custom = 0
     };
 
     OperationModePeriod driftingMode = {
         .name = "Working",
-        .sbd_reporting_period_default = 65535,
+        .sbd_reporting_period_default = 1,
         .sbd_reporting_period_custom = 0,
-        .lora_reporting_period_default = 2,
+        .lora_reporting_period_default = 0, // By default, LoRa is disabled
         .lora_reporting_period_custom = 0
     };
 
@@ -25,7 +25,7 @@ ReportingPeriodManager::ReportingPeriodManager(SDManager& sdManager, const char*
         .name = "Recovering",
         .sbd_reporting_period_default = 65535, // Just for testing
         .sbd_reporting_period_custom = 0,
-        .lora_reporting_period_default = 1,
+        .lora_reporting_period_default = 2,
         .lora_reporting_period_custom = 0
     };
 
