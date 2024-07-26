@@ -105,11 +105,6 @@ Para desplegar el código en los dispositivos Arduino MKR 1310, sigue estos paso
     platformio run --target upload
 ```
 
-
-## Licencia
-
-Este proyecto está licenciado bajo la Licencia MIT. Consulta el archivo `LICENSE` para más detalles.
-
 ## Contacto
 
 Para cualquier duda o consulta, por favor contacta a [antonio.aparicio101@alu.ulpgc.es](antonio.aparicio101@alu.ulpgc.es).
