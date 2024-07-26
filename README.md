@@ -1,4 +1,4 @@
-```markdown
+
 # Proyecto de Infraestructura de Comunicaciones para Acousea
 
 Este proyecto implementa la infraestructura de comunicaciones para el derivador oceánico utilizando dispositivos Arduino MKR 1310. El sistema está diseñado para proporcionar una solución robusta y eficiente para el monitoreo acústico pasivo en áreas remotas.
@@ -16,10 +16,10 @@ Antes de comenzar, asegúrate de tener instalados los siguientes requisitos:
 ## Instalación
 
 1. Clona el repositorio a tu máquina local:
-    ```bash
-    git clone [URL_DEL_REPOSITORIO]
-    cd [DIRECTORIO_DEL_REPOSITORIO]
-    ```
+```bash
+git clone [URL_DEL_REPOSITORIO]
+cd [DIRECTORIO_DEL_REPOSITORIO]
+```
 
 2. Abre el proyecto en tu IDE preferido (recomendado Visual Studio Code con la extensión de PlatformIO).
 
@@ -64,12 +64,7 @@ platform = atmelsam
 board = mkrwan1310
 framework = arduino
 lib_deps =
-    adafruit/Adafruit BusIO @ ^1.7.3
-    adafruit/Adafruit GPS Library @ ^1.4.2
-    adafruit/Adafruit Unified Sensor @ ^1.1.4
-    rockblock/RockBlock @ ^1.0.0
-    SPI
-    Wire
+    ...dependencias
 ```
 
 ## Funcionalidades Principales
@@ -117,7 +112,4 @@ Este proyecto está licenciado bajo la Licencia MIT. Consulta el archivo `LICENS
 
 ## Contacto
 
-Para cualquier duda o consulta, por favor contacta a [tu-correo@dominio.com](mailto:tu-correo@dominio.com).
-```
-
-Este `README.md` proporciona una guía completa sobre cómo instalar, configurar, ejecutar y contribuir al proyecto de infraestructura de comunicaciones con Arduinos MKR 1310 utilizando PlatformIO.
+Para cualquier duda o consulta, por favor contacta a [antonio.aparicio101@alu.ulpgc.es](antonio.aparicio101@alu.ulpgc.es).
