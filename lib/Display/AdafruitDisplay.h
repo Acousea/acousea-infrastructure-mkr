@@ -34,8 +34,7 @@ public:
     }
 
     void print(const uint8_t *data, size_t length) override
-    {
-        display.clearDisplay();
+    {        
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
         display.setCursor(0, 0);
@@ -49,8 +48,7 @@ public:
     }
 
     void print(const std::vector<uint8_t> &data) override
-    {
-        display.clearDisplay();
+    {        
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
         display.setCursor(0, 0);
@@ -64,8 +62,7 @@ public:
     }
 
     void print(const String &message) override
-    {
-        display.clearDisplay();
+    {        
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
         display.setCursor(0, 0);
@@ -74,12 +71,17 @@ public:
     }
 
     void print(const char *message) override
-    {
-        display.clearDisplay();
+    {        
         display.setTextSize(1);
         display.setTextColor(SSD1306_WHITE);
         display.setCursor(0, 0);
         display.print(message);
+        display.display();
+    }
+
+    void clear() override
+    {
+        display.clearDisplay();
         display.display();
     }
 

@@ -37,6 +37,10 @@ public:
    void print(const char *message) override {
         SerialUSB.println(message);
     }
+
+    void clear() override {
+        SerialUSB.println("SerialUSBDisplay cleared");
+    }
         
 };
 
