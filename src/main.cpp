@@ -10,36 +10,20 @@ void setup() {
     // Inicializa la comunicación serial a 9600 baudios
     serialUSBDisplay.init(9600);
 
-//    NodeOperationRunner *opRunner = new NodeOperationRunner(display,
-//                                                            router,
-//                                                            packetProcessor,
-//                                                            reportingRoutines,
-//                                                            nodeConfigurationRepository
-//    );
-//
-//    NodeOperationRunner nodeOperationRunner(display,
-//                                        router,
-//                                        packetProcessor,
-//                                        reportingRoutines,
-//                                        nodeConfigurationRepository
-//);
-
-
-
     // Inicializa la pantalla Adafruit
-    // adafruitDisplay.init();
+     adafruitDisplay.init();
 
     // Inicializa el administrador de la tarjeta SD
-//    sdManager.begin();
+    sdManager.begin();
 
     // Resets the reporting periods to the default values
-//    nodeConfigurationRepository.reset();
+    nodeConfigurationRepository.reset();
 
     // Inicializa el repositorio de configuración
-//    nodeConfigurationRepository.begin();
+    nodeConfigurationRepository.begin();
 
     // Inicializa el comunicador Serial
-//    serialPort.init()
+    serialPort.init();
 
     // Inicializa el GPS
     gps->init();
@@ -52,13 +36,13 @@ void setup() {
     adafruitLCBatteryController.init();
 
     // Inicializa el comunicador LoRa
-//    loraPort.init();
+    loraPort.init();
 
     // Inicializa el comunicador Iridium
-//    iridiumPort.init();
+    iridiumPort.init();
 
     // Inicializa el runner
-//    nodeOperationRunner.init();
+    nodeOperationRunner.init();
 }
 
 void loop() {
@@ -69,7 +53,9 @@ void loop() {
     if (millis() - lastTime >= 1000) {
         lastTime = millis();
         SerialUSB.println("Operating Node...");
-//        nodeOperationRunner.run();
+        nodeOperationRunner.init();
+        nodeOperationRunner.run();
+        nodeOperationRunner.finish();
     }
 }
 
@@ -79,7 +65,7 @@ void onReceiveWrapper(int packetSize) {
 }
 
 // Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)
-//void SERCOM3_Handler() {
-//    mySerial3.IrqHandler();
-//}
+void SERCOM3_Handler() {
+    mySerial3.IrqHandler();
+}
 

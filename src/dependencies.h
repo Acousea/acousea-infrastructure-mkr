@@ -46,8 +46,6 @@ std::map<OperationCode::Code, IRoutine<VoidType> *> reportingRoutines = {
 };
 
 
-// Instancia del procesador de paquetes
-PacketProcessor packetProcessor(configurationRoutines);
 
 
 // Instancia del router
@@ -58,8 +56,8 @@ Router router = Router(
 // Instancia del runner
 NodeOperationRunner nodeOperationRunner(display,
                                         router,
-                                        packetProcessor,
                                         reportingRoutines,
+                                        configurationRoutines,
                                         nodeConfigurationRepository
 );
 

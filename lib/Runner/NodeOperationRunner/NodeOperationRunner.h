@@ -2,40 +2,22 @@
 #define OPERATION_MODE_RUNNER_H
 
 
-#include <utility>
 #include "IRunnable.h"
 #include "Router.h"
-#include "ClassName.h"
-#include "Packets/CompleteReportPacket.h"
 #include "routines/CompleteSummaryReportRoutine/CompleteSummaryReportRoutine.h"
 #include "routines/BasicSummaryReportRoutine/BasicSummaryReportRoutine.h"
-#include "PacketProcessor/PacketProcessor.h"
 
 
 /**
- * @brief Working mode class (DRIFTER)
- * The working mode is the third mode of operation, immediatly after the launching mode.
- * In this mode, the drifter has been successfully launched and is in the working state.
- *  - The router is used to send periodic status reports to the backend, including:
- *     - Current location data from the GPS.
- *     - Current battery status and system health.
- *     - AudioDetectionStats data from the IC-Listen sensor. 
- 
- *  - The mode an indefinite duration, until the drifter is recovered.
- *  - It has a set IRIDIUM reporting period of `SBD_REPORTING_DRIFTING_SEC`.
- *  - It has a set LORA reporting period of `LORA_REPORTING_DRIFTING_SEC` just for testing (It will not be used in real deployment).
- *  - It will listen for incoming packets from both LORA and IRIDIUM ports.
- * 
- *  - It will send periodic commands to the IC-Listen sensor to start/stop logging data. (commands sent to PI3 API)
+ * @brief Class that runs the operation modes of the node
  */
-
 class NodeOperationRunner : public IRunnable {
 
 private:
     Router &router;
-    PacketProcessor &packetProcessor;
     // Map of string keys and IRoutine pointers
-    std::map<OperationCode::Code, IRoutine<VoidType> *> routines;
+    std::map<OperationCode::Code, IRoutine<VoidType> *> internalRoutines;
+    std::map<OperationCode::Code, IRoutine<Packet> *> externalRoutines;
 
 
 private: // Variables to establish periods
@@ -55,8 +37,9 @@ private: // Variables to establish periods
 public:
     CLASS_NAME(NodeOperationRunner)
 
-    NodeOperationRunner(IDisplay *display, Router &router, PacketProcessor &packetProcessor,
-                        const std::map<OperationCode::Code, IRoutine<VoidType> *> &routines,
+    NodeOperationRunner(IDisplay *display, Router &router,
+                        const std::map<OperationCode::Code, IRoutine<VoidType> *> &internalRoutines,
+                        const std::map<OperationCode::Code, IRoutine<Packet> *> &externalRoutines,
                         const NodeConfigurationRepository &nodeConfigurationRepository
     );
 
@@ -65,7 +48,7 @@ public:
     void run() override;
 
 
-    void stop() override;
+    void finish() override;
 
 private:
     void checkIfMustTransition();
@@ -74,6 +57,12 @@ private:
 
     void processIncomingPackets(const Address &localAddress);
 
+    void processPacket(IPort::PortType portType, const Packet &packet, const Address &localAddress);
+
+    void sendResponsePacket(IPort::PortType portType, const Address &localAddress, const Packet &responsePacket);
+
+    void processRoutine(const ReportingConfiguration &config, IPort::PortType portType, unsigned long currentMinute,
+                        unsigned long &lastReportMinute);
 };
 
 #endif // OPERATION_MODE_RUNNER_H

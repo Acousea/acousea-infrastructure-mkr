@@ -99,7 +99,6 @@
 #include <NodeConfiguration/NodeConfiguration.h>
 #include <NodeConfigurationRepository/NodeConfigurationRepository.h>
 
-#include <PacketProcessor/PacketProcessor.h>
 #include <NodeOperationRunner/NodeOperationRunner.h>
 
 

@@ -5,10 +5,6 @@ Uart mySerial3(&sercom3, 1, 0, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 // Global instance of the IridiumSBD modem
 IridiumSBD sbd_modem(IridiumSerial, SBD_SLEEP_PIN, SBD_RING_PIN);
 
-void SERCOM3_Handler() {
-    mySerial3.IrqHandler();
-}
-
 #define DIAGNOSTICS 1
 #if DIAGNOSTICS
 
