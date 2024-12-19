@@ -3,7 +3,7 @@
 
 
 #include "Ports/IPort.h"
-
+#include <Arduino.h>
 
 class MockLoRaPort : public IPort {
 public:
@@ -13,11 +13,11 @@ public:
 
     void init() override;
 
-    void send(const Packet &packet) override;
+    void send(const std::vector<uint8_t> &data) override;
 
     bool available() override;
 
-    Result<Packet> read() override;
+    std::vector<std::vector<uint8_t>> read() override;
 
 };
 

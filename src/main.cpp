@@ -10,6 +10,22 @@ void setup() {
     // Inicializa la comunicación serial a 9600 baudios
     serialUSBDisplay.init(9600);
 
+//    NodeOperationRunner *opRunner = new NodeOperationRunner(display,
+//                                                            router,
+//                                                            packetProcessor,
+//                                                            reportingRoutines,
+//                                                            nodeConfigurationRepository
+//    );
+//
+//    NodeOperationRunner nodeOperationRunner(display,
+//                                        router,
+//                                        packetProcessor,
+//                                        reportingRoutines,
+//                                        nodeConfigurationRepository
+//);
+
+
+
     // Inicializa la pantalla Adafruit
     // adafruitDisplay.init();
 
@@ -23,13 +39,20 @@ void setup() {
 //    nodeConfigurationRepository.begin();
 
     // Inicializa el comunicador Serial
-//    serialPort.init();
+//    serialPort.init()
+
+    // Inicializa el GPS
+    gps->init();
+
+    // Inicializa el controlador de tiempo real
+    rtcController.init();
+    rtcController.syncTime(gps->getTimestamp());
 
     // Inicializa el administrador de energía
     adafruitLCBatteryController.init();
 
     // Inicializa el comunicador LoRa
-    loraPort.init();
+//    loraPort.init();
 
     // Inicializa el comunicador Iridium
 //    iridiumPort.init();
@@ -39,6 +62,8 @@ void setup() {
 }
 
 void loop() {
+
+
     static unsigned long lastTime = 0;
     // Operate every 1 second
     if (millis() - lastTime >= 1000) {
@@ -54,7 +79,7 @@ void onReceiveWrapper(int packetSize) {
 }
 
 // Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)
-void SERCOM3_Handler() {
-    mySerial3.IrqHandler();
-}
+//void SERCOM3_Handler() {
+//    mySerial3.IrqHandler();
+//}
 

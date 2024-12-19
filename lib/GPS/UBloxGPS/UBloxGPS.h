@@ -1,8 +1,8 @@
 #ifndef UBLOXGNSS_H
 #define UBLOXGNSS_H
 
-#include "GPS/IGPS.h"
-#include <SparkFun_u-blox_GNSS_Arduino_Library.h>
+#include "../IGPS.h"
+#include "SparkFun_u-blox_GNSS_Arduino_Library.h"
 
 /*
  * !!!!!!!!!!!!!!!!!!! IMPORTANT !!!!!!!!!!!!!!!!!!!

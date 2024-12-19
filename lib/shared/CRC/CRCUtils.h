@@ -2,9 +2,7 @@
 #define ACOUSEA_MKR1310_NODES_CRCUTILS_H
 
 #include <vector>
-
 #include <cstdint>
-#include "ErrorHandler/ErrorHandler.h"
 
 class CRCUtils {
 public:

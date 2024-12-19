@@ -1,8 +1,8 @@
 #ifndef MKRGPS_H
 #define MKRGPS_H
 
-#include "GPS/IGPS.h"
-#include <Arduino_MKRGPS.h>
+#include "../IGPS.h"
+#include "Arduino_MKRGPS.h"
 
 class MKRGPS : public IGPS
 {

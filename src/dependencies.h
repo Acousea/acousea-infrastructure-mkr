@@ -13,21 +13,20 @@ SerialUSBDisplay serialUSBDisplay;
 IDisplay *display = &serialUSBDisplay;
 
 // Instancias de puertos de comunicación
-//SerialPort serialPort(&Serial1, 9600); // Serial1 is the hardware serial port PINS 13 and 14
+SerialPort serialPort(&Serial1, 9600); // Serial1 is the hardware serial port PINS 13 and 14
 LoraPort loraPort;
-//IridiumPort iridiumPort;
-MockLoRaPort mockLoraPort;
-MockIridiumPort mockIridiumPort;
+IridiumPort iridiumPort;
+//MockLoRaPort mockLoraPort;
+//MockIridiumPort mockIridiumPort;
 
 // Instancias del GPS
 MockGPS mockGPS(0.0, 0.0, 1.0);
-//MKRGPS mkrGPS;
-//UBloxGNSS uBloxGPS;
-IGPS *gps = &mockGPS;
+MKRGPS mkrGPS;
+UBloxGNSS uBloxGPS;
+IGPS *gps = &mkrGPS;
 
 // Instancia del controlador de tiempo real
-RTCController rtcController(gps);
-
+RTCController rtcController;
 
 SDManager sdManager;
 NodeConfigurationRepository nodeConfigurationRepository(sdManager, "config.txt");
@@ -51,20 +50,17 @@ std::map<OperationCode::Code, IRoutine<VoidType> *> reportingRoutines = {
 PacketProcessor packetProcessor(configurationRoutines);
 
 
+// Instancia del router
 Router router = Router(
-        &packetProcessor,
-        display,
-//        {&serialPort, &loraPort, &iridiumPort},
-        {&loraPort},
-        nodeConfigurationRepository
+        {&serialPort, &loraPort, &iridiumPort}
 );
 
 // Instancia del runner
 NodeOperationRunner nodeOperationRunner(display,
-                                        &router,
+                                        router,
+                                        packetProcessor,
                                         reportingRoutines,
                                         nodeConfigurationRepository
 );
-
 
 #endif // DEPENDENCIES_H

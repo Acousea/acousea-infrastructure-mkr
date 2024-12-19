@@ -3,7 +3,7 @@
 
 
 #include <string>
-#include <Result/Result.h>
+#include "Result/Result.h"
 #include <Packet.h>
 #include "ClassName.h"
 
@@ -25,7 +25,7 @@ class IRoutine : public IRoutineGeneric {
 public:
     explicit IRoutine(const std::string &name) : IRoutineGeneric(name) {};
 
-    virtual Result<Packet> execute(T &input) = 0;
+    virtual Result<Packet> execute(const T &input) = 0;
 
     // Virtual destructor para permitir la eliminación correcta de subclases
     virtual ~IRoutine() = default;

@@ -3,7 +3,7 @@
 
 
 #include "Adafruit_LC709203F.h"
-#include "Battery/IBatteryController.h"
+#include "IBatteryController.h"
 
 class AdafruitLCBatteryController : public IBatteryController {
 public:

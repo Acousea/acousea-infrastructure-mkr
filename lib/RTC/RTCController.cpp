@@ -1,16 +1,13 @@
 #include "RTCController.h"
 
-RTCController::RTCController(IGPS *gps) : gps(gps) {}
+RTCController::RTCController() {}
 
 void RTCController::init() {
     rtc.begin();
 }
 
-void RTCController::syncTime() {
-    if (gps->init()) {
-        unsigned long gpsTime = gps->getTimestamp();
-        rtc.setEpoch(gpsTime);
-    }
+void RTCController::syncTime(unsigned long gpsTime) {
+    rtc.setEpoch(gpsTime);
 }
 
 uint32_t RTCController::getEpoch() {

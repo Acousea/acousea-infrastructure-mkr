@@ -1,9 +1,13 @@
 #include "NodeOperationRunner.h"
 
-NodeOperationRunner::NodeOperationRunner(IDisplay *display, Router *router,
+NodeOperationRunner::NodeOperationRunner(IDisplay *display, Router &router, PacketProcessor &processor,
                                          const std::map<OperationCode::Code, IRoutine<VoidType> *> &routines,
-                                         const NodeConfigurationRepository &nodeConfigurationRepository) : IRunnable(display),
-                                                                                                           router(router), routines(routines), nodeConfigurationRepository(nodeConfigurationRepository) {
+                                         const NodeConfigurationRepository &nodeConfigurationRepository)
+        : IRunnable(display),
+          router(router),
+          packetProcessor(processor),
+          routines(routines),
+          nodeConfigurationRepository(nodeConfigurationRepository) {
     cache = {0, 0, {0, 0}};
 }
 
@@ -16,7 +20,7 @@ void NodeOperationRunner::init() {
 
 void NodeOperationRunner::run() {
     display->print("Running Working Mode...");
-    router->readPorts();
+    router.readPorts(nodeConfiguration->getLocalAddress());
     display->print("Ports relayed...");
     checkIfMustTransition();
     runRoutines();
@@ -64,14 +68,15 @@ void NodeOperationRunner::runRoutines() {
 
         if (!routine) {
             ErrorHandler::handleError(
-                    NodeOperationRunner::getClassNameString() + "Routine" + BasicSummaryReportRoutine::getClassNameString() +
+                    NodeOperationRunner::getClassNameString() + "Routine" +
+                    BasicSummaryReportRoutine::getClassNameString() +
                     " not found");
             return;
         }
 
         auto result = routine->execute();
         if (result.isSuccess()) {
-            router->sender().sendSBD(result.getValue());
+            router.sendFrom(nodeConfiguration->getLocalAddress()).sendSBD(result.getValue());
         }
 
         cache.lastReportMinute.sbd = currentMinute;
@@ -83,4 +88,33 @@ void NodeOperationRunner::runRoutines() {
 //            router->sendLoRa(reportPacket);
 //            cache.lastReportMinute.sbd = currentMinute;
 //        }
+}
+
+
+void NodeOperationRunner::processIncomingPackets(const Address &localAddress) {
+    auto receivedPackets = router.readPorts(localAddress);
+
+    for (const auto &[portType, packets]: receivedPackets) {
+        for (auto &packet: packets) {
+            SerialUSB.print("Processing packet from port type: ");
+            SerialUSB.println(static_cast<int>(portType));
+
+            Packet responsePacket = packetProcessor.process(packet);
+
+            switch (portType) {
+                case IPort::PortType::SBDPort:
+                    router.sendFrom(localAddress).sendSBD(responsePacket);
+                    break;
+                case IPort::PortType::LoraPort:
+                    router.sendFrom(localAddress).sendLoRa(responsePacket);
+                    break;
+                case IPort::PortType::SerialPort:
+                    router.sendFrom(localAddress).sendSerial(responsePacket);
+                    break;
+                default:
+                    SerialUSB.println("Unknown port type!");
+                    break;
+            }
+        }
+    }
 }

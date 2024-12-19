@@ -7,19 +7,23 @@ void MockLoRaPort::init() {
     SerialUSB.println("MockLoRaPort: Initializing LoRa port");
 }
 
-void MockLoRaPort::send(const Packet &packet) {
+void MockLoRaPort::send(const std::vector<uint8_t> &data) {
     // Print packet through serial monitor for debugging
     SerialUSB.print("MockLoRaPort: Sending packet: ");
-    SerialUSB.println("Packet: " + String(packet.encode().c_str()));
+    SerialUSB.println("Data: ");
+    for (auto &byte : data) {
+        SerialUSB.print(byte, HEX);
+        SerialUSB.print(" ");
+    }
+
 }
 
 bool MockLoRaPort::available() {
     return false;
 }
 
-Result<Packet> MockLoRaPort::read() {
-    uint8_t mock_data[4] = {0x20, 0x01, 0x02, 0x03};
-    std::vector<uint8_t> buffer(mock_data, mock_data + sizeof(mock_data) / sizeof(mock_data[0]));
-    Packet packet = Packet::fromBytes(buffer);
-    return Result<Packet>::success(packet);
+std::vector<std::vector<uint8_t>> MockLoRaPort::read() {
+    return std::vector<std::vector<uint8_t>>();
+
+
 }

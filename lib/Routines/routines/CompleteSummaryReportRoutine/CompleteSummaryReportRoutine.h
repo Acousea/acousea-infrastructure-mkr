@@ -6,11 +6,10 @@
 #include "Packet.h"
 #include "Packets/ErrorPacket.h"
 
-
 /**
  * @brief This routine is used to receive a packet with a summary and upload it to the summary service
  * so that it can be retrieved by the corresponding operation mode that sends reports to the backend
- * It returns a NullPacket since it does not need to send any response to the sender
+ * It returns a NullPacket since it does not need to send any response to the sendFrom
  */
 class CompleteSummaryReportRoutine : public IRoutine<VoidType> {
 

@@ -17,7 +17,7 @@ uint16_t CRCUtils::calculate16BitCRC(const std::vector<uint8_t> &data) {
 
 bool CRCUtils::verifyCRC(const std::vector<uint8_t> &buffer) {
     if (buffer.size() < 2) {
-        ErrorHandler::handleError("Data length must be at least 2 bytes for CRC verification.");
+        return false;
     }
 
     // Extraer el CRC del paquete (últimos dos bytes)

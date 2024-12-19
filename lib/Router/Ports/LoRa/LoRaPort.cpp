@@ -31,31 +31,38 @@ void LoraPort::init() {
     LoRa.receive(); // Start listening for incoming packets
 }
 
-void LoraPort::send(const Packet &packet) {
+void LoraPort::send(const std::vector<uint8_t> &data) {
     SerialUSB.println("LORA_PORT::send() -> Sending packet...");
-    SerialUSB.println("Packet: " + String(packet.encode().c_str()));
+    SerialUSB.print("Data: ");
+    for (const auto &byte: data) {
+        SerialUSB.print(byte, HEX);
+        SerialUSB.print(" ");
+    }
     while (!LoRa.beginPacket()) {
         SerialUSB.println("LORA_PORT::send() -> LoRa.beginPacket() Waiting for transmission to end...");
         delay(10);
     }
-    auto packetBytes = packet.toBytes();
-    LoRa.write(packetBytes.data(), packetBytes.size());
+    LoRa.write(data.data(), data.size());
     LoRa.endPacket(); // Transmit the packet synchrously (blocking) -> Avoids setting onTxDone callback (has bugs in the library)
     // Start listening for incoming packets again
     LoRa.receive();
 }
 
 bool LoraPort::available() {
-    return receivedPackets.size() > 0;
+    return receivedRawPackets.size() > 0;
 }
 
-Result<Packet> LoraPort::read() {
+std::vector<std::vector<uint8_t>> LoraPort::read() {
     if (!available()) {
-        return Result<Packet>::failure("No packets available");
+        return {};
     }
-    Packet receivedPacket = receivedPackets.front(); // Acceder al primer elemento
-    receivedPackets.pop_front(); // Eliminar el primer elemento
-    return Result<Packet>::success(receivedPacket);
+    // Return all packets and clear the queue
+    std::vector<std::vector<uint8_t>> packets;
+    for (const auto &packet: receivedRawPackets) {
+        packets.push_back(packet);
+    }
+    receivedRawPackets.clear();
+    return packets;
 }
 
 void LoraPort::onReceive(int packetSize) {
@@ -65,15 +72,15 @@ void LoraPort::onReceive(int packetSize) {
     while (LoRa.available()) {
         buffer.push_back(LoRa.read());
     }
-    Packet packet = Packet::fromBytes(buffer);
-    if (receivedPackets.size() >= MAX_QUEUE_SIZE) {
+
+    if (receivedRawPackets.size() >= MAX_QUEUE_SIZE) {
         // Emitir advertencia y eliminar el paquete más antiguo
         SerialUSB.println("WARNING: Received packet queue is full. Dropping the oldest packet.");
-        receivedPackets.pop_front(); // Eliminar el paquete más antiguo
+        receivedRawPackets.pop_front(); // Eliminar el paquete más antiguo
     }
 
     SerialUSB.println("Correctly received packet -> pushing");
-    receivedPackets.push_back(packet);
+    receivedRawPackets.push_back(buffer);
 }
 
 void LoraPort::configureLora(const LoRaConfig &config) {

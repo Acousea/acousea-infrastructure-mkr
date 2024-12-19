@@ -3,7 +3,7 @@
 
 
 #include "Arduino_PMIC.h"
-#include "Battery/IBatteryController.h"
+#include "IBatteryController.h"
 
 class PMICBatteryController : public IBatteryController {
 public:

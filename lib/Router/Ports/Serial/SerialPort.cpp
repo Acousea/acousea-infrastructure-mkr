@@ -8,20 +8,23 @@ void SerialPort::init() {
     SerialUSB.println("SerialPort::init() -> Serial port initialized");
 }
 
-void SerialPort::send(const Packet &packet) {
+void SerialPort::send(const std::vector<uint8_t> &data) {
     SerialUSB.println("SerialPort::send() -> Sending packet...");
-    SerialUSB.println("Packet: " + String(packet.encode().c_str()));
-    auto packetBytes = packet.toBytes();
-    serialPort->write(packetBytes.data(), packetBytes.size());
+    SerialUSB.print("Data: ");
+    for (const auto &byte: data) {
+        SerialUSB.print(byte, HEX);
+        SerialUSB.print(" ");
+    }
+    serialPort->write(data.data(), data.size());
 }
 
 bool SerialPort::available() {
-    return serialPort->available() >= Packet::SYNC_BYTE;
+    return serialPort->available() > 0;
 }
 
-Result<Packet> SerialPort::read() {
+std::vector<std::vector<uint8_t>> SerialPort::read() {
     std::vector<uint8_t> buffer;
-    buffer.reserve(MAX_PACKET_BUFFER);
+    buffer.reserve(MAX_RECEIVED_PACKET_SIZE);
 
     while (serialPort->available()) {
         uint8_t byte = serialPort->read();
@@ -31,11 +34,13 @@ Result<Packet> SerialPort::read() {
         if (buffer.size() < 7) { // SYNC_BYTE + OPCODE + RoutingChunk + PayloadLength + CRC
             continue;
         }
-        Packet packet = Packet::fromBytes(buffer);
-        SerialUSB.println("SerialPort::read() -> Packet received successfully");
-        return Result<Packet>::success(packet);
-    }
 
-    SerialUSB.println("SerialPort::read() -> No complete packet received");
-    return Result<Packet>::failure("Incomplete packet data");
+        SerialUSB.println("SerialPort::read() -> Packet received successfully");
+
+    }
+    if (buffer.size() == 0) {
+        return {};
+    }
+    return {buffer};
+
 }

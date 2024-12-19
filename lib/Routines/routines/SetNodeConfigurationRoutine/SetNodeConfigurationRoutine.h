@@ -14,7 +14,7 @@ public:
 
     SetNodeConfigurationRoutine(NodeConfigurationRepository &nodeConfigurationRepository);
 
-    Result<Packet> execute(Packet &packet) override;
+    Result<Packet> execute(const Packet &packet) override;
 
 private:
     static void setOperationModes(NodeConfiguration &nodeConfig, const SerializableModule &item);

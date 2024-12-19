@@ -5,7 +5,6 @@
 #include <deque>
 #include "LoRa.h"
 #include "Ports/IPort.h"
-#include "Packet.h"
 
 typedef struct {
     uint8_t bandwidth_index;    // Ancho de banda [0,9]: Como norma general, multiplicarlo por dos supone reducir a la mitad el tiempo de transmisión.
@@ -38,18 +37,16 @@ public:
 
     void init() override;
 
-    void send(const Packet &packet) override;
+    void send(const std::vector<uint8_t> &data) override;
 
     bool available() override;
 
-    Result<Packet> read() override;
+    std::vector<std::vector<uint8_t>> read() override;
 
     void onReceive(int packetSize);
 
 private:
     const LoRaConfig &config;
-    std::deque<Packet> receivedPackets;
-    static const size_t MAX_QUEUE_SIZE = 10;
 
     void configureLora(const LoRaConfig &config);
 };

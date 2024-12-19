@@ -3,7 +3,7 @@
 
 
 #include "NodeConfiguration/NodeConfiguration.h"
-#include "Display/IDisplay.h"
+#include "IDisplay.h"
 
 
 class IRunnable {

@@ -1,7 +1,8 @@
 #ifndef SERIAL_USB_DISPLAY_H
 #define SERIAL_USB_DISPLAY_H
 
-#include "Display/IDisplay.h"
+
+#include "IDisplay.h"
 
 class SerialUSBDisplay : public IDisplay {
 public:

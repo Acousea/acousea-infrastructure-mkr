@@ -1,16 +1,15 @@
 #ifndef RTC_CONTROLLER_H
 #define RTC_CONTROLLER_H
 
-#include "GPS/IGPS.h"
-#include <RTCZero.h>
+#include "RTCZero.h"
 
 class RTCController {
 public:
-    RTCController(IGPS* gps);
+    RTCController();
 
     void init();
 
-    void syncTime();
+    void syncTime(unsigned long gpsTime);
 
     uint32_t getEpoch();
 
@@ -18,7 +17,6 @@ public:
 
 private:
     RTCZero rtc;
-    IGPS* gps;
 };
 
 #endif // RTC_CONTROLLER_H

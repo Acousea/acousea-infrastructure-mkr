@@ -2,9 +2,9 @@
 #define SIMPLEREPORTRROUTINE_H
 
 #include "IRoutine.h"
-#include "GPS/IGPS.h"
-#include "Battery/IBatteryController.h"
-#include "RTC/RTCController.h"
+#include "IGPS.h"
+#include "IBatteryController.h"
+#include "RTCController.h"
 #include "Packet.h"
 #include "Packets/BasicReportPacket.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"

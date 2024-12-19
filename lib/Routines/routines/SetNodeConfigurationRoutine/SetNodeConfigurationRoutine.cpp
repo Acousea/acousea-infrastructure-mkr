@@ -3,7 +3,7 @@
 SetNodeConfigurationRoutine::SetNodeConfigurationRoutine(NodeConfigurationRepository &nodeConfigurationRepository)
         : IRoutine(getClassNameString()), nodeConfigurationRepository(nodeConfigurationRepository) {}
 
-Result<Packet> SetNodeConfigurationRoutine::execute(Packet &packet) {
+Result<Packet> SetNodeConfigurationRoutine::execute(const Packet &packet) {
     NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
     NewNodeConfigurationPayload configurationPayload = packet.getPayloadAs<NewNodeConfigurationPayload>();
 
@@ -23,7 +23,6 @@ Result<Packet> SetNodeConfigurationRoutine::execute(Packet &packet) {
 
     }
     nodeConfigurationRepository.saveConfiguration(nodeConfig);
-    packet.swapSenderReceiverAddresses();
     return Result<Packet>::success(packet);
 }
 

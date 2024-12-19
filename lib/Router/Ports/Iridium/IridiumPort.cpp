@@ -5,6 +5,10 @@ Uart mySerial3(&sercom3, 1, 0, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 // Global instance of the IridiumSBD modem
 IridiumSBD sbd_modem(IridiumSerial, SBD_SLEEP_PIN, SBD_RING_PIN);
 
+void SERCOM3_Handler() {
+    mySerial3.IrqHandler();
+}
+
 #define DIAGNOSTICS 1
 #if DIAGNOSTICS
 
@@ -41,14 +45,18 @@ void IridiumPort::init() {
     SerialUSB.println("IridiumPort::init(): Iridium modem initialized");
 }
 
-void IridiumPort::send(const Packet &packet) {
+void IridiumPort::send(const std::vector<uint8_t> &data) {
     SerialUSB.println("IridiumPort::send() -> Sending packet...");
-    SerialUSB.println("Packet: " + String(packet.encode().c_str()));
+    SerialUSB.print("Data: ");
+    for (const auto &byte: data) {
+        SerialUSB.print(byte, HEX);
+        SerialUSB.print(" ");
+    }
 
     uint8_t rxBuffer[MAX_RECEIVED_PACKET_SIZE];
     size_t rxBufferSize = sizeof(rxBuffer);
-    int err = sbd_modem.sendReceiveSBDBinary(packet.toBytes().data(),
-                                             packet.toBytes().size(),
+    int err = sbd_modem.sendReceiveSBDBinary(data.data(),
+                                             data.size(),
                                              rxBuffer,
                                              rxBufferSize);
     if (err != ISBD_SUCCESS) {
@@ -70,16 +78,23 @@ bool IridiumPort::available() {
     // checkSignalQuality();
     checkRingAlertsAndWaitingMsgCount();
     // receiveIncomingMessages();
-    return !receivedPackets.empty();
+    return !receivedRawPackets.empty();
 }
 
-Result<Packet> IridiumPort::read() {
-    if (receivedPackets.empty()) {
-        return Result<Packet>::failure("No packets available");
+std::vector<std::vector<uint8_t>> IridiumPort::read() {
+    if (receivedRawPackets.empty()) {
+        return {};
     }
-    Packet receivedPacket = receivedPackets.front();
-    receivedPackets.pop_front();
-    return Result<Packet>::success(receivedPacket);
+
+    // Return all packets and clear the queue
+    std::vector<std::vector<uint8_t>> packets;
+    for (const auto &packet: receivedRawPackets) {
+        packets.push_back(packet);
+    }
+    receivedRawPackets.clear();
+    return packets;
+
+
 }
 
 void IridiumPort::handleError(int err) {
@@ -143,12 +158,12 @@ void IridiumPort::storeReceivedPacket(const uint8_t *data, size_t length) {
     }
     SerialUSB.println();
 
-    Packet packet = Packet::fromBytes(std::vector<uint8_t>(data, data + length));
-    if (receivedPackets.size() >= MAX_QUEUE_SIZE) {
+    std::vector<uint8_t> packet = std::vector<uint8_t>(data, data + length);
+    if (receivedRawPackets.size() >= MAX_QUEUE_SIZE) {
         SerialUSB.println("WARNING: Received packet queue is full. Dropping the oldest packet.");
-        receivedPackets.pop_front();
+        receivedRawPackets.pop_front();
     }
-    receivedPackets.push_back(packet);
+    receivedRawPackets.push_back(packet);
 }
 
 void IridiumPort::receiveIncomingMessages() {

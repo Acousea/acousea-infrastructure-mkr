@@ -9,6 +9,7 @@
 #include "Packets/CompleteReportPacket.h"
 #include "routines/CompleteSummaryReportRoutine/CompleteSummaryReportRoutine.h"
 #include "routines/BasicSummaryReportRoutine/BasicSummaryReportRoutine.h"
+#include "PacketProcessor/PacketProcessor.h"
 
 
 /**
@@ -31,7 +32,8 @@
 class NodeOperationRunner : public IRunnable {
 
 private:
-    Router *router;
+    Router &router;
+    PacketProcessor &packetProcessor;
     // Map of string keys and IRoutine pointers
     std::map<OperationCode::Code, IRoutine<VoidType> *> routines;
 
@@ -53,7 +55,7 @@ private: // Variables to establish periods
 public:
     CLASS_NAME(NodeOperationRunner)
 
-    NodeOperationRunner(IDisplay *display, Router *router,
+    NodeOperationRunner(IDisplay *display, Router &router, PacketProcessor &packetProcessor,
                         const std::map<OperationCode::Code, IRoutine<VoidType> *> &routines,
                         const NodeConfigurationRepository &nodeConfigurationRepository
     );
@@ -69,6 +71,8 @@ private:
     void checkIfMustTransition();
 
     void runRoutines();
+
+    void processIncomingPackets(const Address &localAddress);
 
 };
 

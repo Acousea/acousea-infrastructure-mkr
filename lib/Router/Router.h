@@ -1,43 +1,24 @@
 #ifndef COMMUNICATOR_RELAY_H
 #define COMMUNICATOR_RELAY_H
 
+#include <deque>
+#include <map>
+#include <Ports/IPort.h>
+#include <Packet.h>
+#include <Result/Result.h>
 
-#include <utility>
-#include <vector>
-#include "Processor/PacketProcessor.h"
-#include "Ports/IPort.h"
-#include "NodeConfigurationRepository/NodeConfigurationRepository.h"
+//// Extra dependencies (might not be necessary)
+
+
 
 
 /**
- * @brief Relay class that acts as a bridge between two ports and a processor
- * 
- * This class is responsible for relaying packets between two ports and a processor.
- * If the packet is for this device, it will be processed by the processor. 
- * Otherwise, it will be relayed to other port, depending on the recipient address.
- * 
- *  BACKEND <-> LOCALIZER <-> DRIFTER <-> PI3   
- * 
- *  PrimaryPort --- [[MKR 1310]] --- SecondaryPort 
- *  
- *  FORWARDING RULES: (Drifter) -> Scheme:  LoraPort --- [[MKR 1310]] --- SerialPort
- *  - Messages to the drifter/localizer from the backend come through the primary port, which can be 
- *    either LoRa or Serial port.
- *  - Messages to the drifter from the PI3 come through the secondary port, which is the Serial port.
- * 
- *  FORWARDING RULES: (Localizer) -> Scheme:  SerialPort --- [[MKR 1310]] --- LoraPort
- *  - Messages to the localizer from the drifter/PI3 come through the secondary port, whicih can be 
- *    either LoRa or Serial port.
- *  - Messages from the backend to the localizer come through the primary port, which is Serial port.  * 
- * 
- *  In this scenario, the primary and secondary ports can be inverted, depending on the device running the code.
+ * @brief Router class that relays packets between ports and processes them if necessary.
  */
 class Router {
 private:
-    PacketProcessor *processor;
-    IDisplay *display;
     std::vector<IPort *> relayedPorts;
-    NodeConfigurationRepository nodeConfigurationRepository;
+    std::map<IPort::PortType, std::deque<Packet>> receivedPackets = {};
 
     // Clase interna para manejar el envío con una dirección
     class RouterSender {
@@ -45,42 +26,60 @@ private:
         Address localAddress;
         Router *router;
 
+        [[nodiscard]] Packet configurePacketRouting(const Packet &packet) const {
+            Packet mutablePacket = packet;
+            mutablePacket.setRoutingChunk(RoutingChunk(
+                    localAddress,
+                    packet.getRoutingChunk().getSender())
+            );
+            return mutablePacket;
+        }
+
     public:
         explicit RouterSender(Address address, Router *router)
                 : localAddress(address), router(router) {}
 
+
         void sendSBD(const Packet &packet) {
-            router->sendSBD(packet);
+            Packet mutablePacket = configurePacketRouting(packet);
+            router->sendSBD(mutablePacket);
         }
 
+
         void sendLoRa(const Packet &packet) {
-            router->sendLoRa(packet);
+            Packet mutablePacket = configurePacketRouting(packet);
+            router->sendLoRa(mutablePacket);
         }
 
         void sendSerial(const Packet &packet) {
-            router->sendSerial(packet);
+            Packet mutablePacket = configurePacketRouting(packet);
+            router->sendSerial(mutablePacket);
         }
     };
 
 public:
-    Router(PacketProcessor *processor, IDisplay *display, const std::vector<IPort *> &relayedPorts,
-           const NodeConfigurationRepository &nodeConfigurationRepository);
+    Router(const std::vector<IPort *> &relayedPorts);
 
     void addRelayedPort(IPort *port);
 
-    RouterSender sender();
+    Router::RouterSender sendFrom(Address senderAddress);
 
-    void readPorts();
-
-    void processPacket(IPort* port, Packet &requestPacket);
+    /**
+        * @brief Reads packets from the ports and returns them grouped by port type.
+        * @param localAddress The local address of the router.
+        * @return A map where keys are port types and values are lists of packets received from those ports.
+        */
+    std::map<IPort::PortType, std::deque<Packet>> readPorts(const Address &localAddress);
 
 private:
-
     void sendSBD(const Packet &packet);
 
     void sendLoRa(const Packet &packet);
 
     void sendSerial(const Packet &packet);
+
+
+
 };
 
-#endif // COMMUNICATOR_BRIDGE_H
+#endif // COMMUNICATOR_RELAY_H

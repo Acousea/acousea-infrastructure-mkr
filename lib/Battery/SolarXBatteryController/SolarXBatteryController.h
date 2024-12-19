@@ -4,7 +4,7 @@
 
 #include <Wire.h>
 #include "Adafruit_INA219.h"
-#include "Battery/IBatteryController.h"
+#include "IBatteryController.h"
 
 class SolarXBatteryController : public IBatteryController
 {

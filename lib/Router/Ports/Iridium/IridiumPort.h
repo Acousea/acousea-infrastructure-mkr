@@ -5,14 +5,12 @@
 #include "wiring_private.h"
 #include "Ports/IPort.h"
 #include "IridiumSBD.h"
-#include <deque>
 
 // Define the necessary hardware connections for the Iridium modem
 #define SBD_SLEEP_PIN 2 // OUTPUT, pull to GND to switch off
 #define SBD_RING_PIN 3 // INPUT, driven LOW when new messages are available
 #define SBD_MODEM_BAUDS 19200
 #define IridiumSerial mySerial3
-
 
 // Declare the global variables as extern
 extern Uart mySerial3;
@@ -26,16 +24,13 @@ public:
 public:
     void init() override;
 
-    void send(const Packet &packet) override;
+    void send(const std::vector<uint8_t> &data) override;
 
     bool available() override;
 
-    Result<Packet> read() override;
+    std::vector<std::vector<uint8_t>> read() override;
 
 private:
-    std::deque<Packet> receivedPackets;
-    static const size_t MAX_QUEUE_SIZE = 10;
-    const uint16_t MAX_RECEIVED_PACKET_SIZE = 340;
 
     void handleError(int err);
 
@@ -47,6 +42,7 @@ private:
 
     void checkSignalQuality();
 };
+
 
 
 #endif // IRIDIUMPORT_H

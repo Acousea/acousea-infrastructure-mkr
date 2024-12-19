@@ -2,13 +2,13 @@
 #define SERIAL_PORT_H
 
 
+#include <Arduino.h>
 #include "Ports/IPort.h"
 
 class SerialPort : public IPort {
 private:
     Uart *serialPort;
     int baudRate;
-    static constexpr size_t MAX_PACKET_BUFFER = 512;
 
 public:
     SerialPort(Uart *serialPort, int baudRate);
@@ -17,13 +17,14 @@ public:
     void init() override;
 
     // Envía un paquete serializado
-    void send(const Packet &packet) override;
+    void send(const std::vector<uint8_t> &data) override;
 
     // Comprueba si hay suficientes datos disponibles para un paquete
     bool available() override;
 
     // Lee datos y construye un paquete
-    Result<Packet> read() override;
+    std::vector<std::vector<uint8_t>> read() override;
+
 };
 
 #endif // SERIAL_PORT_H

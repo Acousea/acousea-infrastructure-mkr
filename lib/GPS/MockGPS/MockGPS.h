@@ -1,7 +1,7 @@
 #ifndef MOCKGPS_H
 #define MOCKGPS_H
 
-#include "GPS/IGPS.h"
+#include "../IGPS.h"
 #include <Arduino.h>
 
 class MockGPS : public IGPS {

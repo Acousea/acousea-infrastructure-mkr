@@ -2,8 +2,9 @@
 #define IPORT_H
 
 
-#include "Packet.h"
-#include "Result/Result.h"
+#include <vector>
+#include <deque>
+#include <cstdint>
 
 // Definición de la interfaz de comunicador
 class IPort {
@@ -24,15 +25,17 @@ public:
 public:
     virtual void init() = 0;
 
-    virtual void send(const Packet &packet) = 0;
-
+    virtual void send(const std::vector<uint8_t> &data) = 0; // Cambiado para aceptar datos crudos
     virtual bool available() = 0;
 
-    virtual Result<Packet> read() = 0;
+    virtual std::vector<std::vector<uint8_t>> read() = 0; // Devuelve lista de vectores de bytes
+
 
 protected:
     PortType type;
-
+    std::deque<std::vector<uint8_t>> receivedRawPackets;
+    static const size_t MAX_QUEUE_SIZE = 10;
+    static const size_t MAX_RECEIVED_PACKET_SIZE = 340;
 };
 
 #endif // IPORT_H
