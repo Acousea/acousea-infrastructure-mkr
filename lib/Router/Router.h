@@ -1,12 +1,13 @@
 #ifndef COMMUNICATOR_RELAY_H
 #define COMMUNICATOR_RELAY_H
 
-#include <Arduino.h>
+
+#include <utility>
 #include <vector>
-#include "../Port/IPort.h"
-#include "../Port/SerialPort.h"
-#include "../Processor/PacketProcessor.h"
-#include "../RoutingTable/RoutingTable.h"
+#include "Processor/PacketProcessor.h"
+#include "Ports/IPort.h"
+#include "NodeConfigurationRepository/NodeConfigurationRepository.h"
+
 
 /**
  * @brief Relay class that acts as a bridge between two ports and a processor
@@ -33,70 +34,53 @@
  */
 class Router {
 private:
-    Packet::Address localAddress; // Dirección local del dispositivo
-    RoutingTable* routingTable; // La tabla de ruteo
-    PacketProcessor* processor;             
-    IDisplay* display;
-    std::vector<IPort*> relayedPorts;
+    PacketProcessor *processor;
+    IDisplay *display;
+    std::vector<IPort *> relayedPorts;
+    NodeConfigurationRepository nodeConfigurationRepository;
+
+    // Clase interna para manejar el envío con una dirección
+    class RouterSender {
+    private:
+        Address localAddress;
+        Router *router;
+
+    public:
+        explicit RouterSender(Address address, Router *router)
+                : localAddress(address), router(router) {}
+
+        void sendSBD(const Packet &packet) {
+            router->sendSBD(packet);
+        }
+
+        void sendLoRa(const Packet &packet) {
+            router->sendLoRa(packet);
+        }
+
+        void sendSerial(const Packet &packet) {
+            router->sendSerial(packet);
+        }
+    };
 
 public:
-    Router(Packet::Address localAddress, RoutingTable* routingTable, PacketProcessor* processor, IDisplay* display) 
-        : localAddress(localAddress), routingTable(routingTable), processor(processor), display(display) {}
+    Router(PacketProcessor *processor, IDisplay *display, const std::vector<IPort *> &relayedPorts,
+           const NodeConfigurationRepository &nodeConfigurationRepository);
 
-    // Constructor que recibe un vector de comunicadores
-    Router(Packet::Address localAddress, RoutingTable* routingTable, PacketProcessor* processor, IDisplay* display, std::vector<IPort*> ports) 
-        : localAddress(localAddress), routingTable(routingTable), processor(processor), display(display), relayedPorts(ports) {}
+    void addRelayedPort(IPort *port);
 
-    void addRelayedPort(IPort* port) {
-        relayedPorts.push_back(port);
-    }
+    RouterSender sender();
 
-    void send(const Packet& packet) {
-        route(packet);
-    }
+    void readPorts();
 
-    void setLocalAddress(Packet::Address address) {
-        localAddress = address;
-    }
-    
-    void relayPorts() {
-        for (auto port = relayedPorts.begin(); port != relayedPorts.end(); ++port) {            
-            if ((*port)->available()) {
-                display->print("Router::operate() -> Port available");
-                route((*port)->read()); // Route the packet                
-            }
-        }
-    }
+    void processPacket(IPort* port, Packet &requestPacket);
 
-    /**
-     * @brief Route the packet to the correct port
-     * It either processes the packet or relays it to the correct port
-     * A processed packet may be re-routed. 
-     * Null packets are not processed nor relayed, since they neither have no routine associated nor a valid addresses byte.
-     */
-    void route(const Packet& packet) {
-        // Print the packet HEX
-        SerialUSB.println("Local Address: " + String(localAddress, HEX));        
-        display->print("Router::route() -> Packet: ");
-        packet.print();
-        
-        uint8_t address = packet.getAddresses();
-        if ((GET_RECEIVER(address) == localAddress) && processor != nullptr) {
-            display->print("Router::route-if() -> Processing packet...");            
-            route(processor->process(packet)); // Process the packet and re-route it
-        } else {
-            // Print address as HEX
-            SerialUSB.print("Router::route-else() -> Relaying packet to address: ");
-            SerialUSB.println(GET_RECEIVER(address), HEX);      
-            IPort* port = routingTable->getRoute(address);
-            if (port != nullptr) {
-                port->send(packet);
-            } else { // Discard the pacekt                
-                display->print("Exception: Invalid Address: no route found for address");
-            }            
-        }
-        
-    }
+private:
+
+    void sendSBD(const Packet &packet);
+
+    void sendLoRa(const Packet &packet);
+
+    void sendSerial(const Packet &packet);
 };
 
 #endif // COMMUNICATOR_BRIDGE_H
