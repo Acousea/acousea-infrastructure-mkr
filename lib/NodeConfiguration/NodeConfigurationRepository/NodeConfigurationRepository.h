@@ -2,18 +2,17 @@
 #define REPORTING_PERIOD_MANAGER_H
 
 
-#include "../NodeConfiguration/NodeConfiguration.h"
+#include "NodeConfiguration/NodeConfiguration.h"
+#include "ErrorHandler/ErrorHandler.h"
 
 
 class NodeConfigurationRepository {
 public:
     NodeConfigurationRepository(SDManager &sdManager, const char *filePath);
 
-    bool begin();
+    void init();
 
-    bool reset();
-
-    void printData() const;
+    void reset();
 
     [[nodiscard]] NodeConfiguration getNodeConfiguration() const;
 

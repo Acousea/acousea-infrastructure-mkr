@@ -11,16 +11,29 @@ void setup() {
     serialUSBDisplay.init(9600);
 
     // Inicializa la pantalla Adafruit
-     adafruitDisplay.init();
+    adafruitDisplay.init();
+
+    // Initialize Logger in SerialOnly mode
+    Logger::initialize(&sdManager, "/log.csv", Logger::Mode::SerialOnly);
 
     // Inicializa el administrador de la tarjeta SD
     sdManager.begin();
+
+    // Set a custom error handler
+//    ErrorHandler::setHandler([](const std::string &message) {
+//        Serial.println("Custom handler invoked!");
+//        Serial.println(message.c_str());
+//    });
+
+    // Log an error
+    ErrorHandler::handleError("Failed to initialize module.");
+
 
     // Resets the reporting periods to the default values
     nodeConfigurationRepository.reset();
 
     // Inicializa el repositorio de configuración
-    nodeConfigurationRepository.begin();
+    nodeConfigurationRepository.init();
 
     // Inicializa el comunicador Serial
     serialPort.init();
@@ -36,10 +49,10 @@ void setup() {
     adafruitLCBatteryController.init();
 
     // Inicializa el comunicador LoRa
-    loraPort.init();
+//    realLoraPort.init();
 
     // Inicializa el comunicador Iridium
-    iridiumPort.init();
+//    realIridiumPort.init();
 
     // Inicializa el runner
     nodeOperationRunner.init();
@@ -61,7 +74,7 @@ void loop() {
 
 void onReceiveWrapper(int packetSize) {
     SerialUSB.println("OnReceiveWrapper Callback");
-    loraPort.onReceive(packetSize);
+    realLoraPort.onReceive(packetSize);
 }
 
 // Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)

@@ -15,14 +15,14 @@ class NodeOperationRunner : public IRunnable {
 
 private:
     Router &router;
-    // Map of string keys and IRoutine pointers
+
     std::map<OperationCode::Code, IRoutine<VoidType> *> internalRoutines;
     std::map<OperationCode::Code, IRoutine<Packet> *> externalRoutines;
 
-
-private: // Variables to establish periods
-    std::optional<NodeConfiguration> nodeConfiguration = std::nullopt;
     NodeConfigurationRepository nodeConfigurationRepository;
+    std::optional<NodeConfiguration> nodeConfiguration = std::nullopt;
+
+private:
     // Struct to store the current currentOperationMode and cycle count
     struct Cache {
         uint8_t currentOperationMode;
@@ -37,7 +37,7 @@ private: // Variables to establish periods
 public:
     CLASS_NAME(NodeOperationRunner)
 
-    NodeOperationRunner(IDisplay *display, Router &router,
+    NodeOperationRunner(Router &router,
                         const std::map<OperationCode::Code, IRoutine<VoidType> *> &internalRoutines,
                         const std::map<OperationCode::Code, IRoutine<Packet> *> &externalRoutines,
                         const NodeConfigurationRepository &nodeConfigurationRepository

@@ -1,10 +1,10 @@
 #include "NodeOperationRunner.h"
 
-NodeOperationRunner::NodeOperationRunner(IDisplay *display, Router &router,
+NodeOperationRunner::NodeOperationRunner(Router &router,
                                          const std::map<OperationCode::Code, IRoutine<VoidType> *> &internalRoutines,
                                          const std::map<OperationCode::Code, IRoutine<Packet> *> &externalRoutines,
                                          const NodeConfigurationRepository &nodeConfigurationRepository)
-        : IRunnable(display),
+        : IRunnable(),
           router(router),
           internalRoutines(internalRoutines),
           externalRoutines(externalRoutines),
@@ -13,7 +13,7 @@ NodeOperationRunner::NodeOperationRunner(IDisplay *display, Router &router,
 }
 
 void NodeOperationRunner::init() {
-    display->print("Initializing with configuration...");
+    Logger::logInfo("Initializing with configuration...");
     nodeConfiguration.emplace(nodeConfigurationRepository.getNodeConfiguration());
     nodeConfiguration->print();
     cache.currentOperationMode = nodeConfiguration->getOperationGraphModule()->getGraph().begin()->first;
@@ -27,9 +27,7 @@ void NodeOperationRunner::run() {
 }
 
 void NodeOperationRunner::finish() {
-    display->print("Stopping Working Mode...");
-
-    // Specific cleanup or stop code for drifting mode
+    Logger::logInfo("Stopping Working Mode...");
 }
 
 void NodeOperationRunner::checkIfMustTransition() {

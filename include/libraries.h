@@ -24,7 +24,7 @@
 #include <Result/Result.h>
 #include <CRC/CRCUtils.h>
 #include <SDManager/SDManager.h>
-#include <ErrorLogger/ErrorLogger.h>
+#include "Logger/Logger.h"
 #include <ErrorHandler/ErrorHandler.h>
 #include <ClassName.h>
 // ============================================

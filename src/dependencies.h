@@ -14,10 +14,11 @@ IDisplay *display = &serialUSBDisplay;
 
 // Instancias de puertos de comunicación
 SerialPort serialPort(&Serial1, 9600); // Serial1 is the hardware serial port PINS 13 and 14
-LoraPort loraPort;
-IridiumPort iridiumPort;
-//MockLoRaPort mockLoraPort;
-//MockIridiumPort mockIridiumPort;
+LoraPort realLoraPort;
+IridiumPort realIridiumPort;
+MockLoRaPort mockLoraPort;
+MockIridiumPort mockIridiumPort;
+
 
 // Instancias del GPS
 MockGPS mockGPS(0.0, 0.0, 1.0);
@@ -29,6 +30,7 @@ IGPS *gps = &mkrGPS;
 RTCController rtcController;
 
 SDManager sdManager;
+
 NodeConfigurationRepository nodeConfigurationRepository(sdManager, "config.txt");
 
 // Instancias de rutinas de servicio
@@ -45,17 +47,14 @@ std::map<OperationCode::Code, IRoutine<VoidType> *> reportingRoutines = {
         {OperationCode::Code::COMPLETE_STATUS_REPORT, &completeSummaryReportRoutine},
 };
 
-
-
-
 // Instancia del router
 Router router = Router(
-        {&serialPort, &loraPort, &iridiumPort}
+//        {&serialPort, &realLoraPort, &realIridiumPort}
+        {&serialPort, &mockLoraPort, &mockIridiumPort}
 );
 
 // Instancia del runner
-NodeOperationRunner nodeOperationRunner(display,
-                                        router,
+NodeOperationRunner nodeOperationRunner(router,
                                         reportingRoutines,
                                         configurationRoutines,
                                         nodeConfigurationRepository

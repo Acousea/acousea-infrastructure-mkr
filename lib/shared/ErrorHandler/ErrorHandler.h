@@ -7,28 +7,23 @@
 #include <string>
 #include <functional>
 #include <utility>
-#include "ErrorLogger/ErrorLogger.h"
+#include "Logger/Logger.h"
 
-// Define un tipo de callback para manejar errores
+// Define a callback type for handling errors
 using ErrorHandlerCallback = std::function<void(const std::string &)>;
 
 class ErrorHandler {
 public:
-
-    static void setLogger(ErrorLogger *logger);
-
-    // Configura un callback personalizado
+    // Set a custom error handling callback
     static void setHandler(ErrorHandlerCallback handler);
 
-    // Maneja un error usando el callback o la implementación predeterminada
+    // Handle an error using the custom callback or default implementation
     static void handleError(const std::string &errorMessage);
 
 private:
-    // Callback personalizado (opcional)
     static inline ErrorHandlerCallback customHandler = nullptr;
-    static inline ErrorLogger *errorLogger = nullptr;
 
-    // Manejo predeterminado de errores
+    // Default error handling
     static void defaultHandler(const std::string &errorMessage);
 
     static void performHardwareReset();

@@ -3,36 +3,25 @@
 NodeConfigurationRepository::NodeConfigurationRepository(SDManager &sdManager, const char *filePath)
         : sdManager(sdManager), filePath(filePath) {}
 
-bool NodeConfigurationRepository::begin() {
+void NodeConfigurationRepository::init() {
     if (sdManager.readFile(filePath).isEmpty()) {
         Serial.println("NodeConfigurationRepository::begin() -> No configuration file found. Creating default configuration.");
         if (!saveConfiguration(NodeConfiguration::getDefaultConfiguration())) {
-            Serial.println("NodeConfigurationRepository::begin() -> Error saving default configuration.");
-            return false;
+            ErrorHandler::handleError("NodeConfigurationRepository::begin() -> Error saving default configuration.");
         }
     }
-    printData();
     Serial.println("NodeConfigurationRepository initialized.");
-    return true;
 }
 
-bool NodeConfigurationRepository::reset() {
+void NodeConfigurationRepository::reset() {
     Serial.println("NodeConfigurationRepository::reset() -> Resetting to default configuration.");
-    return saveConfiguration(NodeConfiguration::getDefaultConfiguration());
+    if (!saveConfiguration(NodeConfiguration::getDefaultConfiguration())){
+        ErrorHandler::handleError("NodeConfigurationRepository::reset() -> Error saving default configuration.");
+    }
 }
 
-void NodeConfigurationRepository::printData() const {
-    NodeConfiguration configuration = getNodeConfiguration();
-    Serial.println("NodeConfigurationRepository::printData() -> Current configuration:");
-    configuration.print();
-}
 
 NodeConfiguration NodeConfigurationRepository::getNodeConfiguration() const {
-    if (sdManager.readFile(filePath).isEmpty()) {
-        Serial.println("NodeConfigurationRepository::getNodeConfiguration() -> No configuration file found. Returning default configuration.");
-        return NodeConfiguration::getDefaultConfiguration();
-    }
-
     String content = sdManager.readFile(filePath);
     if (content.isEmpty()) {
         Serial.println("NodeConfigurationRepository::getNodeConfiguration() -> Empty configuration file. Returning default configuration.");
