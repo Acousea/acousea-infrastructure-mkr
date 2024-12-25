@@ -3,10 +3,10 @@
 
 #include "Payload/Payload.h"
 #include "Payload/Modules/pamModules/PamModule.h"
-#include "Payload/Modules/implementation/ambient/AmbientModule.h"
-#include "Payload/Modules/implementation/battery/BatteryModule.h"
-#include "Payload/Modules/implementation/location/LocationModule.h"
-#include "Payload/Modules/implementation/storage/StorageModule.h"
+#include "Payload/Modules/extModules/ambient/AmbientModule.h"
+#include "Payload/Modules/extModules/battery/BatteryModule.h"
+#include "Payload/Modules/extModules/location/LocationModule.h"
+#include "Payload/Modules/extModules/storage/StorageModule.h"
 
 class CompleteStatusReportPayload : public Payload {
 public:

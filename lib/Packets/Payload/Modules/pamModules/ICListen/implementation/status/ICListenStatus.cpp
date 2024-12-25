@@ -1,5 +1,6 @@
 #include "ICListenStatus.h"
 
+
 ICListenStatus::ICListenStatus(int unitStatus, int batteryStatus, double batteryPercentage, double temperature,
                                double humidity, std::time_t timestamp)
         : SerializableModule(ModuleCode::TYPES::ICLISTEN_STATUS,
@@ -27,4 +28,21 @@ ICListenStatus::serializeValues(int unitStatus, int batteryStatus, double batter
     value.insert(value.end(), reinterpret_cast<const uint8_t *>(&timestamp),
                  reinterpret_cast<const uint8_t *>(&timestamp) + sizeof(timestamp));
     return value;
+}
+
+ICListenStatus ICListenStatus::from(const std::vector<uint8_t> &data) {
+    if (data.size() < 25) {
+        ErrorHandler::handleError("Invalid data size for ICListenStatus");
+//        throw std::invalid_argument("Invalid data size for ICListenStatus");
+    }
+
+    int unitStatus = data[0];
+    int batteryStatus = data[1];
+    double batteryPercentage = *reinterpret_cast<const double *>(&data[2]);
+    double temperature = *reinterpret_cast<const double *>(&data[10]);
+    double humidity = *reinterpret_cast<const double *>(&data[18]);
+    std::time_t timestamp = *reinterpret_cast<const std::time_t *>(&data[26]);
+
+    return {unitStatus, batteryStatus, batteryPercentage, temperature, humidity, timestamp};
+
 }

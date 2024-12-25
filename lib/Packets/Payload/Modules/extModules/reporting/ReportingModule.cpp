@@ -15,7 +15,7 @@ const std::map<uint8_t, ReportingConfiguration> &ReportingModule::getConfigurati
 }
 
 void ReportingModule::setConfiguration(uint8_t modeId, const ReportingConfiguration &config) {
-    configurations.emplace(modeId, config);
+    configurations.insert_or_assign(modeId, config); // If modeId already exists, it will be replaced
 }
 
 ReportingModule ReportingModule::from(const std::vector<uint8_t> &data) {
@@ -28,7 +28,7 @@ ReportingModule ReportingModule::from(const std::vector<uint8_t> &data) {
 
     for (size_t i = 1; i + 4 <= data.size(); i += 4) {
         ReportingConfiguration config = ReportingConfiguration::fromBytes(data, i);
-        configs.emplace(config.getModeId(), config);
+        configs.insert_or_assign(config.getModeId(), config);
     }
 
     return ReportingModule(type, configs);

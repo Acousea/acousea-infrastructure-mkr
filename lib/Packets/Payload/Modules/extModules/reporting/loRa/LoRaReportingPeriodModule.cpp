@@ -9,7 +9,7 @@ LoRaReportingModule LoRaReportingModule::fromJSON(const JsonArrayConst &doc) {
         uint8_t mode = item["mode"];
         uint16_t period = item["period"];
         auto reportType = ReportingConfiguration::reportTypeFromJson(item["reportType"].as<unsigned char>());
-        configs.emplace(mode, ReportingConfiguration(mode, period, reportType));
+        configs.insert_or_assign(mode, ReportingConfiguration(mode, period, reportType));
     }
     return LoRaReportingModule(configs);
 }

@@ -11,3 +11,9 @@ Result<Packet> CompleteSummaryReportRoutine::execute() {
             ErrorPacket::invalidOpcode(RoutingChunk::fromNodeToBackend(nodeConfig.getLocalAddress())));
 
 }
+
+CompleteSummaryReportRoutine::CompleteSummaryReportRoutine(const std::string &name, IGPS *gps,
+                                                           IBatteryController *battery, RTCController *rtc,
+                                                           NodeConfigurationRepository &nodeConfigurationRepository)
+        : IRoutine(name), gps(gps), battery(battery), rtc(rtc),
+          nodeConfigurationRepository(nodeConfigurationRepository) {}

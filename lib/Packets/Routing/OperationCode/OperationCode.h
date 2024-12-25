@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include "ErrorHandler/ErrorHandler.h"
 
 class OperationCode {
 public:
@@ -12,7 +13,8 @@ public:
         COMPLETE_STATUS_REPORT = 'S',
         BASIC_STATUS_REPORT = 's',
         SET_NODE_DEVICE_CONFIG = 'C',
-        GET_UPDATED_NODE_DEVICE_CONFIG = 'U'
+        GET_UPDATED_NODE_DEVICE_CONFIG = 'U',
+        ICLISTEN_CONFIG = 'I',
     };
     static OperationCode completeStatusReport();
 

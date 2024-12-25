@@ -1,9 +1,9 @@
 #include "dependencies.h"
 
-#define DRIFTER_MODE 0
-#define LOCALIZER_MODE 1
-// #define MODE LOCALIZER_MODE // Cambiar a DRIFTER_MODE o LOCALIZER_MODE según sea necesario
-#define MODE DRIFTER_MODE // Cambiar a DRIFTER_MODE o LOCALIZER_MODE según sea necesario
+//#define DRIFTER_MODE 0
+//#define LOCALIZER_MODE 1
+//#define MODE LOCALIZER_MODE // Cambiar a DRIFTER_MODE o LOCALIZER_MODE según sea necesario
+//#define MODE DRIFTER_MODE // Cambiar a DRIFTER_MODE o LOCALIZER_MODE según sea necesario
 
 
 void setup() {
@@ -11,7 +11,7 @@ void setup() {
     serialUSBDisplay.init(9600);
 
     // Inicializa la pantalla Adafruit
-    adafruitDisplay.init();
+//    adafruitDisplay.init();
 
     // Initialize Logger in SerialOnly mode
     Logger::initialize(&sdManager, "/log.csv", Logger::Mode::SerialOnly);
@@ -26,7 +26,7 @@ void setup() {
 //    });
 
     // Log an error
-    ErrorHandler::handleError("Failed to initialize module.");
+//    ErrorHandler::handleError("Failed to initialize module.");
 
 
     // Resets the reporting periods to the default values
@@ -39,23 +39,21 @@ void setup() {
     serialPort.init();
 
     // Inicializa el GPS
-    gps->init();
+//    gps->init();
 
     // Inicializa el controlador de tiempo real
-    rtcController.init();
-    rtcController.syncTime(gps->getTimestamp());
+//    rtcController.init();
+//    rtcController.syncTime(gps->getTimestamp());
 
     // Inicializa el administrador de energía
     adafruitLCBatteryController.init();
 
     // Inicializa el comunicador LoRa
-//    realLoraPort.init();
+    realLoraPort.init();
 
     // Inicializa el comunicador Iridium
-//    realIridiumPort.init();
+    realIridiumPort.init();
 
-    // Inicializa el runner
-    nodeOperationRunner.init();
 }
 
 void loop() {
@@ -67,7 +65,7 @@ void loop() {
         lastTime = millis();
         SerialUSB.println("Operating Node...");
         nodeOperationRunner.init();
-        nodeOperationRunner.run();
+//        nodeOperationRunner.run();
         nodeOperationRunner.finish();
     }
 }

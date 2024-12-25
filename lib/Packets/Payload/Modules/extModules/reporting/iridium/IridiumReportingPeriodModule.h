@@ -1,7 +1,7 @@
 #ifndef ACOUSEA_MKR1310_NODES_IRIDIUMREPORTINGMODULE_H
 #define ACOUSEA_MKR1310_NODES_IRIDIUMREPORTINGMODULE_H
 
-#include "Payload/Modules/implementation/reporting/ReportingModule.h"
+#include "Payload/Modules/extModules/reporting/ReportingModule.h"
 #include "Payload/Modules/JSONSerializable.h"
 
 class IridiumReportingModule : public ReportingModule, public JSONSerializable {

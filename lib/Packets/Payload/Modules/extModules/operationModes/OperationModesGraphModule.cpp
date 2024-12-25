@@ -5,6 +5,9 @@ OperationModesGraphModule OperationModesGraphModule::from(const std::map<uint8_t
 }
 
 OperationModesGraphModule OperationModesGraphModule::from(const std::vector<uint8_t> &value) {
+    if (value.size() % 4 != 0 || value.size() < 4) {
+        ErrorHandler::handleError("Invalid value size for OperationModesGraphModule deserialization");
+    }
     return OperationModesGraphModule(value);
 }
 
@@ -14,7 +17,7 @@ OperationModesGraphModule OperationModesGraphModule::fromJSON(const JsonArrayCon
         uint8_t currentMode = item["currentMode"];
         uint8_t nextMode = item["nextMode"];
         uint16_t duration = item["duration"];
-        graph.emplace(currentMode, Transition(nextMode, duration));
+        graph.insert_or_assign(currentMode, Transition(nextMode, duration));
     }
     return OperationModesGraphModule(graph);
 }
@@ -39,10 +42,10 @@ const std::map<uint8_t, OperationModesGraphModule::Transition> &OperationModesGr
 
 OperationModesGraphModule::OperationModesGraphModule(const std::vector<uint8_t> &value)
         : SerializableModule(ModuleCode::TYPES::OPERATION_MODES_GRAPH, value) {
-    for (size_t i = 0; i + 2 < value.size(); i += 3) {
+    for (size_t i = 0; i < value.size(); i += 4) {
         uint8_t currentMode = value[i];
         Transition transition = Transition::fromBytes(value, i + 1);
-        graph.emplace(currentMode, transition);
+        graph.insert_or_assign(currentMode, transition);
     }
 }
 

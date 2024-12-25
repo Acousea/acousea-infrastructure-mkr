@@ -3,9 +3,9 @@
 
 
 #include "Payload/Payload.h"
-#include "Payload/Modules/implementation/battery/BatteryModule.h"
-#include "Payload/Modules/implementation/location/LocationModule.h"
-#include "Payload/Modules/implementation/rtc/RTCModule.h"
+#include "Payload/Modules/extModules/battery/BatteryModule.h"
+#include "Payload/Modules/extModules/location/LocationModule.h"
+#include "Payload/Modules/extModules/rtc/RTCModule.h"
 
 
 class BasicStatusReportPayload : public Payload {

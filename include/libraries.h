@@ -64,22 +64,22 @@
 
 #include <Payload/Modules/SerializableModule.h>
 #include <Payload/Modules/JSONSerializable.h>
-#include <Payload/Modules/implementation/ambient/AmbientModule.h>
-#include <Payload/Modules/implementation/battery/BatteryModule.h>
-#include <Payload/Modules/implementation/location/LocationModule.h>
-#include <Payload/Modules/implementation/network/NetworkModule.h>
-#include <Payload/Modules/implementation/operationModes/OperationModesModule.h>
-#include <Payload/Modules/implementation/operationModes/OperationModesGraphModule.h>
-#include <Payload/Modules/implementation/reporting/reportingConfiguration/ReportingConfiguration.h>
-#include <Payload/Modules/implementation/reporting/ReportingModule.h>
-#include <Payload/Modules/implementation/reporting/loRa/LoRaReportingPeriodModule.h>
-#include <Payload/Modules/implementation/reporting/iridium/IridiumReportingPeriodModule.h>
-#include <Payload/Modules/implementation/operationModes/OperationMode.h>
-#include <Payload/Modules/implementation/operationModes/OperationModesModule.h>
-#include <Payload/Modules/implementation/operationModes/OperationModesGraphModule.h>
+#include <Payload/Modules/extModules/ambient/AmbientModule.h>
+#include <Payload/Modules/extModules/battery/BatteryModule.h>
+#include <Payload/Modules/extModules/location/LocationModule.h>
+#include <Payload/Modules/extModules/network/NetworkModule.h>
+#include <Payload/Modules/extModules/operationModes/OperationModesModule.h>
+#include <Payload/Modules/extModules/operationModes/OperationModesGraphModule.h>
+#include <Payload/Modules/extModules/reporting/reportingConfiguration/ReportingConfiguration.h>
+#include <Payload/Modules/extModules/reporting/ReportingModule.h>
+#include <Payload/Modules/extModules/reporting/loRa/LoRaReportingPeriodModule.h>
+#include <Payload/Modules/extModules/reporting/iridium/IridiumReportingPeriodModule.h>
+#include <Payload/Modules/extModules/operationModes/OperationMode.h>
+#include <Payload/Modules/extModules/operationModes/OperationModesModule.h>
+#include <Payload/Modules/extModules/operationModes/OperationModesGraphModule.h>
 
-#include <Payload/Modules/implementation/rtc/RTCModule.h>
-#include <Payload/Modules/implementation/storage/StorageModule.h>
+#include <Payload/Modules/extModules/rtc/RTCModule.h>
+#include <Payload/Modules/extModules/storage/StorageModule.h>
 
 #include <Payload/Modules/pamModules/PamModule.h>
 #include <Payload/Modules/pamModules/ICListen/ICListenHF.h>

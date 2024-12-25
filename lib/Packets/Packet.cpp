@@ -1,5 +1,6 @@
 #include "Packet.h"
 
+
 Packet::Packet(const OperationCode &opCode, const RoutingChunk &routingChunk, PayloadVariant payload)
         : opCode(opCode), routingChunk(routingChunk), payload(std::move(payload)) {
     computeChecksum();

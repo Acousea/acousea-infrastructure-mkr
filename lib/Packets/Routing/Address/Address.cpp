@@ -1,5 +1,6 @@
 #include "Address.h"
 
+
 Address::Address(uint8_t value) : value(value) {
     if (!isValidUnsignedByte(value)) {
         ErrorHandler::handleError("Address value is out of the valid range.");

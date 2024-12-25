@@ -7,15 +7,18 @@
 #include <iomanip>
 #include <variant>
 
-#include "Routing/operationCode/OperationCode.h"
+
+#include "Routing/OperationCode/OperationCode.h"
 #include "Routing/RoutingChunk/RoutingChunk.h"
-#include "Routing/address/Address.h"
+#include "Routing/Address/Address.h"
 #include "Payload/Payloads/getConfig/GetUpdatedNodeConfigurationPayload.h"
 #include "Payload/Payloads/setConfig/NewNodeConfigurationPayload.h"
 #include "Payload/Payloads/complete/CompleteStatusReportPayload.h"
 #include "Payload/Payloads/basic/BasicStatusReportPayload.h"
 #include "Payload/Payloads/error/ErrorPayload.h"
 #include "CRC/CRCUtils.h"
+#include "Payload/Payloads/iclisten/ICListenCompleteStatusPayload.h"
+
 
 // Define a variant type to hold different Payload types
 using PayloadVariant = std::variant<
@@ -23,6 +26,7 @@ using PayloadVariant = std::variant<
         NewNodeConfigurationPayload,
         CompleteStatusReportPayload,
         BasicStatusReportPayload,
+        ICListenCompleteStatusPayload,
         ErrorPayload
 >;
 

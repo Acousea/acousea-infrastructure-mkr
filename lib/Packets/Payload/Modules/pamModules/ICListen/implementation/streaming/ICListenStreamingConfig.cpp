@@ -1,5 +1,6 @@
 #include "ICListenStreamingConfig.h"
 
+
 ICListenStreamingConfig::ICListenStreamingConfig(bool recordWaveform, bool processWaveform, int waveformProcessingType,
                                                  int waveformInterval, int waveformDuration, bool recordFFT,
                                                  bool processFFT, int fftProcessingType, int fftInterval,
@@ -24,7 +25,8 @@ ICListenStreamingConfig ICListenStreamingConfig::createDefault() {
 std::vector<uint8_t>
 ICListenStreamingConfig::serializeValues(bool recordWaveform, bool processWaveform, int waveformProcessingType,
                                          int waveformInterval, int waveformDuration, bool recordFFT, bool processFFT,
-                                         int fftProcessingType, int fftInterval, int fftDuration, std::time_t timestamp) {
+                                         int fftProcessingType, int fftInterval, int fftDuration,
+                                         std::time_t timestamp) {
     std::vector<uint8_t> value;
 
     value.push_back(recordWaveform ? 1 : 0);
@@ -41,4 +43,35 @@ ICListenStreamingConfig::serializeValues(bool recordWaveform, bool processWavefo
                  reinterpret_cast<const uint8_t *>(&timestamp) + sizeof(timestamp));
 
     return value;
+}
+
+ICListenStreamingConfig ICListenStreamingConfig::from(const std::vector<uint8_t> &data) {
+    if (data.size() < 15) {
+        ErrorHandler::handleError("Data length is insufficient for a valid ICListenStreamingConfig");
+    }
+
+    bool recordWaveform = data[0] == 1;
+    bool processWaveform = data[1] == 1;
+    int waveformProcessingType = data[2];
+    int waveformInterval = data[3];
+    int waveformDuration = data[4];
+    bool recordFFT = data[5] == 1;
+    bool processFFT = data[6] == 1;
+    int fftProcessingType = data[7];
+    int fftInterval = data[8];
+    int fftDuration = data[9];
+    std::time_t timestamp = *reinterpret_cast<const std::time_t *>(&data[10]);
+
+    return {recordWaveform,
+            processWaveform,
+            waveformProcessingType,
+            waveformInterval,
+            waveformDuration,
+            recordFFT,
+            processFFT,
+            fftProcessingType,
+            fftInterval,
+            fftDuration,
+            timestamp};
+
 }

@@ -5,10 +5,10 @@
 #include <optional>
 #include <utility>
 #include "ArduinoJson.h"
-#include "Payload/Modules/implementation/reporting/ReportingModule.h"
-#include "Payload/Modules/implementation/operationModes/OperationModesGraphModule.h"
-#include "Payload/Modules/implementation/reporting/iridium/IridiumReportingPeriodModule.h"
-#include "Payload/Modules/implementation/reporting/loRa/LoRaReportingPeriodModule.h"
+#include "Payload/Modules/extModules/reporting/ReportingModule.h"
+#include "Payload/Modules/extModules/operationModes/OperationModesGraphModule.h"
+#include "Payload/Modules/extModules/reporting/iridium/IridiumReportingPeriodModule.h"
+#include "Payload/Modules/extModules/reporting/loRa/LoRaReportingPeriodModule.h"
 #include "Result/Result.h"
 #include "Routing/Address/Address.h"
 

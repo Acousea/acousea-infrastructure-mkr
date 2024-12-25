@@ -19,7 +19,7 @@ OperationModesModule OperationModesModule::fromJSON(const JsonArrayConst &doc) {
     for (const auto &item: doc) {
         uint8_t id = item["id"];
         std::string name = item["name"];
-        operationModes.emplace(id, OperationMode::create(id, name));
+        operationModes.insert_or_assign(id, OperationMode::create(id, name));
     }
     return OperationModesModule(operationModes, activeModeIdx);
 }
@@ -50,7 +50,7 @@ OperationModesModule::OperationModesModule(const std::vector<uint8_t> &value)
         : SerializableModule(ModuleCode::TYPES::OPERATION_MODES, value) {
     for (size_t i = 0; i < value.size() - 1; ++i) {
         uint8_t idx = value[i];
-        operationModes.emplace(idx, OperationMode::create(idx, "currentOperationMode" + std::to_string(i)));
+        operationModes.insert_or_assign(idx, OperationMode::create(idx, "currentOperationMode" + std::to_string(i)));
     }
     activeModeIdx = value[value.size() - 1];
 }
@@ -58,7 +58,7 @@ OperationModesModule::OperationModesModule(const std::vector<uint8_t> &value)
 OperationModesModule::OperationModesModule(const std::map<uint8_t, OperationMode> &operationModes,
                                            uint8_t activeModeIdx)
         : SerializableModule(ModuleCode::TYPES::OPERATION_MODES, serializeValues(operationModes, activeModeIdx)),
-          operationModes(operationModes) {}
+          operationModes(operationModes), activeModeIdx(activeModeIdx) {}
 
 std::vector<uint8_t>
 OperationModesModule::serializeValues(const std::map<uint8_t, OperationMode> &operationModes, uint8_t activeModeIdx) {

@@ -1,4 +1,6 @@
+#include <stdexcept>
 #include "OperationCode.h"
+
 
 OperationCode OperationCode::completeStatusReport() {
     return OperationCode(COMPLETE_STATUS_REPORT);
@@ -27,10 +29,12 @@ char OperationCode::getValue() const {
 }
 
 OperationCode OperationCode::fromValue(char value) {
-    for (Code c : {COMPLETE_STATUS_REPORT, BASIC_STATUS_REPORT, SET_NODE_DEVICE_CONFIG, GET_UPDATED_NODE_DEVICE_CONFIG}) {
+    for (Code c: {COMPLETE_STATUS_REPORT, BASIC_STATUS_REPORT, SET_NODE_DEVICE_CONFIG,
+                  GET_UPDATED_NODE_DEVICE_CONFIG}) {
         if (c == value) {
             return OperationCode(c);
         }
     }
-//        throw std::invalid_argument("Invalid operation code: " + std::string(1, value));
+    ErrorHandler::handleError("Invalid operation code");
+//    throw std::invalid_argument("Invalid operation code: " + std::string(1, value));
 }

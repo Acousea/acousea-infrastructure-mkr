@@ -7,7 +7,7 @@
 #include <cstdint>
 #include "ErrorHandler/ErrorHandler.h"
 #include "Payload/Modules/SerializableModule.h"
-#include "Payload/Modules/implementation/reporting/reportingConfiguration/ReportingConfiguration.h"
+#include "Payload/Modules/extModules/reporting/reportingConfiguration/ReportingConfiguration.h"
 
 /** TODO: Reporting modules must serve to identify
  * - The technology used for reporting (LoRa, Iridium)

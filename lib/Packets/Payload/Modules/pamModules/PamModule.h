@@ -2,7 +2,7 @@
 #define ACOUSEA_MKR1310_NODES_PAMMODULE_H
 
 
-#include "Payload/Modules/SerializableModule.h"
+#include "../SerializableModule.h"
 
 class PamModule : public SerializableModule {
 public:

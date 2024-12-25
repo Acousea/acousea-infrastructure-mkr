@@ -37,6 +37,16 @@ public:
             bytes.push_back(static_cast<uint8_t>(duration & 0xFF)); // Low byte
             return bytes;
         }
+
+        // Operador de igualdad
+        bool operator==(const Transition &other) const {
+            return nextMode == other.nextMode && duration == other.duration;
+        }
+
+        // Operador de desigualdad
+        bool operator!=(const Transition &other) const {
+            return !(*this == other);
+        }
     };
 
     // Métodos estáticos de creación

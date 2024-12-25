@@ -1,7 +1,7 @@
 #ifndef ACOUSEA_MKR1310_NODES_ERRORHANDLER_H
 #define ACOUSEA_MKR1310_NODES_ERRORHANDLER_H
 
-#define RESET_PIN 5
+#define RESET_PIN 7
 
 
 #include <string>
