@@ -1,6 +1,6 @@
 #include "IridiumPort.h"
 
-Uart mySerial3(&sercom3, 1, 0, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+Uart mySerial3(&sercom3, SBD_RX_PIN, SBD_TX_PIN, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 
 // Global instance of the IridiumSBD modem
 IridiumSBD sbd_modem(IridiumSerial, SBD_SLEEP_PIN, SBD_RING_PIN);
@@ -24,12 +24,19 @@ void IridiumPort::init() {
     // Set the pins to use mySerial3
     pinPeripheral(0, PIO_SERCOM); // Assign TX function to pin 0
     pinPeripheral(1, PIO_SERCOM); // Assign RX function to pin 1
-    pinMode(SBD_RING_PIN,
-            INPUT_PULLUP); // TODO: Might need to set this as INPUT_PULLUP (Ring Indicator signal (active low))
-    pinMode(SBD_SLEEP_PIN, OUTPUT);
-    digitalWrite(SBD_SLEEP_PIN, LOW);
+
+    /** Uncomment this block to manually set the pins (wakeup modem again). Pins managed by the library by default
+     * // Ring Indicator signal (active low)
+     * pinMode(SBD_RING_PIN, INPUT_PULLUP);
+     *
+     * // Set the sleep pin to HIGH to wake up the modem (Sleep control (pull to ground to switch off))
+     * pinMode(SBD_SLEEP_PIN, OUTPUT);
+     * digitalWrite(SBD_SLEEP_PIN, HIGH);
+    */
     sbd_modem.setPowerProfile(IridiumSBD::DEFAULT_POWER_PROFILE);
-    sbd_modem.enableRingAlerts(true); // Documentations says this should go before begin()
+
+    // According to the documentation this should go before calling begin()
+    sbd_modem.enableRingAlerts(true);
 
     IridiumSerial.begin(SBD_MODEM_BAUDS);
     SerialUSB.println("IridiumPort::init(): ");

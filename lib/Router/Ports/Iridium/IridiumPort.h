@@ -7,8 +7,11 @@
 #include "IridiumSBD.h"
 
 // Define the necessary hardware connections for the Iridium modem
+#define SBD_TX_PIN 0 // OUTPUT, connect to RX of Iridium
+#define SBD_RX_PIN 1 // INPUT, connect to TX of Iridium
 #define SBD_SLEEP_PIN 2 // OUTPUT, pull to GND to switch off
 #define SBD_RING_PIN 3 // INPUT, driven LOW when new messages are available
+#define SBD_NET_AVAILABLE_PIN 4 // INPUT, driven HIGH when network is available
 #define SBD_MODEM_BAUDS 19200
 #define IridiumSerial mySerial3
 
