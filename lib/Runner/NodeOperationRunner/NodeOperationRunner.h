@@ -53,13 +53,15 @@ public:
 private:
     void checkIfMustTransition();
 
+    static bool mustReport(unsigned long currentMinute, unsigned long reportingPeriod, unsigned long lastReportMinute);
+
     void runRoutines();
 
     void processIncomingPackets(const Address &localAddress);
 
     void processPacket(IPort::PortType portType, const Packet &packet, const Address &localAddress);
 
-    void sendResponsePacket(IPort::PortType portType, const Address &localAddress, const Packet &responsePacket);
+    void sendResponsePacket(IPort::PortType portType, const Address &localAddress, const Packet &responsePacket) const;
 
     void processRoutine(const ReportingConfiguration &config, IPort::PortType portType, unsigned long currentMinute,
                         unsigned long &lastReportMinute);

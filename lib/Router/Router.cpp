@@ -17,7 +17,7 @@ Router::RouterSender Router::sendFrom(Address senderAddress) {
 }
 
 std::map<IPort::PortType, std::deque<Packet>> Router::readPorts(const Address &localAddress) {
-    for (auto &port: relayedPorts) {
+    for (const auto &port: relayedPorts) {
         if (!port->available()) {
             continue;
         }
@@ -32,7 +32,7 @@ std::map<IPort::PortType, std::deque<Packet>> Router::readPorts(const Address &l
 }
 
 void Router::sendSBD(const Packet &packet) {
-    for (auto &relayedPort: relayedPorts) {
+    for (const auto &relayedPort: relayedPorts) {
         if (relayedPort->getType() == IPort::PortType::SBDPort) {
             relayedPort->send(packet.toBytes());
             return;
@@ -41,7 +41,7 @@ void Router::sendSBD(const Packet &packet) {
 }
 
 void Router::sendLoRa(const Packet &packet) {
-    for (auto &relayedPort: relayedPorts) {
+    for (const auto &relayedPort: relayedPorts) {
         if (relayedPort->getType() == IPort::PortType::LoraPort) {
             relayedPort->send(packet.toBytes());
             return;

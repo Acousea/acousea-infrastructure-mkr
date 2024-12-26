@@ -35,11 +35,6 @@ Address Address::broadcastAddress() {
     return Address(BROADCAST_ADDRESS);
 }
 
-std::string Address::toString() const {
-    std::ostringstream oss;
-    oss << "Address{value=0x" << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(value) << "}";
-    return oss.str();
-}
 
 bool Address::operator==(const Address &other) const {
     return value == other.value;

@@ -99,8 +99,8 @@ std::string NodeConfiguration::toJson() const {
 }
 
 void NodeConfiguration::print() const {
-    Serial.println("NodeConfiguration JSON Representation:");
-    std::string jsonRepresentation = toJson();
+    Serial.print("NodeConfiguration=");
+    const std::string jsonRepresentation = toJson();
     Serial.println(jsonRepresentation.c_str());
 }
 

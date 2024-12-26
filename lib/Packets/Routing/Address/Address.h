@@ -3,10 +3,7 @@
 
 
 #include <cstdint>
-#include <set>
-#include <string>
-#include <sstream>
-#include <iomanip>
+
 #include "ErrorHandler/ErrorHandler.h"
 
 class Address {
@@ -26,8 +23,6 @@ public:
     static Address backend();
 
     static Address broadcastAddress();
-
-    std::string toString() const;
 
     bool operator==(const Address& other) const;
 

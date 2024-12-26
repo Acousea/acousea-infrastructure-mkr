@@ -14,15 +14,27 @@ int SerializableModule::getFullLength() const {
 }
 
 std::string SerializableModule::encode() const {
-    std::ostringstream ss;
-    ss << std::hex << (VALUE.size() + 1);
-    ss << std::hex << static_cast<int>(TYPE);
-    for (const auto& b : VALUE) {
-        ss << std::hex << static_cast<int>(b);
-    }
-    return ss.str();
-}
+    std::string encodedString;
 
+    // Convert and append the size (VALUE.size() + 1) to the string
+    char sizeHex[5]; // Enough for 4 hex digits + null terminator
+    snprintf(sizeHex, sizeof(sizeHex), "%x", static_cast<int>(VALUE.size() + 1));
+    encodedString += sizeHex;
+
+    // Convert and append TYPE to the string
+    char typeHex[3]; // Enough for 2 hex digits + null terminator
+    snprintf(typeHex, sizeof(typeHex), "%02x", static_cast<int>(TYPE));
+    encodedString += typeHex;
+
+    // Convert and append each byte in VALUE to the string
+    for (const auto& b : VALUE) {
+        char byteHex[3]; // Enough for 2 hex digits + null terminator
+        snprintf(byteHex, sizeof(byteHex), "%02x", static_cast<unsigned char>(b));
+        encodedString += byteHex;
+    }
+
+    return encodedString;
+}
 uint8_t SerializableModule::getType() const {
     return TYPE;
 }

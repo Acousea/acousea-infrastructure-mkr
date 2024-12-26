@@ -65,12 +65,19 @@ Packet Packet::fromBytes(const std::vector<uint8_t> &data) {
 
 std::string Packet::encode() const {
     const auto packetBytes = toBytes();
-    std::ostringstream oss;
-    for (const auto &byte: packetBytes) {
-        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
+    std::string encodedString;
+    encodedString.reserve(packetBytes.size() * 2); // Reservar espacio para evitar realocaciones
+
+    for (const auto &byte : packetBytes) {
+        // Convertir cada byte a su representación hexadecimal
+        char hex[3];
+        snprintf(hex, sizeof(hex), "%02x", static_cast<unsigned char>(byte));
+        encodedString += hex;
     }
-    return oss.str();
+
+    return encodedString;
 }
+
 
 const OperationCode &Packet::getOpCode() const {
     return opCode;
