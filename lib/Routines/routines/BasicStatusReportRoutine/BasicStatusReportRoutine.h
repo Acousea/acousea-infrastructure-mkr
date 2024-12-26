@@ -6,11 +6,11 @@
 #include "IBatteryController.h"
 #include "RTCController.h"
 #include "Packet.h"
-#include "Packets/BasicReportPacket.h"
+#include "Packets/BasicStatusReportPacket.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
 
 
-class BasicSummaryReportRoutine : public IRoutine<VoidType> {
+class BasicStatusReportRoutine : public IRoutine<VoidType> {
     IGPS *gps;
     IBatteryController *battery;
     RTCController *rtc;
@@ -19,7 +19,7 @@ class BasicSummaryReportRoutine : public IRoutine<VoidType> {
 public:
     CLASS_NAME(BasicSummaryReportRoutine)
 
-    BasicSummaryReportRoutine(IGPS *gps, IBatteryController *battery, RTCController *rtc,
+    BasicStatusReportRoutine(IGPS *gps, IBatteryController *battery, RTCController *rtc,
                               NodeConfigurationRepository &nodeConfigurationRepository);
 
     Result<Packet> execute() override;

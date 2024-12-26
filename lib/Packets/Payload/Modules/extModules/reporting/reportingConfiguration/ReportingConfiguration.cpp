@@ -24,6 +24,18 @@ uint16_t ReportingConfiguration::getPeriod() const { return period; }
 
 ReportingConfiguration::ReportType ReportingConfiguration::getReportType() const { return reportType; }
 
+std::string ReportingConfiguration::getReportTypeString() const {
+    switch (reportType) {
+        case ReportType::COMPLETE:
+            return "COMPLETE";
+        case ReportType::BASIC:
+            return "BASIC";
+        case ReportType::SUMMARY:
+            return "SUMMARY";
+    }
+    return "UNKNOWN";
+}
+
 std::vector<uint8_t> ReportingConfiguration::toBytes() const {
     return {
             modeId,

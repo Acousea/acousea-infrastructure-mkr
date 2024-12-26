@@ -3,9 +3,9 @@
 
 #include <Packet.h>
 
-class BasicReportPacket : public Packet {
+class BasicStatusReportPacket : public Packet {
 public:
-    BasicReportPacket(const RoutingChunk &routingChunk,
+    BasicStatusReportPacket(const RoutingChunk &routingChunk,
                       const BatteryModule &battery,
                       const LocationModule &location,
                       const RTCModule &rtc);

@@ -1,9 +1,9 @@
-#include "CompleteSummaryReportRoutine.h"
+#include "CompleteStatusReportRoutine.h"
 
-CompleteSummaryReportRoutine::CompleteSummaryReportRoutine(NodeConfigurationRepository &nodeConfigurationRepository)
+CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationRepository &nodeConfigurationRepository)
         : IRoutine(getClassNameString()), nodeConfigurationRepository(nodeConfigurationRepository) {}
 
-Result<Packet> CompleteSummaryReportRoutine::execute() {
+Result<Packet> CompleteStatusReportRoutine::execute() {
     // Extract a Summary struct from the packet
     NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
 
@@ -12,7 +12,7 @@ Result<Packet> CompleteSummaryReportRoutine::execute() {
 
 }
 
-CompleteSummaryReportRoutine::CompleteSummaryReportRoutine(const std::string &name, IGPS *gps,
+CompleteStatusReportRoutine::CompleteStatusReportRoutine(const std::string &name, IGPS *gps,
                                                            IBatteryController *battery, RTCController *rtc,
                                                            NodeConfigurationRepository &nodeConfigurationRepository)
         : IRoutine(name), gps(gps), battery(battery), rtc(rtc),

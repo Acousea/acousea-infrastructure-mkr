@@ -17,7 +17,9 @@ std::vector<uint8_t> Packet::toBytes() const {
     buffer.insert(buffer.end(), routingBytes.begin(), routingBytes.end());
 
     std::visit([&buffer](const auto &payload) {
-        buffer.push_back(static_cast<uint8_t>(payload.getBytesSize()));
+        const uint16_t size = payload.getBytesSize();
+        buffer.push_back(static_cast<uint8_t>(size >> 8));
+        buffer.push_back(static_cast<uint8_t>(size & 0xFF));
         const auto payloadBytes = payload.toBytes();
         buffer.insert(buffer.end(), payloadBytes.begin(), payloadBytes.end());
     }, payload);
@@ -26,6 +28,7 @@ std::vector<uint8_t> Packet::toBytes() const {
     buffer.push_back(static_cast<uint8_t>(checksum & 0xFF));
     return buffer;
 }
+
 
 Packet Packet::fromBytes(const std::vector<uint8_t> &data) {
     if (data.size() < 7) { // SYNC_BYTE + OP_CODE + ROUTING_CHUNK (3 bytes) + PAYLOAD_LENGTH + CRC (2 bytes)
@@ -115,7 +118,9 @@ void Packet::computeChecksum() {
     buffer.insert(buffer.end(), routingBytes.begin(), routingBytes.end());
 
     std::visit([&buffer](const auto &payload) {
-        buffer.push_back(static_cast<uint8_t>(payload.getBytesSize()));
+        const uint16_t size = payload.getBytesSize();
+        buffer.push_back(static_cast<uint8_t>(size >> 8));
+        buffer.push_back(static_cast<uint8_t>(size & 0xFF));
         const auto payloadBytes = payload.toBytes();
         buffer.insert(buffer.end(), payloadBytes.begin(), payloadBytes.end());
     }, payload);

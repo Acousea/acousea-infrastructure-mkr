@@ -26,6 +26,8 @@ public:
 
     [[nodiscard]] ReportType getReportType() const;
 
+    std::string getReportTypeString() const;
+
     // Serialización a bytes
     [[nodiscard]] std::vector<uint8_t> toBytes() const;
 

@@ -31,6 +31,7 @@
 
 #include <PMICBatteryController/PMICBatteryController.h>
 #include <AdafruitLCBatteryController/AdafruitLCBatteryController.h>
+#include <MockBatteryController/MockBatteryController.h>
 //#include <SolarXBatteryController/SolarXBatteryController.h>
 
 #include <MockGPS/MockGPS.h>
@@ -53,7 +54,7 @@
 #include <Routing/RoutingChunk/RoutingChunk.h>
 
 #include <Packet.h>
-#include <Packets/BasicReportPacket.h>
+#include <Packets/BasicStatusReportPacket.h>
 
 #include <Payload/Payload.h>
 #include <Payload/Payloads/setConfig/NewNodeConfigurationPayload.h>
@@ -93,8 +94,8 @@
 #include <Router.h>
 
 #include <routines/SetNodeConfigurationRoutine/SetNodeConfigurationRoutine.h>
-#include <routines/CompleteSummaryReportRoutine/CompleteSummaryReportRoutine.h>
-#include <routines/BasicSummaryReportRoutine/BasicSummaryReportRoutine.h>
+#include <routines/CompleteStatusReportRoutine/CompleteStatusReportRoutine.h>
+#include <routines/BasicStatusReportRoutine/BasicStatusReportRoutine.h>
 
 #include <NodeConfiguration/NodeConfiguration.h>
 #include <NodeConfigurationRepository/NodeConfigurationRepository.h>

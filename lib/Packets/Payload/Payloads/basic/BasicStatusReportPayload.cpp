@@ -1,8 +1,10 @@
 #include "BasicStatusReportPayload.h"
 
-BasicStatusReportPayload::BasicStatusReportPayload(const BatteryModule &battery, const LocationModule &location,
+BasicStatusReportPayload::BasicStatusReportPayload(const BatteryModule &battery,
+                                                   const LocationModule &location,
                                                    const RTCModule &rtc)
-        : battery(battery), location(location), rtc(rtc) {}
+    : battery(battery), location(location), rtc(rtc) {
+}
 
 uint16_t BasicStatusReportPayload::getBytesSize() const {
     return static_cast<uint16_t>(battery.toBytes().size() +

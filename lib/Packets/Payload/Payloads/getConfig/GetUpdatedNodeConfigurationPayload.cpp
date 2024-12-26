@@ -4,7 +4,7 @@ GetUpdatedNodeConfigurationPayload::GetUpdatedNodeConfigurationPayload(const std
         moduleCodes) {}
 
 uint16_t GetUpdatedNodeConfigurationPayload::getBytesSize() const {
-    auto size = static_cast<uint16_t>(moduleCodes.size() * sizeof(ModuleCode::TYPES));
+    const auto size = static_cast<uint16_t>(moduleCodes.size() * sizeof(ModuleCode::TYPES));
     return size;
 }
 

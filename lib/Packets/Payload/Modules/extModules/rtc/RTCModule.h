@@ -25,6 +25,10 @@ private:
     
     static std::vector<uint8_t> serializeValue(std::time_t currentTime);
 
+    static uint64_t timeTToUint64(std::time_t value);
+
+    static std::time_t uint64ToTimeT(uint64_t value);
+
 private:
     std::time_t currentTime; 
 };

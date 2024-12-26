@@ -4,8 +4,8 @@
 
 #include "IRunnable.h"
 #include "Router.h"
-#include "routines/CompleteSummaryReportRoutine/CompleteSummaryReportRoutine.h"
-#include "routines/BasicSummaryReportRoutine/BasicSummaryReportRoutine.h"
+#include "routines/CompleteStatusReportRoutine/CompleteStatusReportRoutine.h"
+#include "routines/BasicStatusReportRoutine/BasicStatusReportRoutine.h"
 
 
 /**

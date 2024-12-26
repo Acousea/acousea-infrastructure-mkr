@@ -50,7 +50,8 @@ void NodeOperationRunner::checkIfMustTransition() {
 
 bool NodeOperationRunner::mustReport(const unsigned long currentMinute, const unsigned long reportingPeriod,
                                      const unsigned long lastReportMinute) {
-    return currentMinute - lastReportMinute >= reportingPeriod && reportingPeriod != 0;
+    return (currentMinute - lastReportMinute >= reportingPeriod && reportingPeriod != 0)
+           || lastReportMinute == 0;
 }
 
 void NodeOperationRunner::runRoutines() {
@@ -89,7 +90,7 @@ void NodeOperationRunner::processRoutine(const ReportingConfiguration &config, I
                                          unsigned long currentMinute, unsigned long &lastReportMinute) {
     IRoutine<VoidType> *routine = nullptr;
 
-    Logger::logInfo("Executing routine for report type: " + static_cast<char>(config.getReportType()));
+    Logger::logInfo("Executing routine for report type: " + config.getReportTypeString());
     switch (config.getReportType()) {
         case ReportingConfiguration::ReportType::COMPLETE:
             routine = internalRoutines.find(OperationCode::Code::COMPLETE_STATUS_REPORT)->second;

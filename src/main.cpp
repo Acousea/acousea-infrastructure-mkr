@@ -67,11 +67,11 @@ void setup() {
     }
 
     // Inicializa el GPS
-    // gps->init();
+    gps->init();
 
     // Inicializa el controlador de tiempo real
-    // rtcController.init();
-    // rtcController.syncTime(gps->getTimestamp());
+    rtcController.init();
+    rtcController.syncTime(gps->getTimestamp());
 
     // Logger initialization and configuration
     Logger::initialize(&sdManager, "/log.csv", Logger::Mode::Both);
@@ -110,7 +110,8 @@ void setup() {
 
     // Inicializa el comunicador Iridium
 #if MODE == DRIFTER_MODE
-    realIridiumPort.init();
+    // realIridiumPort.init();
+    mockIridiumPort.init();
 #elif MODE == LOCALIZER_MODE
     mockIridiumPort.init();
 #endif
@@ -119,7 +120,7 @@ void setup() {
 void loop() {
     static unsigned long lastTime = 0;
     // Operate every 60 seconds
-    if (millis() - lastTime >= 60000) {
+    if (millis() - lastTime >= 60000 || lastTime == 0) {
         lastTime = millis();
         SerialUSB.println("Operating Node...");
         nodeOperationRunner.init();

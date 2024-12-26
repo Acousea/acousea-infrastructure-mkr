@@ -5,7 +5,8 @@
 
 PMICBatteryController pmicBatteryController;
 AdafruitLCBatteryController adafruitLCBatteryController;
-IBatteryController *battery = &adafruitLCBatteryController;
+MockBatteryController mockBatteryController;
+IBatteryController *battery = &mockBatteryController;
 
 // Instancia de la pantalla
 AdafruitDisplay adafruitDisplay;
@@ -24,7 +25,7 @@ MockIridiumPort mockIridiumPort;
 MockGPS mockGPS(0.0, 0.0, 1.0);
 MKRGPS mkrGPS;
 UBloxGNSS uBloxGPS;
-IGPS *gps = &mkrGPS;
+IGPS *gps = &mockGPS;
 
 // Instancia del controlador de tiempo real
 RTCController rtcController;
@@ -35,8 +36,8 @@ NodeConfigurationRepository nodeConfigurationRepository(sdManager, "config.txt")
 
 // Instancias de rutinas de servicio
 SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository);
-CompleteSummaryReportRoutine completeSummaryReportRoutine(nodeConfigurationRepository);
-BasicSummaryReportRoutine basicSummaryReportRoutine(gps, battery, &rtcController, nodeConfigurationRepository);
+CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationRepository);
+BasicStatusReportRoutine basicSummaryReportRoutine(gps, battery, &rtcController, nodeConfigurationRepository);
 
 std::map<OperationCode::Code, IRoutine<Packet> *> configurationRoutines = {
         {OperationCode::Code::SET_NODE_DEVICE_CONFIG, &setNodeConfigurationRoutine},
@@ -49,7 +50,7 @@ std::map<OperationCode::Code, IRoutine<VoidType> *> reportingRoutines = {
 
 // Instancia del router
 Router router = Router(
-//        {&serialPort, &realLoraPort, &realIridiumPort}
+        // {&serialPort, &realLoraPort, &realIridiumPort}
         {&serialPort, &mockLoraPort, &mockIridiumPort}
 );
 

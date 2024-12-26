@@ -14,7 +14,7 @@
  * so that it can be retrieved by the corresponding operation mode that sends reports to the backend
  * It returns a NullPacket since it does not need to send any response to the sendFrom
  */
-class CompleteSummaryReportRoutine : public IRoutine<VoidType> {
+class CompleteStatusReportRoutine : public IRoutine<VoidType> {
     IGPS *gps;
     IBatteryController *battery;
     RTCController *rtc;
@@ -23,9 +23,9 @@ class CompleteSummaryReportRoutine : public IRoutine<VoidType> {
 public:
     CLASS_NAME(CompleteSummaryReportRoutine)
 
-    CompleteSummaryReportRoutine(NodeConfigurationRepository &nodeConfigurationRepository);
+    CompleteStatusReportRoutine(NodeConfigurationRepository &nodeConfigurationRepository);
 
-    CompleteSummaryReportRoutine(const std::string &name, IGPS *gps, IBatteryController *battery, RTCController *rtc,
+    CompleteStatusReportRoutine(const std::string &name, IGPS *gps, IBatteryController *battery, RTCController *rtc,
                                  NodeConfigurationRepository &nodeConfigurationRepository);
 
     Result<Packet> execute() override;
