@@ -6,23 +6,34 @@ void Logger::initialize(SDManager *sdManager, const char *logFilePath, Mode mode
     Logger::mode = mode;
 }
 
+
 void Logger::logError(const std::string &errorMessage) {
-    std::string logType = "ERROR";
-    if (mode == Mode::SDCard && sdManager) {
-        logToSDCard(logType, errorMessage);
-    } else {
-        logToSerial(logType, errorMessage);
-    }
+    log("ERROR", errorMessage);
 }
 
 void Logger::logInfo(const std::string &infoMessage) {
-    std::string logType = "INFO";
-    if (mode == Mode::SDCard && sdManager) {
-        logToSDCard(logType, infoMessage);
-    } else {
-        logToSerial(logType, infoMessage);
+    log("INFO", infoMessage);
+}
+
+void Logger::log(const std::string &logType, const std::string &message) {
+    switch (mode) {
+        case Mode::SDCard:
+            if (sdManager) {
+                logToSDCard(logType, message);
+            } else {
+                logToSerial(logType, message);
+            }
+            break;
+        case Mode::SerialOnly:
+            logToSerial(logType, message);
+            break;
+        case Mode::Both:
+            logToSerial(logType, message);
+            logToSDCard(logType, message);
+            break;
     }
 }
+
 
 void Logger::printLog() {
     if (mode == Mode::SDCard && sdManager) {
@@ -45,22 +56,27 @@ bool Logger::clearLog() {
     return false;
 }
 
-std::string Logger::getTimestamp() {
-    time_t now = time(nullptr);
+void Logger::setCurrentTime(time_t time) {
+    Logger::currentTime = time;
+}
+
+std::string Logger::getTimestampString() {
     char buffer[20];
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", localtime(&currentTime));
     return std::string(buffer);
 }
 
 void Logger::logToSerial(const std::string &logType, const std::string &message) {
-    Serial.println(("[" + getTimestamp() + "] " + logType + ": " + message).c_str());
+    Serial.println(("[" + getTimestampString() + "] " + logType + ": " + message).c_str());
 }
 
 void Logger::logToSDCard(const std::string &logType, const std::string &message) {
     if (!sdManager) return;
 
-    std::string entry = getTimestamp() + "," + logType + "," + message + "\n";
+    std::string entry = getTimestampString() + "," + logType + "," + message + "\n";
     if (!sdManager->appendToFile(logFilePath, entry.c_str())) {
         Serial.println("Logger::logToSDCard() -> Failed to append to log file.");
     }
 }
+
+

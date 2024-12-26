@@ -5,6 +5,7 @@
 #include "SD.h"
 #include <cstdint>
 
+
 #define SDCARD_SS_PIN 4
 
 class SDManager {

@@ -12,7 +12,7 @@ bool SDManager::begin() {
     return true;
 }
 
-bool SDManager::appendToFile(const char* path, const String& content) {    
+bool SDManager::appendToFile(const char* path, const String& content) {
     File file = SD.open(path, FILE_WRITE);
     if (!file) {
         Serial.println("SDManager::appendToFile() -> Error opening file for writing");
@@ -71,13 +71,11 @@ void SDManager::listFiles(File dir, int numTabs) {
 
 bool SDManager::deleteFile(const char* path) {
     if (SD.exists(path)) {
-        SD.remove(path);        
+        SD.remove(path);
         Serial.print("SDManager::deleteFile() -> File: " + String(path) + " deleted.");
         return true;
     } else {
         Serial.print("SDManager::deleteFile() -> File: " + String(path) + " not found.");
-        
-        
         return false;
     }
 }

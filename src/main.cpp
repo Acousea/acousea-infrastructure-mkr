@@ -13,11 +13,22 @@ void setup() {
     // Inicializa la pantalla Adafruit
 //    adafruitDisplay.init();
 
-    // Initialize Logger in SerialOnly mode
-    Logger::initialize(&sdManager, "/log.csv", Logger::Mode::SerialOnly);
-
     // Inicializa el administrador de la tarjeta SD
-    sdManager.begin();
+    if (!sdManager.begin()) {
+        ErrorHandler::handleError("Failed to initialize SD card.");
+    }
+
+    // Inicializa el GPS
+    gps->init();
+
+    // Inicializa el controlador de tiempo real
+    rtcController.init();
+    rtcController.syncTime(gps->getTimestamp());
+
+    // Logger initialization and configuration
+    Logger::initialize(&sdManager, "/log.csv", Logger::Mode::Both);
+    Logger::logInfo("================ Setting up Node =================");
+    Logger::setCurrentTime(gps->getTimestamp());
 
     // Set a custom error handler
 //    ErrorHandler::setHandler([](const std::string &message) {
@@ -30,7 +41,7 @@ void setup() {
 
 
     // Resets the reporting periods to the default values
-    nodeConfigurationRepository.reset();
+//    nodeConfigurationRepository.reset();
 
     // Inicializa el repositorio de configuración
     nodeConfigurationRepository.init();
@@ -38,12 +49,7 @@ void setup() {
     // Inicializa el comunicador Serial
     serialPort.init();
 
-    // Inicializa el GPS
-//    gps->init();
 
-    // Inicializa el controlador de tiempo real
-//    rtcController.init();
-//    rtcController.syncTime(gps->getTimestamp());
 
     // Inicializa el administrador de energía
     adafruitLCBatteryController.init();

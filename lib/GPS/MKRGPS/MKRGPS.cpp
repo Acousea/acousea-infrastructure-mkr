@@ -1,34 +1,32 @@
 #include "MKRGPS.h"
 
-#include <Wire.h>
 
 bool MKRGPS::init() {
-    Serial.println("Initializing GNSS ...");
+    Logger::logInfo("Initializing GNSS ...");
 
     if (!GPS.begin()) {
-        Serial.println("GNSS initialization failed!");
+        Logger::logInfo("GNSS initialization failed!");
         return false;
     }
 
-    Serial.println("Awaiting first GNSS fix ...");
+    Logger::logInfo("Awaiting first GNSS fix ...");
 
     unsigned long startMillis = millis();
     while (!GPS.available() && ((millis() - startMillis) < GNSS_MAX_FIX_TIME_MS)) {
         delay(500);
     }
+    unsigned long endMillis = millis();
 
-    if (GPS.available()) {
-        unsigned long endMillis = millis();
-        char buffer[50];
-        snprintf(buffer, sizeof(buffer), "Fix: %lu sec\n", (endMillis - startMillis) / 1000);
-        Serial.print(buffer);
-        return true;
-    } else {
-        char buffer[50];
-        snprintf(buffer, sizeof(buffer), "ERROR: NO GNSS fix after %lu sec\n", (millis() - startMillis) / 1000);
-        Serial.print(buffer);
+    char buffer[50];
+    if (endMillis - startMillis >= GNSS_MAX_FIX_TIME_MS) {
+        snprintf(buffer, sizeof(buffer), "ERROR: NO GNSS fix after %lu sec\n", (endMillis - startMillis) / 1000);
+        Logger::logInfo(buffer);
         return false;
     }
+    snprintf(buffer, sizeof(buffer), "Fix: %lu sec\n", (endMillis - startMillis) / 1000);
+    Logger::logInfo(buffer);
+    return true;
+
 }
 
 GPSLocation MKRGPS::read() {
@@ -41,15 +39,15 @@ GPSLocation MKRGPS::read() {
     if (GPS.available()) {
         latitude = GPS.latitude();
         longitude = GPS.longitude();
-        return { latitude, longitude };        
+        return {latitude, longitude};
     } else {
-        Serial.println("No GNSS data available");
+        Logger::logInfo("No GNSS data available");
         // Create a GPSLocation with invalid data (-1)
-        return { -1, -1 };        
+        return {-1, -1};
     }
 }
 
-unsigned long MKRGPS::getTimestamp() {    
+unsigned long MKRGPS::getTimestamp() {
     return GPS.getTime();
 }
 

@@ -1,8 +1,10 @@
 #ifndef MKRGPS_H
 #define MKRGPS_H
 
+#include <Wire.h>
 #include "../IGPS.h"
 #include "Arduino_MKRGPS.h"
+#include "Logger/Logger.h"
 
 class MKRGPS : public IGPS
 {
