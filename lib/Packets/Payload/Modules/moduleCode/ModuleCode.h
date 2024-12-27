@@ -18,10 +18,10 @@ public:
         AMBIENT = 'T',
         PAM_MODULE = 'M',
         ICLISTEN_COMPLETE = 'i',
-        ICLISTEN_LOGGING = 'l',
-        ICLISTEN_RECORDING_STATS = 'r',
         ICLISTEN_STATUS = 's',
+        ICLISTEN_LOGGING_CONFIG = 'l',
         ICLISTEN_STREAMING_CONFIG = 'c',
+        ICLISTEN_RECORDING_STATS = 'r',
     };
 
     // Constructor para inicializar desde un tipo específico

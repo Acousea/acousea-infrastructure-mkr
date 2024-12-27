@@ -6,7 +6,7 @@
 #include "IBatteryController.h"
 #include "RTCController.h"
 #include "Packet.h"
-#include "Packets/BasicStatusReportPacket.h"
+#include "Packets/reports/BasicStatusReportPacket.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
 
 

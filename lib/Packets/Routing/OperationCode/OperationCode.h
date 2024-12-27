@@ -14,7 +14,8 @@ public:
         BASIC_STATUS_REPORT = 's',
         SET_NODE_DEVICE_CONFIG = 'C',
         GET_UPDATED_NODE_DEVICE_CONFIG = 'U',
-        ICLISTEN_CONFIG = 'I',
+        GET_ICLISTEN_CONFIG = 'I',
+        SET_ICLISTEN_CONFIG = 'i',
     };
     static OperationCode completeStatusReport();
 

@@ -1,19 +1,42 @@
 #include "CompleteStatusReportRoutine.h"
 
-CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationRepository &nodeConfigurationRepository)
-        : IRoutine(getClassNameString()), nodeConfigurationRepository(nodeConfigurationRepository) {}
+
+
+CompleteStatusReportRoutine::CompleteStatusReportRoutine(IGPS *gps,
+                                                         IBatteryController *battery,
+                                                         NodeConfigurationRepository &nodeConfigurationRepository,
+                                                         ICListenService &icListenService
+)
+    : IRoutine(getClassNameString()),
+      gps(gps),
+      battery(battery),
+      nodeConfigurationRepository(nodeConfigurationRepository),
+      icListenService(icListenService) {
+}
 
 Result<Packet> CompleteStatusReportRoutine::execute() {
     // Extract a Summary struct from the packet
-    NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
+    const NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
+    const auto batteryPercentage = battery->percentage();
+    const auto batteryStatus = battery->status();
+    const auto [latitude, longitude] = gps->read();
+
+    const auto icListenConfig = icListenService.getCache()->getHFCompleteConfiguration();
+
+    if (!icListenConfig.isSuccess()) {
+        icListenService.getRequester()->fetchHFConfiguration();
+        return Result<Packet>::failure("ICListenHF configuration not available yet. Requesting from ICListenService.");
+    }
 
     return Result<Packet>::success(
-            ErrorPacket::invalidOpcode(RoutingChunk::fromNodeToBackend(nodeConfig.getLocalAddress())));
+        CompleteStatusReportPacket(
+            RoutingChunk::fromNodeToBackend(Address(nodeConfig.getLocalAddress())),
+            BatteryModule::from(batteryStatus, batteryPercentage),
+            AmbientModule::from(0, 0),
+            LocationModule::from(latitude, longitude),
+            StorageModule::from(0, 0),
+            icListenConfig.getValue()
+        )
 
+    );
 }
-
-CompleteStatusReportRoutine::CompleteStatusReportRoutine(const std::string &name, IGPS *gps,
-                                                           IBatteryController *battery, RTCController *rtc,
-                                                           NodeConfigurationRepository &nodeConfigurationRepository)
-        : IRoutine(name), gps(gps), battery(battery), rtc(rtc),
-          nodeConfigurationRepository(nodeConfigurationRepository) {}

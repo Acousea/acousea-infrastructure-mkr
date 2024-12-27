@@ -6,6 +6,7 @@
 #include "Router.h"
 #include "routines/CompleteStatusReportRoutine/CompleteStatusReportRoutine.h"
 #include "routines/BasicStatusReportRoutine/BasicStatusReportRoutine.h"
+#include <Packets/ErrorPacket.h>
 
 
 /**

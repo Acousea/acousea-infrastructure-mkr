@@ -54,13 +54,17 @@
 #include <Routing/RoutingChunk/RoutingChunk.h>
 
 #include <Packet.h>
-#include <Packets/BasicStatusReportPacket.h>
+#include <Packets/reports/BasicStatusReportPacket.h>
+#include <Packets/reports/CompleteStatusReportPacket.h>
 
 #include <Payload/Payload.h>
 #include <Payload/Payloads/setConfig/NewNodeConfigurationPayload.h>
 #include <Payload/Payloads/getConfig/GetUpdatedNodeConfigurationPayload.h>
 #include <Payload/Payloads/complete/CompleteStatusReportPayload.h>
 #include <Payload/Payloads/basic/BasicStatusReportPayload.h>
+#include <Payload/Payloads/iclisten/FetchICListenConfigurationPayload.h>
+#include <Payload/Payloads/iclisten/SetICListenConfigurationPayload.h>
+
 #include <Payload/Payloads/error/ErrorPayload.h>
 
 #include <Payload/Modules/SerializableModule.h>
@@ -85,7 +89,7 @@
 #include <Payload/Modules/pamModules/PamModule.h>
 #include <Payload/Modules/pamModules/ICListen/ICListenHF.h>
 #include <Payload/Modules/pamModules/ICListen/implementation/status/ICListenStatus.h>
-#include <Payload/Modules/pamModules/ICListen/implementation/logging/ICListenLogigngConfig.h>
+#include <Payload/Modules/pamModules/ICListen/implementation/logging/ICListenLoggingConfig.h>
 #include <Payload/Modules/pamModules/ICListen/implementation/streaming/ICListenStreamingConfig.h>
 #include <Payload/Modules/pamModules/ICListen/implementation/stats/ICListenRecordingStats.h>
 
@@ -96,11 +100,14 @@
 #include <routines/SetNodeConfigurationRoutine/SetNodeConfigurationRoutine.h>
 #include <routines/CompleteStatusReportRoutine/CompleteStatusReportRoutine.h>
 #include <routines/BasicStatusReportRoutine/BasicStatusReportRoutine.h>
+#include <routines/StoreICListenConfigurationRoutine/StoreICListenConfigurationRoutine.h>
 
 #include <NodeConfiguration/NodeConfiguration.h>
 #include <NodeConfigurationRepository/NodeConfigurationRepository.h>
 
 #include <NodeOperationRunner/NodeOperationRunner.h>
+
+#include <ICListenService/ICListenService.h>
 
 
 #endif

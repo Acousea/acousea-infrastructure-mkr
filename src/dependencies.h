@@ -3,62 +3,39 @@
 
 #include <libraries.h>
 
-PMICBatteryController pmicBatteryController;
-AdafruitLCBatteryController adafruitLCBatteryController;
-MockBatteryController mockBatteryController;
-IBatteryController *battery = &mockBatteryController;
+extern PMICBatteryController pmicBatteryController;
+extern AdafruitLCBatteryController adafruitLCBatteryController;
+extern MockBatteryController mockBatteryController;
+extern IBatteryController *battery;
 
-// Instancia de la pantalla
-AdafruitDisplay adafruitDisplay;
-SerialUSBDisplay serialUSBDisplay;
-IDisplay *display = &serialUSBDisplay;
+extern AdafruitDisplay adafruitDisplay;
+extern SerialUSBDisplay serialUSBDisplay;
+extern IDisplay *display;
 
-// Instancias de puertos de comunicación
-SerialPort serialPort(&Serial1, 9600); // Serial1 is the hardware serial port PINS 13 and 14
-LoraPort realLoraPort;
-IridiumPort realIridiumPort;
-MockLoRaPort mockLoraPort;
-MockIridiumPort mockIridiumPort;
+extern SerialPort serialPort;
+extern LoraPort realLoraPort;
+extern IridiumPort realIridiumPort;
+extern MockLoRaPort mockLoraPort;
+extern MockIridiumPort mockIridiumPort;
 
+extern MockGPS mockGPS;
+extern MKRGPS mkrGPS;
+extern UBloxGNSS uBloxGPS;
+extern IGPS *gps;
 
-// Instancias del GPS
-MockGPS mockGPS(0.0, 0.0, 1.0);
-MKRGPS mkrGPS;
-UBloxGNSS uBloxGPS;
-IGPS *gps = &mockGPS;
+extern RTCController rtcController;
+extern SDManager sdManager;
+extern Router router;
+extern NodeConfigurationRepository nodeConfigurationRepository;
+extern ICListenService icListenService;
 
-// Instancia del controlador de tiempo real
-RTCController rtcController;
+extern SetNodeConfigurationRoutine setNodeConfigurationRoutine;
+extern CompleteStatusReportRoutine completeSummaryReportRoutine;
+extern BasicStatusReportRoutine basicSummaryReportRoutine;
 
-SDManager sdManager;
+extern std::map<OperationCode::Code, IRoutine<Packet> *> configurationRoutines;
+extern std::map<OperationCode::Code, IRoutine<VoidType> *> reportingRoutines;
 
-NodeConfigurationRepository nodeConfigurationRepository(sdManager, "config.txt");
-
-// Instancias de rutinas de servicio
-SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository);
-CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationRepository);
-BasicStatusReportRoutine basicSummaryReportRoutine(gps, battery, &rtcController, nodeConfigurationRepository);
-
-std::map<OperationCode::Code, IRoutine<Packet> *> configurationRoutines = {
-        {OperationCode::Code::SET_NODE_DEVICE_CONFIG, &setNodeConfigurationRoutine},
-};
-
-std::map<OperationCode::Code, IRoutine<VoidType> *> reportingRoutines = {
-        {OperationCode::Code::BASIC_STATUS_REPORT,    &basicSummaryReportRoutine},
-        {OperationCode::Code::COMPLETE_STATUS_REPORT, &completeSummaryReportRoutine},
-};
-
-// Instancia del router
-Router router = Router(
-        // {&serialPort, &realLoraPort, &realIridiumPort}
-        {&serialPort, &mockLoraPort, &mockIridiumPort}
-);
-
-// Instancia del runner
-NodeOperationRunner nodeOperationRunner(router,
-                                        reportingRoutines,
-                                        configurationRoutines,
-                                        nodeConfigurationRepository
-);
+extern NodeOperationRunner nodeOperationRunner;
 
 #endif // DEPENDENCIES_H

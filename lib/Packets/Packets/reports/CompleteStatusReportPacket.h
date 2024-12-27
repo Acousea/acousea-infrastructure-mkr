@@ -3,9 +3,9 @@
 
 #include "Packet.h"
 
-class CompleteReportPacket : public Packet {
+class CompleteStatusReportPacket : public Packet {
 public:
-    CompleteReportPacket(const RoutingChunk &routingChunk,
+    CompleteStatusReportPacket(const RoutingChunk &routingChunk,
                          const BatteryModule &battery,
                          const AmbientModule &ambient,
                          const LocationModule &location,

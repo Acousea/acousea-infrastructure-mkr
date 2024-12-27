@@ -11,15 +11,28 @@ public:
         return Result<T>(value, "");
     }
 
+    static Result<T> emptySuccess() {
+        return Result<T>(std::nullopt, "");
+    }
+
     static Result<T> failure(const std::string &errorMessage) {
         return Result<T>(std::nullopt, errorMessage);
+    }
+
+    static Result<T> fromOptional(std::optional<T> value, const std::string &errorMessage) {
+        if (value.has_value()) {
+            return success(value.value());
+        }
+        return failure(errorMessage);
     }
 
     [[nodiscard]] bool isSuccess() const { return errorMessage.empty(); }
 
     [[nodiscard]] bool isError() const { return !isSuccess(); }
 
-    const T &getValue() const { return value.value(); }
+    [[nodiscard]] bool isEmpty() const { return !value.has_value(); }
+
+    [[nodiscard]] const T &getValue() const { return value.value(); }
 
     [[nodiscard]] const std::string &getError() const { return errorMessage; }
 
@@ -28,7 +41,8 @@ private:
     std::string errorMessage;
 
     Result(std::optional<T> value, std::string errorMessage)
-            : value(std::move(value)), errorMessage(std::move(errorMessage)) {}
+        : value(std::move(value)), errorMessage(std::move(errorMessage)) {
+    }
 };
 
 #endif // RESULT_H

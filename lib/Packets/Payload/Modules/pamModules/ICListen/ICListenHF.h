@@ -13,13 +13,11 @@ public:
     ICListenHF(const ICListenStatus &status, const ICListenLoggingConfig &loggingConfig,
                const ICListenStreamingConfig &streamingConfig, const ICListenRecordingStats &recordingStats);
 
-
-
-private:
-    ICListenStatus status;
-    ICListenLoggingConfig loggingConfig;
-    ICListenStreamingConfig streamingConfig;
-    ICListenRecordingStats recordingStats;
+public:
+    const ICListenStatus status;
+    const ICListenLoggingConfig loggingConfig;
+    const ICListenStreamingConfig streamingConfig;
+    const ICListenRecordingStats recordingStats;
 };
 
 #endif //ACOUSEA_MKR1310_NODES_ICLISTENHF_H

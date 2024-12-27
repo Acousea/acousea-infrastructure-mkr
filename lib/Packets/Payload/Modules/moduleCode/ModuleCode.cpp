@@ -36,7 +36,7 @@ std::string ModuleCode::toString() const {
         case TYPES::ICLISTEN_COMPLETE:
             typeStr = "ICLISTEN_COMPLETE";
             break;
-        case TYPES::ICLISTEN_LOGGING:
+        case TYPES::ICLISTEN_LOGGING_CONFIG:
             typeStr = "ICLISTEN_LOGGING";
             break;
         case TYPES::ICLISTEN_RECORDING_STATS:

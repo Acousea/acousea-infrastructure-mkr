@@ -1,18 +1,34 @@
-#ifndef ACOUSEA_MKR1310_NODES_ICLISTENLOGIGNGCONFIG_H
-#define ACOUSEA_MKR1310_NODES_ICLISTENLOGIGNGCONFIG_H
-
+#ifndef ACOUSEA_MKR1310_NODES_ICLISTENLOGGINGCONFIG_H
+#define ACOUSEA_MKR1310_NODES_ICLISTENLOGGINGCONFIG_H
 
 #include "../../../../SerializableModule.h"
 
 class ICListenLoggingConfig : public SerializableModule {
 public:
+    // Constructor estándar
     ICListenLoggingConfig(int gain, int waveformSampleRate, int waveformLoggingMode,
                           int waveformLogLength, int bitDepth, int fftSampleRate, int fftProcessingType,
                           int fftsAccumulated, int fftLoggingMode, int fftLogLength);
 
-    static ICListenLoggingConfig createDefault();
+    // Constructor de movimiento
+    ICListenLoggingConfig(ICListenLoggingConfig&& other) noexcept;
 
-    static ICListenLoggingConfig from(const std::vector<uint8_t> &data);
+    // Operador de asignación por movimiento
+    ICListenLoggingConfig& operator=(ICListenLoggingConfig&& other) noexcept;
+
+    // Constructor y operador de copia eliminados
+    ICListenLoggingConfig(const ICListenLoggingConfig& other) noexcept;
+    ICListenLoggingConfig& operator=(const ICListenLoggingConfig& other) noexcept;
+
+    // Métodos estáticos
+    static ICListenLoggingConfig createDefault();
+    static ICListenLoggingConfig fromBytes(const std::vector<uint8_t>& data);
+
+private:
+    static std::vector<uint8_t> serializeValues(int gain, int waveformSampleRate, int waveformLoggingMode,
+                                                int waveformLogLength, int bitDepth, int fftSampleRate,
+                                                int fftProcessingType, int fftsAccumulated, int fftLoggingMode,
+                                                int fftLogLength);
 
 public:
     const int gain;
@@ -25,13 +41,6 @@ public:
     const int fftsAccumulated;
     const int fftLoggingMode;
     const int fftLogLength;
-
-private:
-
-    std::vector<uint8_t>
-    serializeValues(uint16_t gain, int waveformSampleRate, uint8_t waveformLoggingMode, uint8_t waveformLogLength,
-                    uint8_t bitDepth, int fftSampleRate, uint16_t fftProcessingType, uint16_t fftsAccumulated,
-                    uint8_t fftLoggingMode, uint8_t fftLogLength);
 };
 
-#endif //ACOUSEA_MKR1310_NODES_ICLISTENLOGIGNGCONFIG_H
+#endif // ACOUSEA_MKR1310_NODES_ICLISTENLOGGINGCONFIG_H

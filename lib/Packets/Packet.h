@@ -4,6 +4,8 @@
 #include <utility>
 #include <vector>
 #include <variant>
+#include <Payload/Payloads/iclisten/FetchICListenConfigurationPayload.h>
+#include <Payload/Payloads/iclisten/SetICListenConfigurationPayload.h>
 
 
 #include "Routing/OperationCode/OperationCode.h"
@@ -15,17 +17,18 @@
 #include "Payload/Payloads/basic/BasicStatusReportPayload.h"
 #include "Payload/Payloads/error/ErrorPayload.h"
 #include "CRC/CRCUtils.h"
-#include "Payload/Payloads/iclisten/ICListenCompleteStatusPayload.h"
+
 
 
 // Define a variant type to hold different Payload types
 using PayloadVariant = std::variant<
-        GetUpdatedNodeConfigurationPayload,
-        NewNodeConfigurationPayload,
-        CompleteStatusReportPayload,
-        BasicStatusReportPayload,
-        ICListenCompleteStatusPayload,
-        ErrorPayload
+    GetUpdatedNodeConfigurationPayload,
+    NewNodeConfigurationPayload,
+    BasicStatusReportPayload,
+    CompleteStatusReportPayload,
+    SetICListenConfigurationPayload,
+    FetchICListenConfigurationPayload,
+    ErrorPayload
 >;
 
 class Packet {
@@ -37,6 +40,8 @@ public:
 
     Packet(const OperationCode &opCode, const RoutingChunk &routingChunk, PayloadVariant payload, uint16_t checksum);
 
+    Packet(const Packet &packet) = default;
+
     // Serializes the packet into a vector of bytes
     [[nodiscard]] std::vector<uint8_t> toBytes() const;
 
@@ -45,7 +50,6 @@ public:
 
     // Encodes the packet to a hex string
     [[nodiscard]] std::string encode() const;
-
 
     [[nodiscard]] const OperationCode &getOpCode() const;
 

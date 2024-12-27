@@ -146,9 +146,14 @@ void NodeOperationRunner::processPacket(IPort::PortType portType, const Packet &
     }
 
     const Result<Packet> result = externalRoutines[opCode]->execute(packet);
-    if (result.isError()) {
+    if (!result.isSuccess()) {
         Logger::logError(getClassNameString() + "Exception: " + result.getError());
         sendResponsePacket(portType, localAddress, ErrorPacket::invalidPayload(packet.getRoutingChunk()));
+        return;
+    }
+
+    if (result.isEmpty()) {
+        Logger::logInfo(getClassNameString() + "Execution successful but no response packe for OpCode: " + std::to_string(opCode));
         return;
     }
 

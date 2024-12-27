@@ -13,6 +13,55 @@ ICListenStatus ICListenStatus::createDefault() {
     return ICListenStatus(0, 0, 0.0, 0.0, 0.0, std::time(nullptr));
 }
 
+ICListenStatus::ICListenStatus(ICListenStatus &&other) noexcept: SerializableModule(ModuleCode::TYPES::ICLISTEN_STATUS,
+                                                                     serializeValues(other.unitStatus, other.batteryStatus, other.batteryPercentage,
+                                                                         other.temperature, other.humidity, other.timestamp)),
+                                                                 unitStatus(other.unitStatus),
+                                                                 batteryStatus(other.batteryStatus),
+                                                                 batteryPercentage(other.batteryPercentage),
+                                                                 temperature(other.temperature),
+                                                                 humidity(other.humidity),
+                                                                 timestamp(other.timestamp) {
+}
+
+ICListenStatus & ICListenStatus::operator=(ICListenStatus &&other) noexcept {
+    if (this != &other) {
+        SerializableModule::operator=(std::move(other));
+        const_cast<int &>(unitStatus) = other.unitStatus;
+        const_cast<int &>(batteryStatus) = other.batteryStatus;
+        const_cast<double &>(batteryPercentage) = other.batteryPercentage;
+        const_cast<double &>(temperature) = other.temperature;
+        const_cast<double &>(humidity) = other.humidity;
+        const_cast<std::time_t &>(timestamp) = other.timestamp;
+    }
+    return *this;
+}
+
+ICListenStatus::ICListenStatus(const ICListenStatus &other) noexcept
+    : SerializableModule(ModuleCode::TYPES::ICLISTEN_STATUS,
+                         serializeValues(other.unitStatus, other.batteryStatus, other.batteryPercentage,
+                                         other.temperature, other.humidity, other.timestamp)),
+      unitStatus(other.unitStatus),
+      batteryStatus(other.batteryStatus),
+      batteryPercentage(other.batteryPercentage),
+      temperature(other.temperature),
+      humidity(other.humidity),
+      timestamp(other.timestamp) {
+}
+
+ICListenStatus & ICListenStatus::operator=(const ICListenStatus &other) noexcept {
+    if (this != &other) {
+        SerializableModule::operator=(other);
+        const_cast<int &>(unitStatus) = other.unitStatus;
+        const_cast<int &>(batteryStatus) = other.batteryStatus;
+        const_cast<double &>(batteryPercentage) = other.batteryPercentage;
+        const_cast<double &>(temperature) = other.temperature;
+        const_cast<double &>(humidity) = other.humidity;
+        const_cast<std::time_t &>(timestamp) = other.timestamp;
+    }
+    return *this;
+}
+
 std::vector<uint8_t>
 ICListenStatus::serializeValues(int unitStatus, int batteryStatus, double batteryPercentage, double temperature,
                                 double humidity, std::time_t timestamp) {
@@ -30,7 +79,7 @@ ICListenStatus::serializeValues(int unitStatus, int batteryStatus, double batter
     return value;
 }
 
-ICListenStatus ICListenStatus::from(const std::vector<uint8_t> &data) {
+ICListenStatus ICListenStatus::fromBytes(const std::vector<uint8_t> &data) {
     if (data.size() < 25) {
         ErrorHandler::handleError("Invalid data size for ICListenStatus");
 //        throw std::invalid_argument("Invalid data size for ICListenStatus");

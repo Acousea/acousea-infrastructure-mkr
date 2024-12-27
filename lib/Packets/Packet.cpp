@@ -46,7 +46,7 @@ Packet Packet::fromBytes(const std::vector<uint8_t> &data) {
     OperationCode opCode = OperationCode::fromValue(static_cast<char>(data[1]));
     RoutingChunk routingChunk = RoutingChunk::fromBytes({data.begin() + 2, data.begin() + 5});
     uint8_t payloadLength = data[5];
-    if (data.size() < (unsigned int) 7 + payloadLength) {
+    if (data.size() < static_cast<unsigned int>(7) + payloadLength) {
         ErrorHandler::handleError("Payload length mismatch");
     }
 
@@ -60,6 +60,14 @@ Packet Packet::fromBytes(const std::vector<uint8_t> &data) {
         case OperationCode::Code::SET_NODE_DEVICE_CONFIG: {
             return {opCode, routingChunk, NewNodeConfigurationPayload::fromBytes(payloadData), crc};
         }
+        case OperationCode::Code::SET_ICLISTEN_CONFIG: {
+            return {opCode, routingChunk, SetICListenConfigurationPayload::fromBytes(payloadData), crc};
+        }
+        case OperationCode::Code::GET_ICLISTEN_CONFIG: {
+            return {opCode, routingChunk, FetchICListenConfigurationPayload::fromBytes(payloadData), crc};
+        }
+
+
         default:
             ErrorHandler::handleError("Invalid operation code");
 //                throw std::runtime_error("Invalid operation code");

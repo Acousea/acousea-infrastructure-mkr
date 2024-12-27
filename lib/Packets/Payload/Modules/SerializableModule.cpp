@@ -1,5 +1,26 @@
 #include "SerializableModule.h"
 
+SerializableModule& SerializableModule::operator=(SerializableModule&& other) noexcept {
+    if (this != &other) {
+        // Reasignar miembros `const` usando `const_cast`
+        const_cast<uint8_t&>(TYPE) = std::move(other.TYPE);
+        const_cast<std::vector<uint8_t>&>(VALUE) = std::move(other.VALUE);
+    }
+    return *this;
+}
+
+SerializableModule::SerializableModule(const SerializableModule &other) noexcept
+    : TYPE(other.TYPE), VALUE(other.VALUE) {
+}
+
+SerializableModule& SerializableModule::operator=(const SerializableModule& other) noexcept {
+    if (this != &other) {
+        const_cast<uint8_t&>(TYPE) = other.TYPE;
+        const_cast<std::vector<uint8_t>&>(VALUE) = other.VALUE;
+    }
+    return *this;
+}
+
 std::vector<uint8_t> SerializableModule::toBytes() const {
     std::vector<uint8_t> bytes;
     bytes.reserve(VALUE.size() + 2);
