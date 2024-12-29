@@ -159,3 +159,17 @@ ICListenStreamingConfig ICListenStreamingConfig::fromBytes(const std::vector<uin
                                    waveformDuration, recordFFT, processFFT, fftProcessingType, fftInterval,
                                    fftDuration, timestamp);
 }
+
+std::string ICListenStreamingConfig::toString() const {
+    return "ICListenStreamingConfig { recordWaveform: " + std::to_string(recordWaveform) +
+           ", processWaveform: " + std::to_string(processWaveform) +
+           ", waveformProcessingType: " + std::to_string(waveformProcessingType) +
+           ", waveformInterval: " + std::to_string(waveformInterval) +
+           ", waveformDuration: " + std::to_string(waveformDuration) +
+           ", recordFFT: " + std::to_string(recordFFT) +
+           ", processFFT: " + std::to_string(processFFT) +
+           ", fftProcessingType: " + std::to_string(fftProcessingType) +
+           ", fftInterval: " + std::to_string(fftInterval) +
+           ", fftDuration: " + std::to_string(fftDuration) +
+           ", timestamp: " + std::to_string(timestamp) + " }";
+}

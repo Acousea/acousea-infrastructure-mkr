@@ -28,6 +28,8 @@ public:
     static ICListenStreamingConfig createDefault();
     static ICListenStreamingConfig fromBytes(const std::vector<uint8_t>& data);
 
+    std::string toString() const;
+
 private:
     static std::vector<uint8_t> serializeValues(bool recordWaveform, bool processWaveform, int waveformProcessingType,
                                                 int waveformInterval, int waveformDuration, bool recordFFT,

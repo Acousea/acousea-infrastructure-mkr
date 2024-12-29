@@ -38,35 +38,32 @@ public:
 
     [[nodiscard]] std::vector<uint8_t> toBytes() const override;
 
-    [[nodiscard]] std::bitset<8> getAspects() const;
 
-    [[nodiscard]] ICListenLoggingConfig getLoggingConfig() const {
-        return loggingConfig.value();
+    [[nodiscard]] std::optional<ICListenStatus> getStatus() const {
+        return status;
     }
 
-    [[nodiscard]] ICListenStreamingConfig getStreamingConfig() const {
-        return streamingConfig.value();
+    [[nodiscard]] std::optional<ICListenLoggingConfig> getLoggingConfig() const {
+        return loggingConfig;
     }
 
-    [[nodiscard]] ICListenStatus getStatus() const {
-        return status.value();
+    [[nodiscard]] std::optional<ICListenStreamingConfig> getStreamingConfig() const {
+        return streamingConfig;
     }
 
-    [[nodiscard]] ICListenRecordingStats getRecordingStats() const {
-        return recordingStats.value();
+    [[nodiscard]] std::optional<ICListenRecordingStats> getRecordingStats() const {
+        return recordingStats;
     }
 
 
     static SetICListenConfigurationPayload fromBytes(const std::vector<uint8_t> &data);
 
 private:
-    explicit SetICListenConfigurationPayload(const std::bitset<8> &selectedAspects,
-                                             const std::optional<ICListenStatus> &status,
+    explicit SetICListenConfigurationPayload(const std::optional<ICListenStatus> &status,
                                              const std::optional<ICListenLoggingConfig> &loggingConfig,
                                              const std::optional<ICListenStreamingConfig> &streamingConfig,
                                              const std::optional<ICListenRecordingStats> &recordingStats);
 
-    std::bitset<8> selectedAspects;
     std::optional<ICListenStatus> status;
     std::optional<ICListenLoggingConfig> loggingConfig;
     std::optional<ICListenStreamingConfig> streamingConfig;

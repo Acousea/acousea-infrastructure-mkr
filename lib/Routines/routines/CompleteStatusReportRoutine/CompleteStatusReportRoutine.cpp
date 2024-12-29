@@ -1,7 +1,6 @@
 #include "CompleteStatusReportRoutine.h"
 
 
-
 CompleteStatusReportRoutine::CompleteStatusReportRoutine(IGPS *gps,
                                                          IBatteryController *battery,
                                                          NodeConfigurationRepository &nodeConfigurationRepository,
@@ -28,6 +27,16 @@ Result<Packet> CompleteStatusReportRoutine::execute() {
         return Result<Packet>::failure("ICListenHF configuration not available yet. Requesting from ICListenService.");
     }
 
+    Logger::logInfo("Building packet with ["
+                    " battery percentage: " + std::to_string(batteryPercentage) +
+                    ", battery status: " + std::to_string(batteryStatus) +
+                    ", ambient: (0, 0)" +
+                    ", location: (" + std::to_string(latitude) + ", " + std::to_string(longitude) +
+                    "), storage: (0, 0)" +
+                    ", icListenConfig: " + icListenConfig.getValue().toString() + "]"
+    );
+
+
     return Result<Packet>::success(
         CompleteStatusReportPacket(
             RoutingChunk::fromNodeToBackend(Address(nodeConfig.getLocalAddress())),
@@ -37,6 +46,5 @@ Result<Packet> CompleteStatusReportRoutine::execute() {
             StorageModule::from(0, 0),
             icListenConfig.getValue()
         )
-
     );
 }

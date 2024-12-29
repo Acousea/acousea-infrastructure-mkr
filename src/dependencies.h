@@ -32,6 +32,7 @@ extern ICListenService icListenService;
 extern SetNodeConfigurationRoutine setNodeConfigurationRoutine;
 extern CompleteStatusReportRoutine completeSummaryReportRoutine;
 extern BasicStatusReportRoutine basicSummaryReportRoutine;
+extern StoreICListenConfigurationRoutine storeICListenConfigurationRoutine;
 
 extern std::map<OperationCode::Code, IRoutine<Packet> *> configurationRoutines;
 extern std::map<OperationCode::Code, IRoutine<VoidType> *> reportingRoutines;

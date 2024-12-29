@@ -9,12 +9,14 @@
 
 class ICListenStatus : public SerializableModule {
 public:
-    ICListenStatus(int unitStatus, int batteryStatus, double batteryPercentage,
-                   double temperature, double humidity, std::time_t timestamp);
+    ICListenStatus(int unitStatus, int batteryStatus, float batteryPercentage,
+                   float temperature, float humidity, std::time_t timestamp);
 
     static ICListenStatus createDefault();
 
     static ICListenStatus fromBytes(const std::vector<uint8_t> &data);
+
+    std::string toString() const;
 
     // Constructor de movimiento
     ICListenStatus(ICListenStatus &&other) noexcept;
@@ -30,14 +32,14 @@ public:
 public:
     const int unitStatus;
     const int batteryStatus;
-    const double batteryPercentage;
-    const double temperature;
-    const double humidity;
+    const float batteryPercentage;
+    const float temperature;
+    const float humidity;
     const std::time_t timestamp;
 
 private:
-    static std::vector<uint8_t> serializeValues(int unitStatus, int batteryStatus, double batteryPercentage,
-                                                double temperature, double humidity, std::time_t timestamp);
+    static std::vector<uint8_t> serializeValues(int unitStatus, int batteryStatus, float batteryPercentage,
+                                                float temperature, float humidity, std::time_t timestamp);
 
 };
 

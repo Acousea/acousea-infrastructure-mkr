@@ -27,6 +27,8 @@ public:
 
     static ICListenRecordingStats fromBytes(const std::vector<uint8_t> &data);
 
+    [[nodiscard]] std::string toString() const;
+
 private:
     static std::vector<uint8_t> serializeValues(std::time_t epochTime, int numberOfClicks, int recordedMinutes,
                                                 int numberOfFiles);

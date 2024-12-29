@@ -24,6 +24,8 @@ public:
     static ICListenLoggingConfig createDefault();
     static ICListenLoggingConfig fromBytes(const std::vector<uint8_t>& data);
 
+    [[nodiscard]] std::string toString() const;
+
 private:
     static std::vector<uint8_t> serializeValues(int gain, int waveformSampleRate, int waveformLoggingMode,
                                                 int waveformLogLength, int bitDepth, int fftSampleRate,

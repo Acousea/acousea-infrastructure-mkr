@@ -18,6 +18,10 @@ public:
     const ICListenLoggingConfig loggingConfig;
     const ICListenStreamingConfig streamingConfig;
     const ICListenRecordingStats recordingStats;
+
+    static ICListenHF fromBytes(const std::vector<uint8_t> &data);
+
+    std::string toString() const;
 };
 
 #endif //ACOUSEA_MKR1310_NODES_ICLISTENHF_H

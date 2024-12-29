@@ -72,7 +72,7 @@ ModuleCode ModuleCode::fromValue(unsigned char code) {
         }
     }
     // Manejo de error: reinicia el programa o toma la acción necesaria
-    ErrorHandler::handleError("Invalid tag type: " + std::to_string(code));
+    ErrorHandler::handleError("Invalid module code: " + std::to_string(code));
 //        throw std::invalid_argument("Invalid tag type: " + std::to_string(code));
 }
 

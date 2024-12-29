@@ -131,3 +131,16 @@ ICListenLoggingConfig ICListenLoggingConfig::fromBytes(const std::vector<uint8_t
                                  bitDepth, fftSampleRate, fftProcessingType, fftsAccumulated,
                                  fftLoggingMode, fftLogLength);
 }
+
+std::string ICListenLoggingConfig::toString() const {
+    return "ICListenLoggingConfig { gain: " + std::to_string(gain) +
+           ", waveformSampleRate: " + std::to_string(waveformSampleRate) +
+           ", waveformLoggingMode: " + std::to_string(waveformLoggingMode) +
+           ", waveformLogLength: " + std::to_string(waveformLogLength) +
+           ", bitDepth: " + std::to_string(bitDepth) +
+           ", fftSampleRate: " + std::to_string(fftSampleRate) +
+           ", fftProcessingType: " + std::to_string(fftProcessingType) +
+           ", fftsAccumulated: " + std::to_string(fftsAccumulated) +
+           ", fftLoggingMode: " + std::to_string(fftLoggingMode) +
+           ", fftLogLength: " + std::to_string(fftLogLength) + " }";
+}

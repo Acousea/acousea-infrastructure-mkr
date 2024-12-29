@@ -1,5 +1,11 @@
 #include "ModuleFactory.h"
 
+#include "Payload/Modules/pamModules/ICListen/ICListenHF.h"
+#include "Payload/Modules/pamModules/ICListen/implementation/logging/ICListenLoggingConfig.h"
+#include "Payload/Modules/pamModules/ICListen/implementation/stats/ICListenRecordingStats.h"
+#include "Payload/Modules/pamModules/ICListen/implementation/status/ICListenStatus.h"
+#include "Payload/Modules/pamModules/ICListen/implementation/streaming/ICListenStreamingConfig.h"
+
 
 // Define and initialize the map of module creators
 const std::map<ModuleCode::TYPES, ModuleFactory::ModuleCreator> ModuleFactory::moduleCreators = {
@@ -26,7 +32,23 @@ const std::map<ModuleCode::TYPES, ModuleFactory::ModuleCreator> ModuleFactory::m
         }},
         {ModuleCode::TYPES::AMBIENT,         [](const std::vector<uint8_t> &data) {
             return AmbientModule::from(data);
+        }},
+        {ModuleCode::TYPES::ICLISTEN_STATUS,         [](const std::vector<uint8_t> &data) {
+            return ICListenStatus::fromBytes(data);
+        }},
+        {ModuleCode::TYPES::ICLISTEN_LOGGING_CONFIG,         [](const std::vector<uint8_t> &data) {
+            return ICListenLoggingConfig::fromBytes(data);
+        }},
+        {ModuleCode::TYPES::ICLISTEN_STREAMING_CONFIG,         [](const std::vector<uint8_t> &data) {
+            return ICListenStreamingConfig::fromBytes(data);
+        }},
+        {ModuleCode::TYPES::ICLISTEN_RECORDING_STATS,         [](const std::vector<uint8_t> &data) {
+            return ICListenRecordingStats::fromBytes(data);
+        }},
+        {ModuleCode::TYPES::ICLISTEN_COMPLETE,         [](const std::vector<uint8_t> &data) {
+            return ICListenHF::fromBytes(data);
         }}
+
 };
 
 SerializableModule ModuleFactory::createModule(const std::vector<uint8_t> &buffer) {
