@@ -1,19 +1,11 @@
 #include "FetchICListenConfigurationPayload.h"
 
-
-
 // Constructor privado
 FetchICListenConfigurationPayload::FetchICListenConfigurationPayload(const std::bitset<8>& selectedAspects)
     : selectedAspects(selectedAspects) {}
 
-std::vector<FetchICListenConfigurationPayload::Aspect> FetchICListenConfigurationPayload::getAspectsAsEnums() const {
-    std::vector<Aspect> aspectsList;
-    for (size_t i = 0; i < selectedAspects.size(); ++i) {
-        if (selectedAspects.test(i)) {
-            aspectsList.push_back(static_cast<Aspect>(1 << i));
-        }
-    }
-    return aspectsList;
+std::bitset<8> FetchICListenConfigurationPayload::getAspects() const {
+    return selectedAspects;
 }
 
 // Tamaño en bytes del payload

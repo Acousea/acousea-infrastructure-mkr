@@ -1,12 +1,13 @@
 #include "MockGPS.h"
 
+#include <Logger/Logger.h>
 
 
 MockGPS::MockGPS(float startLat, float startLon, float moveRate)
     : latitude(startLat), longitude(startLon), moveRate(moveRate) {}
 
 bool MockGPS::init() {
-    Serial.println("Initializing Mock GPS ...");
+    Logger::logInfo("MockGPS: GPS initialized");
     return true;
 }
 

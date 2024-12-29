@@ -7,26 +7,24 @@
 #include <bitset>
 #include <ErrorHandler/ErrorHandler.h>
 
-class FetchICListenConfigurationPayload : public Payload {
+#include "ICListenAspect.h"
+
+class FetchICListenConfigurationPayload final : public Payload {
 public:
     // Enum para especificar los aspectos de la configuración
-    enum class Aspect : uint8_t {
-        STATUS = 0x01,
-        LOGGING = 0x02,
-        STREAMING = 0x04,
-        STATS = 0x08
-    };
-
     // Builder para construir el payload
     class Builder {
     public:
-        Builder& includeAspect(Aspect aspect) {
-            aspects.set(static_cast<uint8_t>(aspect));
+        Builder& includeAspect(ICListenAspect::Aspect aspect) {
+            aspects |= static_cast<uint8_t>(aspect);
             return *this;
         }
 
         Builder& all() {
-            aspects.set(); // Incluye todos los bits
+            aspects |= static_cast<uint8_t>(ICListenAspect::Aspect::STATUS)
+                    | static_cast<uint8_t>(ICListenAspect::Aspect::LOGGING)
+                    | static_cast<uint8_t>(ICListenAspect::Aspect::STREAMING)
+                    | static_cast<uint8_t>(ICListenAspect::Aspect::STATS);
             return *this;
         }
 
@@ -38,7 +36,7 @@ public:
         std::bitset<8> aspects; // Representa los aspectos seleccionados
     };
 
-    [[nodiscard]] std::vector<Aspect> getAspectsAsEnums() const;
+    [[nodiscard]] std::bitset<8> getAspects() const;
 
     // Implementaciones del Payload
     [[nodiscard]] uint16_t getBytesSize() const override;

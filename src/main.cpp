@@ -45,7 +45,7 @@ void saveDrifterConfig() {
                         0,
                         ReportingConfiguration(
                             0, 15,
-                            ReportingConfiguration::ReportType::BASIC)
+                            ReportingConfiguration::ReportType::COMPLETE)
                     }
                 }
             )
@@ -119,10 +119,9 @@ void setup() {
 
 void loop() {
     static unsigned long lastTime = 0;
-    // Operate every 60 seconds
-    if (millis() - lastTime >= 60000 || lastTime == 0) {
+    // Operate every 30 seconds
+    if (millis() - lastTime >= 30000 || lastTime == 0) {
         lastTime = millis();
-        SerialUSB.println("Operating Node...");
         nodeOperationRunner.init();
         nodeOperationRunner.run();
         nodeOperationRunner.finish();

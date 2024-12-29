@@ -6,25 +6,20 @@
 #include <vector>
 #include <cstdint>
 #include <optional>
+
+#include "ICListenAspect.h"
 #include "Payload/Modules/pamModules/ICListen/implementation/status/ICListenStatus.h"
 #include "Payload/Modules/pamModules/ICListen/implementation/logging/ICListenLoggingConfig.h"
 #include "Payload/Modules/pamModules/ICListen/implementation/streaming/ICListenStreamingConfig.h"
 #include "Payload/Modules/pamModules/ICListen/implementation/stats/ICListenRecordingStats.h"
 
-class SetICListenConfigurationPayload : public Payload {
+class SetICListenConfigurationPayload final : public Payload {
 public:
-    // Reutilizamos el enum Aspect
-    enum class Aspect : uint8_t {
-        STATUS = 0x01,
-        LOGGING = 0x02,
-        STREAMING = 0x04,
-        STATS = 0x08
-    };
 
     // Builder para construir el payload
     class Builder {
     public:
-        Builder &includeAspect(Aspect aspect, const SerializableModule &module);
+        Builder &includeAspect(ICListenAspect::Aspect aspect, const SerializableModule &module);
 
         [[nodiscard]] SetICListenConfigurationPayload build() const;
 
@@ -35,7 +30,7 @@ public:
         std::optional<ICListenStreamingConfig> streamingConfig;
         std::optional<ICListenRecordingStats> recordingStats;
 
-        void addConfiguration(Aspect aspect, const SerializableModule &module);
+        void addConfiguration(ICListenAspect::Aspect aspect, const SerializableModule &module);
     };
 
     // Implementación de Payload
@@ -43,7 +38,7 @@ public:
 
     [[nodiscard]] std::vector<uint8_t> toBytes() const override;
 
-    [[nodiscard]] std::vector<Aspect> getAspectsAsEnums() const;
+    [[nodiscard]] std::bitset<8> getAspects() const;
 
     [[nodiscard]] ICListenLoggingConfig getLoggingConfig() const {
         return loggingConfig.value();

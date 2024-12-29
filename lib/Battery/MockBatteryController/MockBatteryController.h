@@ -22,12 +22,10 @@ public:
     }
 
     uint8_t percentage() override {
-        Logger::logInfo("MockBatteryController: Returning battery percentage: " + std::to_string(mockPercentage));
         return mockPercentage;
     }
 
     uint8_t status() override {
-        Logger::logInfo("MockBatteryController: Returning battery status: " + std::to_string(mockStatus));
         return mockStatus;
     }
 

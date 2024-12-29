@@ -6,8 +6,6 @@ ReportingConfiguration::ReportType ReportingConfiguration::reportTypeFromJson(ui
             return ReportingConfiguration::ReportType::COMPLETE;
         case 'B':
             return ReportingConfiguration::ReportType::BASIC;
-        case 'S':
-            return ReportingConfiguration::ReportType::SUMMARY;
         default:
             ErrorHandler::handleError("Invalid report type value");
 //                throw std::invalid_argument("Invalid report type value");
@@ -30,8 +28,6 @@ std::string ReportingConfiguration::getReportTypeString() const {
             return "COMPLETE";
         case ReportType::BASIC:
             return "BASIC";
-        case ReportType::SUMMARY:
-            return "SUMMARY";
     }
     return "UNKNOWN";
 }

@@ -1,5 +1,5 @@
-#ifndef SUMMARYROUTINE_H
-#define SUMMARYROUTINE_H
+#ifndef COMPLETE_STATUS_REPORT_ROUTINE_H
+#define COMPLETE_STATUS_REPORT_ROUTINE_H
 
 #include "IRoutine.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
@@ -9,7 +9,6 @@
 #include <Packets/reports/CompleteStatusReportPacket.h>
 #include <ICListenService/ICListenService.h>
 
-class ICListenService;
 /**
  * @brief This routine is used to receive a packet with a summary and upload it to the summary service
  * so that it can be retrieved by the corresponding operation mode that sends reports to the backend
@@ -34,4 +33,4 @@ public:
     Result<Packet> execute() override;
 };
 
-#endif // SUMMARYROUTINE_H
+#endif //  COMPLETE_STATUS_REPORT_ROUTINE_H

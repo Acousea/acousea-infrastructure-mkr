@@ -5,6 +5,7 @@
 #include <ctime>
 #include "SDManager/SDManager.h"
 #include <Arduino.h>
+#include <vector>
 
 class Logger {
 public:
@@ -24,6 +25,9 @@ public:
     static void printLog();
 
     static bool clearLog();
+
+    static std::string vectorToHexString(const std::vector<unsigned char> &data);
+
 
 private:
     static inline SDManager *sdManager = nullptr;

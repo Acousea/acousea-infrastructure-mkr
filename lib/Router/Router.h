@@ -32,6 +32,7 @@ private:
                     localAddress,
                     packet.getRoutingChunk().getSender())
             );
+            mutablePacket.computeChecksum();
             return mutablePacket;
         }
 

@@ -1,21 +1,22 @@
 #include "PMICBatteryController.h"
 
+
 bool PMICBatteryController::init() {
     if (!PMIC.begin()) {
-        Serial.println("ERROR: Failed to initialize PMIC!");
+        ErrorHandler::handleError("Failed to initialize PMIC!");
         return false;
     }
 
-    // Aplicar la configuración
+    // Apply the configuration
     applySettings();
 
-    // Esperar un segundo antes de verificar el estado
+    // Wait for a second before checking the status
     delay(1000);
 
-    // Imprimir el estado inicial
+    // Log the initial status
     printStatus();
 
-    // Verificar si hubo algún failure durante la configuración
+    // Check if any errors occurred during configuration
     return !error;
 }
 
@@ -29,55 +30,54 @@ uint8_t PMICBatteryController::status() {
 }
 
 void PMICBatteryController::printStatus() const {
-    Serial.print("Charge status: ");
-    Serial.println(getChargeStatusMessage(PMIC.chargeStatus()));
-
-    Serial.print("Battery is connected: ");
-    Serial.println(PMIC.isBattConnected() ? "Yes" : "No");
-
-    Serial.print("Power is good: ");
-    Serial.println(PMIC.isPowerGood() ? "Yes" : "No");
-
-    Serial.print("Charge current (A): ");
-    Serial.println(PMIC.getChargeCurrent(), 2);
-
-    Serial.print("Charge voltage (V): ");
-    Serial.println(PMIC.getChargeVoltage(), 2);
-
-    Serial.print("Minimum system voltage (V): ");
-    Serial.println(PMIC.getMinimumSystemVoltage(), 2);
-
-    Serial.print("Battery voltage is below minimum system voltage: ");
-    Serial.println(PMIC.canRunOnBattery() ? "Yes" : "No");
+    Logger::logInfo("Charge status: " + std::string(getChargeStatusMessage(PMIC.chargeStatus())));
+    Logger::logInfo("Battery is connected: " + std::string(PMIC.isBattConnected() ? "Yes" : "No"));
+    Logger::logInfo("Power is good: " + std::string(PMIC.isPowerGood() ? "Yes" : "No"));
+    Logger::logInfo("Charge current (A): " + std::to_string(PMIC.getChargeCurrent()));
+    Logger::logInfo("Charge voltage (V): " + std::to_string(PMIC.getChargeVoltage()));
+    Logger::logInfo("Minimum system voltage (V): " + std::to_string(PMIC.getMinimumSystemVoltage()));
+    Logger::logInfo(
+        "Battery voltage is below minimum system voltage: " + std::string(PMIC.canRunOnBattery() ? "Yes" : "No"));
 }
 
 void PMICBatteryController::applySettings() {
-    error |= !PMIC.setInputCurrentLimit(INPUT_CURRENT_LIMIT) && printError("setInputCurrentLimit");
-    error |= !PMIC.setInputVoltageLimit(INPUT_VOLTAGE_LIMIT) && printError("setInputVoltageLimit");
-    error |= !PMIC.setMinimumSystemVoltage(MIN_SYSTEM_VOLTAGE) && printError("setMinimumSystemVoltage");
-    error |= !PMIC.setChargeVoltage(CHARGE_VOLTAGE) && printError("setChargeVoltage");
-    error |= !PMIC.setChargeCurrent(CHARGE_CURRENT) && printError("setChargeCurrent");
-    error |= !PMIC.enableCharge() && printError("enableCharge");
+    if (!PMIC.setInputCurrentLimit(INPUT_CURRENT_LIMIT)) {
+        error = true;
+        Logger::logError("PMIC.setInputCurrentLimit() failed!");
+    }
+
+    if (!PMIC.setInputVoltageLimit(INPUT_VOLTAGE_LIMIT)) {
+        error = true;
+        Logger::logError("PMIC.setInputVoltageLimit() failed!");
+    }
+
+    if (!PMIC.setMinimumSystemVoltage(MIN_SYSTEM_VOLTAGE)) {
+        error = true;
+        Logger::logError("PMIC.setMinimumSystemVoltage() failed!");
+    }
+
+    if (!PMIC.setChargeVoltage(CHARGE_VOLTAGE)) {
+        error = true;
+        Logger::logError("PMIC.setChargeVoltage() failed!");
+    }
+
+    if (!PMIC.setChargeCurrent(CHARGE_CURRENT)) {
+        error = true;
+        Logger::logError("PMIC.setChargeCurrent() failed!");
+    }
+    if (!PMIC.enableCharge()) {
+        error = true;
+        Logger::logError("PMIC.enableCharge() failed!");
+    }
 }
 
-bool PMICBatteryController::printError(const char *functionName) const {
-    Serial.print("ERROR: ");
-    Serial.print(functionName);
-    Serial.println("() failed!");
-    return true;
-}
 
 const char *PMICBatteryController::getChargeStatusMessage(uint8_t chargeStatus) const {
     switch (chargeStatus) {
-        case NOT_CHARGING:
-            return "Not charging";
-        case PRE_CHARGING:
-            return "Pre charging";
-        case FAST_CHARGING:
-            return "Fast charging";
-        case CHARGE_TERMINATION_DONE:
-            return "Charge termination done";
-        default:
-            return "Unknown status";
+        case NOT_CHARGING: return "Not charging";
+        case PRE_CHARGING: return "Pre charging";
+        case FAST_CHARGING: return "Fast charging";
+        case CHARGE_TERMINATION_DONE: return "Charge termination done";
+        default: return "Unknown status";
     }
 }

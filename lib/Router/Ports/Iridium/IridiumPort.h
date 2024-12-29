@@ -35,7 +35,7 @@ public:
 
 private:
 
-    void handleError(int err);
+    static void handleError(int err);
 
     void storeReceivedPacket(const uint8_t *data, size_t length);
 

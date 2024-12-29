@@ -69,6 +69,9 @@ public:
 
     [[nodiscard]] uint16_t getChecksum() const;
 
+    // Computes the checksum using CRCUtils
+    void computeChecksum();
+
     void swapSenderReceiverAddresses();
 
 private:
@@ -77,8 +80,7 @@ private:
     PayloadVariant payload; // Holds the packetPayload as a variant
     uint16_t checksum;
 
-    // Computes the checksum using CRCUtils
-    void computeChecksum();
+
 };
 
 #endif // COMMUNICATIONPACKET_H

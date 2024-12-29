@@ -1,5 +1,7 @@
 #include "IridiumPort.h"
 
+#include <Logger/Logger.h>
+
 Uart mySerial3(&sercom3, SBD_RX_PIN, SBD_TX_PIN, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 
 // Global instance of the IridiumSBD modem
@@ -18,7 +20,8 @@ void ISBDDiagsCallback(IridiumSBD *device, char c) {
 
 #endif
 
-IridiumPort::IridiumPort() : IPort(PortType::SBDPort) {}
+IridiumPort::IridiumPort() : IPort(PortType::SBDPort) {
+}
 
 void IridiumPort::init() {
     // Set the pins to use mySerial3
@@ -39,29 +42,20 @@ void IridiumPort::init() {
     sbd_modem.enableRingAlerts(true);
 
     IridiumSerial.begin(SBD_MODEM_BAUDS);
-    SerialUSB.println("IridiumPort::init(): ");
-    int err = sbd_modem.begin();
-    if (err != ISBD_SUCCESS) {
+    Logger::logInfo("IridiumPort::init() -> Initializing Iridium modem...");
+    if (const int err = sbd_modem.begin(); err != ISBD_SUCCESS) {
         handleError(err);
     }
     sbd_modem.enableRingAlerts(true); // Documentations says this should go before begin(), but not sure if it works
-    SerialUSB.println("IridiumPort::init(): Iridium modem initialized");
+    Logger::logInfo("IridiumPort::init() -> Iridium modem initialized");
 }
 
 void IridiumPort::send(const std::vector<uint8_t> &data) {
-    SerialUSB.println("IridiumPort::send() -> Sending packet...");
-    SerialUSB.print("Data: ");
-    for (const auto &byte: data) {
-        SerialUSB.print(byte, HEX);
-        SerialUSB.print(" ");
-    }
+    Logger::logInfo("IridiumPort::send() -> Sending packet... " + Logger::vectorToHexString(data));
 
     uint8_t rxBuffer[MAX_RECEIVED_PACKET_SIZE];
     size_t rxBufferSize = sizeof(rxBuffer);
-    int err = sbd_modem.sendReceiveSBDBinary(data.data(),
-                                             data.size(),
-                                             rxBuffer,
-                                             rxBufferSize);
+    const int err = sbd_modem.sendReceiveSBDBinary(data.data(), data.size(), rxBuffer, rxBufferSize);
     if (err != ISBD_SUCCESS) {
         handleError(err);
         return;
@@ -84,139 +78,115 @@ bool IridiumPort::available() {
     return !receivedRawPackets.empty();
 }
 
-std::vector<std::vector<uint8_t>> IridiumPort::read() {
-    if (receivedRawPackets.empty()) {
-        return {};
-    }
-
-    // Return all packets and clear the queue
-    std::vector<std::vector<uint8_t>> packets;
+std::vector<std::vector<uint8_t> > IridiumPort::read() {
+    std::vector<std::vector<uint8_t> > packets = {};
     for (const auto &packet: receivedRawPackets) {
         packets.push_back(packet);
     }
     receivedRawPackets.clear();
     return packets;
-
-
 }
 
-void IridiumPort::handleError(int err) {
-    SerialUSB.print("IridiumPort::handleError(): ");
-    SerialUSB.println(err);
+
+void IridiumPort::handleError(const int err) {
+    std::string errorMessage = "IridiumPort::handleError(): " + std::to_string(err) + " - ";
     switch (err) {
         case ISBD_SUCCESS:
-            SerialUSB.println("Success");
+            errorMessage += "Success";
             break;
         case ISBD_ALREADY_AWAKE:
-            SerialUSB.println("Already awake");
+            errorMessage += "Already awake";
             break;
         case ISBD_SERIAL_FAILURE:
-            SerialUSB.println("Serial failure");
+            errorMessage += "Serial failure";
             break;
         case ISBD_PROTOCOL_ERROR:
-            SerialUSB.println("Protocol failure");
+            errorMessage += "Protocol failure";
             break;
         case ISBD_CANCELLED:
-            SerialUSB.println("Cancelled");
+            errorMessage += "Cancelled";
             break;
         case ISBD_NO_MODEM_DETECTED:
-            SerialUSB.println("No modem detected");
+            errorMessage += "No modem detected";
             break;
         case ISBD_SBDIX_FATAL_ERROR:
-            SerialUSB.println("SBDIX fatal failure");
+            errorMessage += "SBDIX fatal failure";
             break;
         case ISBD_SENDRECEIVE_TIMEOUT:
-            SerialUSB.println("Send/receive timeout");
+            errorMessage += "Send/receive timeout";
             break;
         case ISBD_RX_OVERFLOW:
-            SerialUSB.println("RX overflow");
+            errorMessage += "RX overflow";
             break;
         case ISBD_REENTRANT:
-            SerialUSB.println("Reentrant");
+            errorMessage += "Reentrant";
             break;
         case ISBD_IS_ASLEEP:
-            SerialUSB.println("Is asleep");
+            errorMessage += "Is asleep";
             break;
         case ISBD_NO_SLEEP_PIN:
-            SerialUSB.println("No sleep pin");
+            errorMessage += "No sleep pin";
             break;
         case ISBD_NO_NETWORK:
-            SerialUSB.println("No network");
+            errorMessage += "No network";
             break;
         case ISBD_MSG_TOO_LONG:
-            SerialUSB.println("Message too long");
+            errorMessage += "Message too long";
             break;
         default:
-            SerialUSB.println("Unknown failure");
+            errorMessage += "Unknown failure";
             break;
     }
+    Logger::logError(errorMessage);
 }
 
 void IridiumPort::storeReceivedPacket(const uint8_t *data, size_t length) {
     // Print the received data
-    SerialUSB.print("IridiumPort::storeReceivedPacket() -> Received data: ");
-    for (size_t i = 0; i < length; i++) {
-        SerialUSB.print(data[i], HEX);
-        SerialUSB.print(" ");
-    }
-    SerialUSB.println();
-
-    std::vector<uint8_t> packet = std::vector<uint8_t>(data, data + length);
+    const auto packet = std::vector<uint8_t>(data, data + length);
+    Logger::logInfo("IridiumPort::storeReceivedPacket() -> Received data: " + Logger::vectorToHexString(packet));
     if (receivedRawPackets.size() >= MAX_QUEUE_SIZE) {
-        SerialUSB.println("WARNING: Received packet queue is full. Dropping the oldest packet.");
+        Logger::logInfo("IridiumPort::storeReceivedPacket() -> Received packet queue is full. Dropping the oldest packet.");
         receivedRawPackets.pop_front();
     }
     receivedRawPackets.push_back(packet);
 }
 
 void IridiumPort::receiveIncomingMessages() {
-    SerialUSB.println("IridiumPort::receiveIncomingMessages() -> Checking for incoming messages...");
+    Logger::logInfo("IridiumPort::receiveIncomingMessages() -> Checking for incoming messages...");
     uint8_t rxBuffer[MAX_RECEIVED_PACKET_SIZE];
-    size_t rxBufferSize;
     do {
-        rxBufferSize = sizeof(rxBuffer);
-        int err = sbd_modem.sendReceiveSBDBinary(NULL, 0, rxBuffer, rxBufferSize);
-        if (err != ISBD_SUCCESS) {
+        size_t rxBufferSize = sizeof(rxBuffer);
+        if (const int err = sbd_modem.sendReceiveSBDBinary(NULL, 0, rxBuffer, rxBufferSize); err != ISBD_SUCCESS) {
             handleError(err);
             break;
+        }
+        if (rxBufferSize > 0) {
+            storeReceivedPacket(rxBuffer, rxBufferSize);
         } else {
-            if (rxBufferSize > 0) storeReceivedPacket(rxBuffer, rxBufferSize);
-            else SerialUSB.println("IridiumPort::receiveIncomingMessages() -> No data read.");
+            Logger::logInfo("IridiumPort::receiveIncomingMessages() -> No data read.");
         }
     } while (sbd_modem.getWaitingMessageCount() > 0);
 }
 
 void IridiumPort::checkRingAlertsAndWaitingMsgCount() {
-    bool ringAlert = sbd_modem.hasRingAsserted();
-    int incomingMessages = sbd_modem.getWaitingMessageCount();
-    SerialUSB.println("IridiumPort::checkRingAlertsAndWaitingMsgCount() -> Ring alert: " + String(ringAlert) +
-                      ", Incoming messages: " + String(incomingMessages));
-    if (!ringAlert && incomingMessages <= 0) {
-        return;
-    }
+    const bool ringAlert = sbd_modem.hasRingAsserted();
+    const int incomingMessages = sbd_modem.getWaitingMessageCount();
 
-    if (ringAlert) {
-        SerialUSB.println("IridiumPort::checkRingAlerts() -> Ring alert detected. Checking for incoming messages.");
-    }
+    Logger::logInfo("IridiumPort::checkRingAlerts() -> Ring alert: " + std::to_string(ringAlert) +
+                    ", Incoming messages: " + std::to_string(incomingMessages));
 
-    if (incomingMessages > 0) {
-        SerialUSB.println(
-                "IridiumPort::checkRingAlerts() -> Incoming messages count > 0. Checking for incoming messages.");
+    if (ringAlert || incomingMessages > 0) {
+        Logger::logInfo("IridiumPort::checkRingAlerts() -> Checking for incoming messages.");
+        receiveIncomingMessages();
     }
-
-    receiveIncomingMessages();
 }
 
 void IridiumPort::checkSignalQuality() {
-    SerialUSB.println("IridiumPort::checkSignalQuality() -> Checking signal quality...");
+    Logger::logInfo("IridiumPort::checkSignalQuality() -> Checking signal quality...");
     int signalQuality = -1;
-    int err = sbd_modem.getSignalQuality(signalQuality);
-    if (err != ISBD_SUCCESS) {
+    if (const int err = sbd_modem.getSignalQuality(signalQuality); err != ISBD_SUCCESS) {
         handleError(err);
         return;
     }
-    SerialUSB.print("Signal quality (0-5): ");
-    SerialUSB.println(signalQuality);
+    Logger::logInfo("IridiumPort::checkSignalQuality() -> Signal quality: " + std::to_string(signalQuality));
 }
-
-

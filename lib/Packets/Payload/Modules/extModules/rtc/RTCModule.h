@@ -1,7 +1,7 @@
 #ifndef ACOUSEA_MKR1310_NODES_RTCMODULE_H
 #define ACOUSEA_MKR1310_NODES_RTCMODULE_H
 
-
+#include <ctime>
 #include "Payload/Modules/SerializableModule.h"
 
 class RTCModule : public SerializableModule {

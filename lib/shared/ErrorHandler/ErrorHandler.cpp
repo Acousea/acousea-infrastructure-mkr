@@ -18,7 +18,7 @@ void ErrorHandler::handleError(const std::string &errorMessage) {
 
 void ErrorHandler::defaultHandler(const std::string &errorMessage) {
     // Print the error to Serial (if Logger is in SerialOnly mode, this is redundant)
-    Serial.print("Error: ");
+    Serial.print("ERROR_HANDLER -> HANDLING ERROR: ");
     Serial.println(errorMessage.c_str());
 
     // Perform a hardware reset

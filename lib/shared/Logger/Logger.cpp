@@ -56,6 +56,16 @@ bool Logger::clearLog() {
     return false;
 }
 
+std::string Logger::vectorToHexString(const std::vector<unsigned char> &data) {
+    std::string result = "";
+    for (const auto &byte: data) {
+        char buffer[3];
+        sprintf(buffer, "%02X", byte);
+        result += buffer;
+    }
+    return result;
+}
+
 void Logger::setCurrentTime(time_t time) {
     Logger::currentTime = time;
 }
@@ -78,5 +88,3 @@ void Logger::logToSDCard(const std::string &logType, const std::string &message)
         Serial.println("Logger::logToSDCard() -> Failed to append to log file.");
     }
 }
-
-

@@ -5,7 +5,7 @@
 void ICListenService::Requester::fetchStatus() const {
     const auto packet = FetchICListenConfigPacket(
         RoutingChunk::fromNodeToBackend(Address(255)),
-        FetchICListenConfigurationPayload::Builder().includeAspect(FetchICListenConfigurationPayload::Aspect::STATUS).
+        FetchICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::STATUS).
         build()
     );
     router.sendFrom(Address(255)).sendSerial(packet);
@@ -14,7 +14,7 @@ void ICListenService::Requester::fetchStatus() const {
 void ICListenService::Requester::fetchLoggingConfig() const {
     const auto packet = FetchICListenConfigPacket(
         RoutingChunk::fromNodeToBackend(Address(255)),
-        FetchICListenConfigurationPayload::Builder().includeAspect(FetchICListenConfigurationPayload::Aspect::LOGGING).
+        FetchICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::LOGGING).
         build()
     );
     router.sendFrom(Address(255)).sendSerial(packet);
@@ -23,7 +23,7 @@ void ICListenService::Requester::fetchLoggingConfig() const {
 void ICListenService::Requester::fetchStreamingConfig() const {
     const auto packet = FetchICListenConfigPacket(
         RoutingChunk::fromNodeToBackend(Address(255)),
-        FetchICListenConfigurationPayload::Builder().includeAspect(FetchICListenConfigurationPayload::Aspect::STREAMING)
+        FetchICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::STREAMING)
         .build()
     );
     router.sendFrom(Address(255)).sendSerial(packet);
@@ -32,7 +32,7 @@ void ICListenService::Requester::fetchStreamingConfig() const {
 void ICListenService::Requester::fetchRecordingStats() const {
     const auto packet = FetchICListenConfigPacket(
         RoutingChunk::fromNodeToBackend(Address(255)),
-        FetchICListenConfigurationPayload::Builder().includeAspect(FetchICListenConfigurationPayload::Aspect::STATS).
+        FetchICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::STATS).
         build()
     );
     router.sendFrom(Address(255)).sendSerial(packet);
@@ -49,7 +49,7 @@ void ICListenService::Requester::fetchHFConfiguration() const {
 void ICListenService::Requester::setICListenStatus(const ICListenStatus &ic_listen_status) const {
     const auto packet = SetICListenConfigPacket(
         RoutingChunk::fromNodeToBackend(Address(255)),
-        SetICListenConfigurationPayload::Builder().includeAspect(SetICListenConfigurationPayload::Aspect::STATUS,
+        SetICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::STATUS,
                                                                  ic_listen_status).build()
     );
     router.sendFrom(Address(255)).sendSerial(packet);
@@ -58,7 +58,7 @@ void ICListenService::Requester::setICListenStatus(const ICListenStatus &ic_list
 void ICListenService::Requester::setICListenLoggingConfig(const ICListenLoggingConfig &ic_listen_logging_config) const {
     const auto packet = SetICListenConfigPacket(
         RoutingChunk::fromNodeToBackend(Address(255)),
-        SetICListenConfigurationPayload::Builder().includeAspect(SetICListenConfigurationPayload::Aspect::LOGGING,
+        SetICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::LOGGING,
                                                                  ic_listen_logging_config).build()
     );
     router.sendFrom(Address(255)).sendSerial(packet);
@@ -67,7 +67,7 @@ void ICListenService::Requester::setICListenLoggingConfig(const ICListenLoggingC
 void ICListenService::Requester::setICListenStreamingConfig(const ICListenStreamingConfig &ic_listen_streaming_config) const {
     const auto packet = SetICListenConfigPacket(
         RoutingChunk::fromNodeToBackend(Address(255)),
-        SetICListenConfigurationPayload::Builder().includeAspect(SetICListenConfigurationPayload::Aspect::STREAMING,
+        SetICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::STREAMING,
                                                                  ic_listen_streaming_config).build()
     );
     router.sendFrom(Address(255)).sendSerial(packet);
@@ -76,7 +76,7 @@ void ICListenService::Requester::setICListenStreamingConfig(const ICListenStream
 void ICListenService::Requester::setICListenRecordingStats(const ICListenRecordingStats &ic_listen_recording_stats) const {
     const auto packet = SetICListenConfigPacket(
         RoutingChunk::fromNodeToBackend(Address(255)),
-        SetICListenConfigurationPayload::Builder().includeAspect(SetICListenConfigurationPayload::Aspect::STATS,
+        SetICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::STATS,
                                                                  ic_listen_recording_stats).build()
     );
     router.sendFrom(Address(255)).sendSerial(packet);
@@ -86,10 +86,10 @@ void ICListenService::Requester::setICListenHFConfiguration(const ICListenHF &ic
     const auto packet = SetICListenConfigPacket(
         RoutingChunk::fromNodeToBackend(Address(255)),
         SetICListenConfigurationPayload::Builder()
-        .includeAspect(SetICListenConfigurationPayload::Aspect::STATS, ic_listen_hf.recordingStats)
-        .includeAspect(SetICListenConfigurationPayload::Aspect::STATUS, ic_listen_hf.status)
-        .includeAspect(SetICListenConfigurationPayload::Aspect::LOGGING, ic_listen_hf.loggingConfig)
-        .includeAspect(SetICListenConfigurationPayload::Aspect::STREAMING, ic_listen_hf.streamingConfig)
+        .includeAspect(ICListenAspect::Aspect::STATS, ic_listen_hf.recordingStats)
+        .includeAspect(ICListenAspect::Aspect::STATUS, ic_listen_hf.status)
+        .includeAspect(ICListenAspect::Aspect::LOGGING, ic_listen_hf.loggingConfig)
+        .includeAspect(ICListenAspect::Aspect::STREAMING, ic_listen_hf.streamingConfig)
         .build()
     );
     router.sendFrom(Address(255)).sendSerial(packet);

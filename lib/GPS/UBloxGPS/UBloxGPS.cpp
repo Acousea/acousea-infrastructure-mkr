@@ -1,19 +1,20 @@
 #include "UBloxGPS.h"
 
 
+
+
 bool UBloxGNSS::init() {
-    Serial.println("Initializing GNSS ...");
+    Logger::logInfo("Initializing GNSS ...");
 
     if (myGNSS.begin() == false) {
-        Serial.println("u-blox GNSS not detected at default I2C address. Please check wiring");
-        Serial.println("ERROR: GNSS failed!");
+        Logger::logError("GNSS Failed! => u-blox GNSS not detected at default I2C address. Please check wiring");
         return false;
     }
 
     myGNSS.setI2COutput(COM_TYPE_UBX);
     myGNSS.saveConfigSelective(VAL_CFG_SUBSEC_IOPORT);
 
-    Serial.println("Awaiting first GNSS fix ...");
+    Logger::logInfo("Awaiting first GNSS fix ...");
 
     bool fixed = false;
     uint32_t beginFix_ms = millis();
@@ -25,17 +26,17 @@ bool UBloxGNSS::init() {
         if ((fixType >= 1) && (fixType <= 4)) fixed = true;
     }
 
-    if (fixed) {
-        char buffer[50];
-        snprintf(buffer, sizeof(buffer), "GNSS fix took %lu sec\n", (millis() - beginFix_ms) / 1000);
-        Serial.print(buffer);
-        return true;
-    } else {
+    if (!fixed) {
         char buffer[50];
         snprintf(buffer, sizeof(buffer), "ERROR: NO GNSS fix after %lu sec\n", (millis() - beginFix_ms) / 1000);
-        Serial.print(buffer);
+        Logger::logError(buffer);
         return false;
     }
+
+    char buffer[50];
+    snprintf(buffer, sizeof(buffer), "GNSS fix took %lu sec\n", (millis() - beginFix_ms) / 1000);
+    Logger::logInfo(buffer);
+    return true;
 }
 
 GPSLocation UBloxGNSS::read() {

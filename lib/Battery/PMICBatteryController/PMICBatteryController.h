@@ -4,6 +4,8 @@
 
 #include "Arduino_PMIC.h"
 #include "IBatteryController.h"
+#include <ErrorHandler/ErrorHandler.h>
+#include <Logger/Logger.h>
 
 class PMICBatteryController : public IBatteryController {
 public:
@@ -26,9 +28,7 @@ private:
 
     void applySettings();
 
-    bool printError(const char* functionName) const;
-
-    [[nodiscard]] const char* getChargeStatusMessage(uint8_t chargeStatus) const;
+    [[nodiscard]] const char *getChargeStatusMessage(uint8_t chargeStatus) const;
 };
 
 #endif // PMIC_MANAGER_H

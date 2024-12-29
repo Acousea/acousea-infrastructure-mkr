@@ -62,6 +62,8 @@
 #include <Payload/Payloads/getConfig/GetUpdatedNodeConfigurationPayload.h>
 #include <Payload/Payloads/complete/CompleteStatusReportPayload.h>
 #include <Payload/Payloads/basic/BasicStatusReportPayload.h>
+
+#include <Payload/Payloads/iclisten/ICListenAspect.h>
 #include <Payload/Payloads/iclisten/FetchICListenConfigurationPayload.h>
 #include <Payload/Payloads/iclisten/SetICListenConfigurationPayload.h>
 

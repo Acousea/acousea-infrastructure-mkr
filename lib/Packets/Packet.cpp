@@ -2,12 +2,13 @@
 
 
 Packet::Packet(const OperationCode &opCode, const RoutingChunk &routingChunk, PayloadVariant payload)
-        : opCode(opCode), routingChunk(routingChunk), payload(std::move(payload)) {
+    : opCode(opCode), routingChunk(routingChunk), payload(std::move(payload)) {
     computeChecksum();
 }
 
 Packet::Packet(const OperationCode &opCode, const RoutingChunk &routingChunk, PayloadVariant payload, uint16_t checksum)
-        : opCode(opCode), routingChunk(routingChunk), payload(std::move(payload)), checksum(checksum) {}
+    : opCode(opCode), routingChunk(routingChunk), payload(std::move(payload)), checksum(checksum) {
+}
 
 std::vector<uint8_t> Packet::toBytes() const {
     std::vector<uint8_t> buffer;
@@ -18,7 +19,6 @@ std::vector<uint8_t> Packet::toBytes() const {
 
     std::visit([&buffer](const auto &payload) {
         const uint16_t size = payload.getBytesSize();
-        buffer.push_back(static_cast<uint8_t>(size >> 8));
         buffer.push_back(static_cast<uint8_t>(size & 0xFF));
         const auto payloadBytes = payload.toBytes();
         buffer.insert(buffer.end(), payloadBytes.begin(), payloadBytes.end());
@@ -31,27 +31,33 @@ std::vector<uint8_t> Packet::toBytes() const {
 
 
 Packet Packet::fromBytes(const std::vector<uint8_t> &data) {
-    if (data.size() < 7) { // SYNC_BYTE + OP_CODE + ROUTING_CHUNK (3 bytes) + PAYLOAD_LENGTH + CRC (2 bytes)
-        ErrorHandler::handleError("Data length is insufficient for a valid Packets");
+    constexpr size_t HEADER_SIZE = 6; // SYNC_BYTE (1) + OP_CODE (1) + ROUTING_CHUNK (3) + PAYLOAD_LENGTH (1)
+    constexpr size_t MIN_PACKET_SIZE = 8;
+    // SYNC_BYTE (1 byte) + OP_CODE (1 byte) + ROUTING_CHUNK (3 bytes) + PAYLOAD_LENGTH (1 byte) + CRC (2 bytes)
+
+    if (data.size() < MIN_PACKET_SIZE) {
+        ErrorHandler::handleError(
+            "Data length is insufficient for a valid Packets -> Received: " + std::to_string(data.size()));
     }
 
     if (data[0] != SYNC_BYTE) {
-        ErrorHandler::handleError("Invalid sync byte");
+        ErrorHandler::handleError("Invalid sync byte -> Received SYNC BYTE: " + std::to_string(data[0]));
     }
 
+    const uint16_t crc = (data[data.size() - 2] << 8) | data[data.size() - 1];
     if (!CRCUtils::verifyCRC(data)) {
-        ErrorHandler::handleError("CRC verification failed");
+        ErrorHandler::handleError("Packet::fromBytes() -> CRC verification failed");
     }
 
     OperationCode opCode = OperationCode::fromValue(static_cast<char>(data[1]));
     RoutingChunk routingChunk = RoutingChunk::fromBytes({data.begin() + 2, data.begin() + 5});
-    uint8_t payloadLength = data[5];
-    if (data.size() < static_cast<unsigned int>(7) + payloadLength) {
-        ErrorHandler::handleError("Payload length mismatch");
+    const uint8_t payloadLength = data[5];
+    if (data.size() < HEADER_SIZE + payloadLength) {
+        ErrorHandler::handleError("Payload length mismatch -> Expected: " + std::to_string(payloadLength) +
+                                  " Actual: " + std::to_string(data.size() - HEADER_SIZE));
     }
 
-    std::vector<uint8_t> payloadData(data.begin() + 6, data.begin() + 6 + payloadLength);
-    uint16_t crc = (data[data.size() - 2] << 8) | data[data.size() - 1];
+    const std::vector payloadData(data.begin() + HEADER_SIZE, data.begin() + HEADER_SIZE + payloadLength);
 
     switch (opCode.getValue()) {
         case OperationCode::Code::GET_UPDATED_NODE_DEVICE_CONFIG: {
@@ -66,11 +72,9 @@ Packet Packet::fromBytes(const std::vector<uint8_t> &data) {
         case OperationCode::Code::GET_ICLISTEN_CONFIG: {
             return {opCode, routingChunk, FetchICListenConfigurationPayload::fromBytes(payloadData), crc};
         }
-
-
         default:
-            ErrorHandler::handleError("Invalid operation code");
-//                throw std::runtime_error("Invalid operation code");
+            ErrorHandler::handleError("Packet OperationCode not supported for reconstructing fromBytes by this node. Operation code=" + std::to_string(opCode.getValue()));
+        //                throw std::runtime_error("Invalid operation code");
     }
 }
 
@@ -79,7 +83,7 @@ std::string Packet::encode() const {
     std::string encodedString;
     encodedString.reserve(packetBytes.size() * 2); // Reservar espacio para evitar realocaciones
 
-    for (const auto &byte : packetBytes) {
+    for (const auto &byte: packetBytes) {
         // Convertir cada byte a su representación hexadecimal
         char hex[3];
         snprintf(hex, sizeof(hex), "%02x", static_cast<unsigned char>(byte));
@@ -119,19 +123,12 @@ void Packet::swapSenderReceiverAddresses() {
 }
 
 void Packet::computeChecksum() {
-    std::vector<uint8_t> buffer;
-    buffer.push_back(SYNC_BYTE);
-    buffer.push_back(static_cast<uint8_t>(opCode.getValue()));
-    const auto routingBytes = routingChunk.toBytes();
-    buffer.insert(buffer.end(), routingBytes.begin(), routingBytes.end());
+    // Call toBytes() and remove the last two bytes (CRC)
+    std::vector<uint8_t> buffer = toBytes();
+    buffer.pop_back();
+    buffer.pop_back();
 
-    std::visit([&buffer](const auto &payload) {
-        const uint16_t size = payload.getBytesSize();
-        buffer.push_back(static_cast<uint8_t>(size >> 8));
-        buffer.push_back(static_cast<uint8_t>(size & 0xFF));
-        const auto payloadBytes = payload.toBytes();
-        buffer.insert(buffer.end(), payloadBytes.begin(), payloadBytes.end());
-    }, payload);
+    Logger::logInfo("Packet::computeChecksum() -> Computing checksum for packet bytes (without CRC at the end): " + Logger::vectorToHexString(buffer));
 
     checksum = CRCUtils::calculate16BitCRC(buffer);
 }

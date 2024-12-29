@@ -22,19 +22,26 @@ OperationCode OperationCode::errorReport() {
     return OperationCode(ERROR_REPORT);
 }
 
-OperationCode::OperationCode(OperationCode::Code code) : code(code) {}
+OperationCode::OperationCode(OperationCode::Code code) : code(code) {
+}
 
 char OperationCode::getValue() const {
     return code;
 }
 
 OperationCode OperationCode::fromValue(char value) {
-    for (Code c: {COMPLETE_STATUS_REPORT, BASIC_STATUS_REPORT, SET_NODE_DEVICE_CONFIG,
-                  GET_UPDATED_NODE_DEVICE_CONFIG}) {
+    for (const Code c: {
+             COMPLETE_STATUS_REPORT,
+             BASIC_STATUS_REPORT,
+             SET_NODE_DEVICE_CONFIG,
+             GET_UPDATED_NODE_DEVICE_CONFIG,
+             GET_ICLISTEN_CONFIG,
+             SET_ICLISTEN_CONFIG
+         }) {
         if (c == value) {
             return OperationCode(c);
         }
     }
-    ErrorHandler::handleError("Invalid operation code");
-//    throw std::invalid_argument("Invalid operation code: " + std::string(1, value));
+    ErrorHandler::handleError("OperationCode::fromValue() -> Invalid operation code -> " + std::string(1, value));
+    //    throw std::invalid_argument("Invalid operation code: " + std::string(1, value));
 }

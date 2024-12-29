@@ -11,8 +11,7 @@ class ReportingConfiguration {
 public:
     enum class ReportType : unsigned char {
         COMPLETE = 'C',
-        BASIC = 'B',
-        SUMMARY = 'S'
+        BASIC = 'B'
     };
 
     static ReportingConfiguration::ReportType reportTypeFromJson(uint8_t value);

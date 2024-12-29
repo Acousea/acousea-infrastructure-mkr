@@ -20,6 +20,7 @@ public:
     [[nodiscard]] std::vector<uint8_t> toBytes() const override;
 
 
+
 private:
     BatteryModule battery;
     LocationModule location;

@@ -15,7 +15,8 @@ NodeOperationRunner::NodeOperationRunner(Router &router,
 void NodeOperationRunner::init() {
     Logger::logInfo(
         "-> Init Operation Cycle for Operation Mode=" + std::to_string(cache.currentOperationMode) +
-        " with configuration: ");
+        " with configuration: "
+    );
     nodeConfiguration.emplace(nodeConfigurationRepository.getNodeConfiguration());
     nodeConfiguration->print();
     cache.currentOperationMode = nodeConfiguration->getOperationGraphModule()->getGraph().begin()->first;
@@ -44,7 +45,7 @@ void NodeOperationRunner::checkIfMustTransition() {
                 ->getGraph()
                 .at(cache.currentOperationMode).nextMode;
         cache.currentOperationMode = nextOpMode;
-        SerialUSB.println("Transitioned to next mode..." + String(cache.currentOperationMode));
+        Logger::logInfo("Transitioned to next mode..." + std::to_string(cache.currentOperationMode));
     }
 }
 
@@ -98,9 +99,6 @@ void NodeOperationRunner::processRoutine(const ReportingConfiguration &config, I
         case ReportingConfiguration::ReportType::BASIC:
             routine = internalRoutines.find(OperationCode::Code::BASIC_STATUS_REPORT)->second;
             break;
-        case ReportingConfiguration::ReportType::SUMMARY:
-            // Implement or fetch routine for SUMMARY if needed
-            break;
         default:
             ErrorHandler::handleError(getClassNameString() + ": Invalid report type");
             return;
@@ -112,8 +110,9 @@ void NodeOperationRunner::processRoutine(const ReportingConfiguration &config, I
     }
 
     const Result<Packet> result = routine->execute();
+
     if (result.isError()) {
-        ErrorHandler::handleError("Routine execution failed: " + result.getError());
+        Logger::logError("Routine execution failed: " + result.getError());
         return;
     }
 
@@ -153,7 +152,8 @@ void NodeOperationRunner::processPacket(IPort::PortType portType, const Packet &
     }
 
     if (result.isEmpty()) {
-        Logger::logInfo(getClassNameString() + "Execution successful but no response packe for OpCode: " + std::to_string(opCode));
+        Logger::logInfo(
+            getClassNameString() + "Execution successful but no response packe for OpCode: " + std::to_string(opCode));
         return;
     }
 
@@ -180,7 +180,7 @@ void NodeOperationRunner::sendResponsePacket(const IPort::PortType portType,
             router.sendFrom(localAddress).sendSerial(responsePacket);
             break;
         default:
-            SerialUSB.println("Unknown port type for response packet!");
+            Logger::logError(getClassNameString() + "Unknown port type for response packet!");
             break;
     }
 }

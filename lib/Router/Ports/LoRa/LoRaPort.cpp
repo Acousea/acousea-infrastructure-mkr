@@ -1,21 +1,25 @@
 #include "LoRaPort.h"
 
+#include <ErrorHandler/ErrorHandler.h>
+#include <Logger/Logger.h>
+
 LoRaConfig defaultLoraConfig = {
-        7,       // bandwidth_index: 125 kHz
-        10,      // spreadingFactor: 7
-        5,       // codingRate: 5
-        2,       // txPower: 14 dBm
-        (long) 868E6,   // frequency: 868 MHz
-        8,       // preambleLength: 8
-        0x12     // syncWord: 0x12
+    7, // bandwidth_index: 125 kHz
+    10, // spreadingFactor: 7
+    5, // codingRate: 5
+    2, // txPower: 14 dBm
+    (long) 868E6, // frequency: 868 MHz
+    8, // preambleLength: 8
+    0x12 // syncWord: 0x12
 };
 
 double bandwidth_kHz[10] = {
-        7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, 250E3, 500E3
+    7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, 250E3, 500E3
 };
 
 LoraPort::LoraPort(const LoRaConfig &config) : IPort(PortType::LoraPort),
-                                               config(config) {}
+                                               config(config) {
+}
 
 void LoraPort::init() {
     configureLora(config);
@@ -23,8 +27,8 @@ void LoraPort::init() {
     LoRa.setPreambleLength(config.preambleLength);
 
     if (!LoRa.begin(config.frequency)) {
-        SerialUSB.println("Starting LoRa failed!");
-        while (1);
+        ErrorHandler::handleError("LoRaPort::init() -> Failed to initialize LoRa module");
+        return;
     }
 
     LoRa.onReceive(onReceiveWrapper);
@@ -32,18 +36,15 @@ void LoraPort::init() {
 }
 
 void LoraPort::send(const std::vector<uint8_t> &data) {
-    SerialUSB.println("LORA_PORT::send() -> Sending packet...");
-    SerialUSB.print("Data: ");
-    for (const auto &byte: data) {
-        SerialUSB.print(byte, HEX);
-        SerialUSB.print(" ");
-    }
+    Logger::logInfo("LoraPort::send() -> Sending packet... " + Logger::vectorToHexString(data));
+
     while (!LoRa.beginPacket()) {
-        SerialUSB.println("LORA_PORT::send() -> LoRa.beginPacket() Waiting for transmission to end...");
+        Logger::logInfo("LORA_PORT::send() -> LoRa.beginPacket() Waiting for transmission to end...");
         delay(10);
     }
     LoRa.write(data.data(), data.size());
-    LoRa.endPacket(); // Transmit the packet synchrously (blocking) -> Avoids setting onTxDone callback (has bugs in the library)
+    LoRa.endPacket();
+    // Transmit the packet synchrously (blocking) -> Avoids setting onTxDone callback (has bugs in the library)
     // Start listening for incoming packets again
     LoRa.receive();
 }
@@ -52,12 +53,12 @@ bool LoraPort::available() {
     return receivedRawPackets.size() > 0;
 }
 
-std::vector<std::vector<uint8_t>> LoraPort::read() {
+std::vector<std::vector<uint8_t> > LoraPort::read() {
     if (!available()) {
         return {};
     }
     // Return all packets and clear the queue
-    std::vector<std::vector<uint8_t>> packets;
+    std::vector<std::vector<uint8_t> > packets;
     for (const auto &packet: receivedRawPackets) {
         packets.push_back(packet);
     }
@@ -75,11 +76,11 @@ void LoraPort::onReceive(int packetSize) {
 
     if (receivedRawPackets.size() >= MAX_QUEUE_SIZE) {
         // Emitir advertencia y eliminar el paquete más antiguo
-        SerialUSB.println("WARNING: Received packet queue is full. Dropping the oldest packet.");
+        Logger::logInfo("LoRaPort::onReceive(): WARNING: Received packet queue is full. Dropping the oldest packet.");
         receivedRawPackets.pop_front(); // Eliminar el paquete más antiguo
     }
 
-    SerialUSB.println("Correctly received packet -> pushing");
+    Logger::logInfo("LoraPort::onReceive() -> Storing packet..." + Logger::vectorToHexString(buffer));
     receivedRawPackets.push_back(buffer);
 }
 

@@ -52,7 +52,7 @@ public:
 
 protected:
     PortType type;
-    std::deque<std::vector<uint8_t> > receivedRawPackets;
+    std::deque<std::vector<uint8_t>> receivedRawPackets;
     static const size_t MAX_QUEUE_SIZE = 10;
     static const size_t MAX_RECEIVED_PACKET_SIZE = 340;
 };
