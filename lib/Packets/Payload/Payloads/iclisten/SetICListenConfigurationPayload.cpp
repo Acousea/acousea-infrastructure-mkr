@@ -79,31 +79,34 @@ std::vector<uint8_t> SetICListenConfigurationPayload::toBytes() const {
 }
 
 
-SetICListenConfigurationPayload SetICListenConfigurationPayload::fromBytes(const std::vector<uint8_t> &data) {
-    std::vector<SerializableModule> modules = ModuleFactory::createModules(data);
-    auto status = std::optional<ICListenStatus>();
-    auto loggingConfig = std::optional<ICListenLoggingConfig>();
-    auto streamingConfig = std::optional<ICListenStreamingConfig>();
-    auto recordingStats = std::optional<ICListenRecordingStats>();
-    for (const auto &module: modules) {
-        switch (module.getType()) {
+SetICListenConfigurationPayload SetICListenConfigurationPayload::fromBytes(const std::vector<uint8_t>& data) {
+    auto modules = ModuleFactory::createModules(data);
+
+    std::optional<ICListenStatus> status;
+    std::optional<ICListenLoggingConfig> loggingConfig;
+    std::optional<ICListenStreamingConfig> streamingConfig;
+    std::optional<ICListenRecordingStats> recordingStats;
+
+    for (const auto& module : modules) {
+        switch (module->getType()) {
             case static_cast<uint8_t>(ModuleCode::TYPES::ICLISTEN_RECORDING_STATS):
-                recordingStats = static_cast<const ICListenRecordingStats &>(module);
-                break;
+                recordingStats = *static_cast<const ICListenRecordingStats*>(module.get());
+            break;
             case static_cast<uint8_t>(ModuleCode::TYPES::ICLISTEN_STATUS):
-                status = static_cast<const ICListenStatus &>(module);
-                break;
+                status = *static_cast<const ICListenStatus*>(module.get());
+            break;
             case static_cast<uint8_t>(ModuleCode::TYPES::ICLISTEN_LOGGING_CONFIG):
-                loggingConfig = static_cast<const ICListenLoggingConfig &>(module);
-                break;
+                loggingConfig = *static_cast<const ICListenLoggingConfig*>(module.get());
+            break;
             case static_cast<uint8_t>(ModuleCode::TYPES::ICLISTEN_STREAMING_CONFIG):
-                streamingConfig = static_cast<const ICListenStreamingConfig &>(module);
-                break;
+                streamingConfig = *static_cast<const ICListenStreamingConfig*>(module.get());
+            break;
             default:
                 ErrorHandler::handleError("SetICListenConfigurationPayload::fromBytes() -> "
-                                          "Invalid ICListen aspect " + std::to_string(module.getType()));
+                                          "Invalid ICListen aspect " + std::to_string(module->getType()));
         }
     }
 
-    return SetICListenConfigurationPayload(status, loggingConfig, streamingConfig, recordingStats);
+    const auto payload =  SetICListenConfigurationPayload(status, loggingConfig, streamingConfig, recordingStats);
+    return payload;
 }

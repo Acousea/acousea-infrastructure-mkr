@@ -7,7 +7,8 @@
 
 class NewNodeConfigurationPayload : public Payload {
 public:
-    explicit NewNodeConfigurationPayload(const std::vector<SerializableModule> &tags);
+    explicit NewNodeConfigurationPayload(const std::vector<std::unique_ptr<SerializableModule>> & vector);
+
 
     // Obtiene el tamaño en bytes del packetPayload
     [[nodiscard]] uint16_t getBytesSize() const override;

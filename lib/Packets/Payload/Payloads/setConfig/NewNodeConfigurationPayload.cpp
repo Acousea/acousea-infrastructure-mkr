@@ -1,6 +1,12 @@
 #include "NewNodeConfigurationPayload.h"
 
-NewNodeConfigurationPayload::NewNodeConfigurationPayload(const std::vector<SerializableModule> &tags) : modules(tags) {}
+NewNodeConfigurationPayload::NewNodeConfigurationPayload(
+    const std::vector<std::unique_ptr<SerializableModule> > &vector) {
+    modules.reserve(vector.size());
+    for (const auto &tag: vector) {
+        modules.push_back(*tag);
+    }
+}
 
 uint16_t NewNodeConfigurationPayload::getBytesSize() const {
     uint16_t size = 0;
@@ -20,7 +26,7 @@ std::vector<uint8_t> NewNodeConfigurationPayload::toBytes() const {
 }
 
 NewNodeConfigurationPayload NewNodeConfigurationPayload::fromBytes(const std::vector<uint8_t> &data) {
-    std::vector<SerializableModule> modules = ModuleFactory::createModules(data);
+    const auto modules = ModuleFactory::createModules(data);
     return NewNodeConfigurationPayload(modules);
 }
 

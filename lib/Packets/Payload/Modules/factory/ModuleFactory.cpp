@@ -1,57 +1,50 @@
 #include "ModuleFactory.h"
 
-#include "Payload/Modules/pamModules/ICListen/ICListenHF.h"
-#include "Payload/Modules/pamModules/ICListen/implementation/logging/ICListenLoggingConfig.h"
-#include "Payload/Modules/pamModules/ICListen/implementation/stats/ICListenRecordingStats.h"
-#include "Payload/Modules/pamModules/ICListen/implementation/status/ICListenStatus.h"
-#include "Payload/Modules/pamModules/ICListen/implementation/streaming/ICListenStreamingConfig.h"
 
 
-// Define and initialize the map of module creators
 const std::map<ModuleCode::TYPES, ModuleFactory::ModuleCreator> ModuleFactory::moduleCreators = {
-        {ModuleCode::TYPES::BATTERY,         [](const std::vector<uint8_t> &data) {
-            return BatteryModule::from(data);
-        }},
-        {ModuleCode::TYPES::LOCATION,        [](const std::vector<uint8_t> &data) {
-            return LocationModule::from(data);
-        }},
-        {ModuleCode::TYPES::NETWORK,         [](const std::vector<uint8_t> &data) {
-            return NetworkModule::from(data);
-        }},
-        {ModuleCode::TYPES::OPERATION_MODES, [](const std::vector<uint8_t> &data) {
-            return OperationModesModule::from(data);
-        }},
-        {ModuleCode::TYPES::REAL_TIME_CLOCK, [](const std::vector<uint8_t> &data) {
-            return RTCModule::from(data);
-        }},
-        {ModuleCode::TYPES::REPORTING,       [](const std::vector<uint8_t> &data) {
-            return ReportingModule::from(data);
-        }},
-        {ModuleCode::TYPES::STORAGE,         [](const std::vector<uint8_t> &data) {
-            return StorageModule::from(data);
-        }},
-        {ModuleCode::TYPES::AMBIENT,         [](const std::vector<uint8_t> &data) {
-            return AmbientModule::from(data);
-        }},
-        {ModuleCode::TYPES::ICLISTEN_STATUS,         [](const std::vector<uint8_t> &data) {
-            return ICListenStatus::fromBytes(data);
-        }},
-        {ModuleCode::TYPES::ICLISTEN_LOGGING_CONFIG,         [](const std::vector<uint8_t> &data) {
-            return ICListenLoggingConfig::fromBytes(data);
-        }},
-        {ModuleCode::TYPES::ICLISTEN_STREAMING_CONFIG,         [](const std::vector<uint8_t> &data) {
-            return ICListenStreamingConfig::fromBytes(data);
-        }},
-        {ModuleCode::TYPES::ICLISTEN_RECORDING_STATS,         [](const std::vector<uint8_t> &data) {
-            return ICListenRecordingStats::fromBytes(data);
-        }},
-        {ModuleCode::TYPES::ICLISTEN_COMPLETE,         [](const std::vector<uint8_t> &data) {
-            return ICListenHF::fromBytes(data);
-        }}
-
+    {ModuleCode::TYPES::BATTERY, [](const std::vector<uint8_t>& data) {
+        return std::make_unique<BatteryModule>(BatteryModule::from(data));
+    }},
+    {ModuleCode::TYPES::LOCATION, [](const std::vector<uint8_t>& data) {
+        return std::make_unique<LocationModule>(LocationModule::from(data));
+    }},
+    {ModuleCode::TYPES::NETWORK, [](const std::vector<uint8_t>& data) {
+        return std::make_unique<NetworkModule>(NetworkModule::from(data));
+    }},
+    {ModuleCode::TYPES::OPERATION_MODES, [](const std::vector<uint8_t>& data) {
+        return std::make_unique<OperationModesModule>(OperationModesModule::from(data));
+    }},
+    {ModuleCode::TYPES::REAL_TIME_CLOCK, [](const std::vector<uint8_t>& data) {
+        return std::make_unique<RTCModule>(RTCModule::from(data));
+    }},
+    {ModuleCode::TYPES::REPORTING, [](const std::vector<uint8_t>& data) {
+        return std::make_unique<ReportingModule>(ReportingModule::from(data));
+    }},
+    {ModuleCode::TYPES::STORAGE, [](const std::vector<uint8_t>& data) {
+        return std::make_unique<StorageModule>(StorageModule::from(data));
+    }},
+    {ModuleCode::TYPES::AMBIENT, [](const std::vector<uint8_t>& data) {
+        return std::make_unique<AmbientModule>(AmbientModule::from(data));
+    }},
+    {ModuleCode::TYPES::ICLISTEN_STATUS, [](const std::vector<uint8_t>& data) {
+        return std::make_unique<ICListenStatus>(ICListenStatus::fromBytes(data));
+    }},
+    {ModuleCode::TYPES::ICLISTEN_LOGGING_CONFIG, [](const std::vector<uint8_t>& data) {
+        return std::make_unique<ICListenLoggingConfig>(ICListenLoggingConfig::fromBytes(data));
+    }},
+    {ModuleCode::TYPES::ICLISTEN_STREAMING_CONFIG, [](const std::vector<uint8_t>& data) {
+        return std::make_unique<ICListenStreamingConfig>(ICListenStreamingConfig::fromBytes(data));
+    }},
+    {ModuleCode::TYPES::ICLISTEN_RECORDING_STATS, [](const std::vector<uint8_t>& data) {
+        return std::make_unique<ICListenRecordingStats>(ICListenRecordingStats::fromBytes(data));
+    }},
+    {ModuleCode::TYPES::ICLISTEN_COMPLETE, [](const std::vector<uint8_t>& data) {
+        return std::make_unique<ICListenHF>(ICListenHF::fromBytes(data));
+    }}
 };
 
-SerializableModule ModuleFactory::createModule(const std::vector<uint8_t> &buffer) {
+std::unique_ptr<SerializableModule> ModuleFactory::createModule(const std::vector<uint8_t>& buffer) {
     if (buffer.empty()) {
         ErrorHandler::handleError("ModuleFactory: Buffer is empty.");
     }
@@ -64,14 +57,13 @@ SerializableModule ModuleFactory::createModule(const std::vector<uint8_t> &buffe
         ErrorHandler::handleError("ModuleFactory: Unsupported module type: " + std::to_string(typeCode));
     }
 
-    // Extract module data (excluding the first byte for type)
-    std::vector<uint8_t> moduleData(buffer.begin() + 1, buffer.end());
+    // Extract module data (excluding the first byte for type and the second byte for size)
+    std::vector<uint8_t> moduleData(buffer.begin() + 2, buffer.end());
     return it->second(moduleData);
 }
 
-
-std::vector<SerializableModule> ModuleFactory::createModules(const std::vector<uint8_t> &buffer) {
-    std::vector<SerializableModule> modules;
+std::vector<std::unique_ptr<SerializableModule>> ModuleFactory::createModules(const std::vector<uint8_t>& buffer) {
+    std::vector<std::unique_ptr<SerializableModule>> modules;
     size_t offset = 0;
 
     while (offset < buffer.size()) {
@@ -80,7 +72,7 @@ std::vector<SerializableModule> ModuleFactory::createModules(const std::vector<u
         }
 
         uint8_t moduleSize = buffer[offset + 1];
-        if (offset + moduleSize + 1 > buffer.size()) {
+        if (offset + moduleSize + 2 > buffer.size()) {
             ErrorHandler::handleError("ModuleFactory: Module size exceeds buffer length.");
         }
 
