@@ -57,7 +57,7 @@ Packet Packet::fromBytes(const std::vector<uint8_t> &data) {
                                   " Actual: " + std::to_string(data.size() - HEADER_SIZE));
     }
 
-    const std::vector payloadData(data.begin() + HEADER_SIZE, data.begin() + HEADER_SIZE + payloadLength);
+    const std::vector<uint8_t> payloadData(data.begin() + HEADER_SIZE, data.begin() + HEADER_SIZE + payloadLength);
 
     switch (opCode.getValue()) {
         case OperationCode::Code::GET_UPDATED_NODE_DEVICE_CONFIG: {

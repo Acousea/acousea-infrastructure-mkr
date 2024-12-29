@@ -87,10 +87,17 @@ ICListenStatus ICListenStatus::fromBytes(const std::vector<uint8_t> &data) {
 
     int unitStatus = data[0];
     int batteryStatus = data[1];
-    double batteryPercentage = *reinterpret_cast<const double *>(&data[2]);
-    double temperature = *reinterpret_cast<const double *>(&data[10]);
-    double humidity = *reinterpret_cast<const double *>(&data[18]);
-    std::time_t timestamp = *reinterpret_cast<const std::time_t *>(&data[26]);
+    double batteryPercentage;
+    std::memcpy(&batteryPercentage, &data[2], sizeof(double));
+
+    double temperature;
+    std::memcpy(&temperature, &data[10], sizeof(double));
+
+    double humidity;
+    std::memcpy(&humidity, &data[18], sizeof(double));
+
+    std::time_t timestamp;
+    std::memcpy(&timestamp, &data[26], sizeof(std::time_t));
 
     return {unitStatus, batteryStatus, batteryPercentage, temperature, humidity, timestamp};
 

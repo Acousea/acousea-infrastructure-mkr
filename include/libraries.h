@@ -49,7 +49,7 @@
 #include <Ports/LoRa/MockLoRaPort.h>
 #include <Ports/iridium/MockIridiumPort.h>
 
-#include <Routing/operationCode/OperationCode.h>
+#include <Routing/OperationCode/OperationCode.h>
 #include <Routing/Address/Address.h>
 #include <Routing/RoutingChunk/RoutingChunk.h>
 

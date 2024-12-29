@@ -21,6 +21,11 @@ RoutingChunk RoutingChunk::fromNodeToBackend(Address sender) {
     return RoutingChunk(sender, Address::backend());
 }
 
+RoutingChunk RoutingChunk::broadcastFrom(const Address sender){
+    return RoutingChunk(sender, Address::broadcastAddress());
+}
+
+
 std::vector<uint8_t> RoutingChunk::toBytes() const {
     std::vector<uint8_t> data(getSize());
     data[0] = sender.getValue();
@@ -28,6 +33,7 @@ std::vector<uint8_t> RoutingChunk::toBytes() const {
     data[2] = ttl;
     return data;
 }
+
 
 size_t RoutingChunk::getSize() {
     return Address::getSize() * 2 + sizeof(uint8_t);

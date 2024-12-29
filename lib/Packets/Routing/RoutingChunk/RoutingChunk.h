@@ -8,6 +8,7 @@
 #include "../Address/Address.h"
 
 
+
 class RoutingChunk {
 public:
     RoutingChunk(Address sender, Address receiver, uint8_t ttl = 3);
@@ -18,7 +19,10 @@ public:
 
     static RoutingChunk fromNodeToBackend(Address sender);
 
+    static RoutingChunk broadcastFrom(Address sender);
+
     [[nodiscard]] std::vector<uint8_t> toBytes() const;
+
 
     [[nodiscard]] static size_t getSize();
 

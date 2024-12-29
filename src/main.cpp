@@ -120,7 +120,7 @@ void setup() {
 void loop() {
     static unsigned long lastTime = 0;
     // Operate every 30 seconds
-    if (millis() - lastTime >= 30000 || lastTime == 0) {
+    if (millis() - lastTime >= 15000 || lastTime == 0) {
         lastTime = millis();
         nodeOperationRunner.init();
         nodeOperationRunner.run();

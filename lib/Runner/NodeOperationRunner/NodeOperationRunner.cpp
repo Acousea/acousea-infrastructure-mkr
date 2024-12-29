@@ -105,7 +105,7 @@ void NodeOperationRunner::processRoutine(const ReportingConfiguration &config, I
     }
 
     if (!routine) {
-        ErrorHandler::handleError(getClassNameString() + "Routine not found for report type");
+        ErrorHandler::handleError(getClassNameString() + ": Routine not found for report type " + config.getReportTypeString());
         return;
     }
 
@@ -139,21 +139,21 @@ void NodeOperationRunner::processPacket(IPort::PortType portType, const Packet &
     const OperationCode::Code opCode = packet.getOpCodeEnum();
 
     if (externalRoutines.find(opCode) == externalRoutines.end()) {
-        Logger::logError(getClassNameString() + "Exception: Invalid OpCode");
+        Logger::logError(getClassNameString() + " Exception: No routine found for OpCode: " + std::to_string(opCode));
         sendResponsePacket(portType, localAddress, ErrorPacket::invalidOpcode(packet.getRoutingChunk()));
         return;
     }
 
     const Result<Packet> result = externalRoutines[opCode]->execute(packet);
     if (!result.isSuccess()) {
-        Logger::logError(getClassNameString() + "Exception: " + result.getError());
+        Logger::logError(getClassNameString() + " Exception: " + result.getError());
         sendResponsePacket(portType, localAddress, ErrorPacket::invalidPayload(packet.getRoutingChunk()));
         return;
     }
 
     if (result.isEmpty()) {
         Logger::logInfo(
-            getClassNameString() + "Execution successful but no response packe for OpCode: " + std::to_string(opCode));
+            getClassNameString() + ": Execution successful but no response packet for OpCode: " + std::to_string(opCode));
         return;
     }
 
@@ -180,7 +180,7 @@ void NodeOperationRunner::sendResponsePacket(const IPort::PortType portType,
             router.sendFrom(localAddress).sendSerial(responsePacket);
             break;
         default:
-            Logger::logError(getClassNameString() + "Unknown port type for response packet!");
+            Logger::logError(getClassNameString() + ": Unknown port type for response packet!");
             break;
     }
 }

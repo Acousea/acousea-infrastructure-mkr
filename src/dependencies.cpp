@@ -9,7 +9,7 @@ AdafruitDisplay adafruitDisplay;
 SerialUSBDisplay serialUSBDisplay;
 IDisplay *display = &serialUSBDisplay;
 
-SerialPort serialPort(&Serial1, 9600);
+SerialPort serialPort(&Serial1, 4800);
 LoraPort realLoraPort;
 IridiumPort realIridiumPort;
 MockLoRaPort mockLoraPort;
@@ -30,9 +30,11 @@ ICListenService icListenService(router);
 SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository);
 CompleteStatusReportRoutine completeSummaryReportRoutine(gps, battery, nodeConfigurationRepository, icListenService);
 BasicStatusReportRoutine basicSummaryReportRoutine(gps, battery, &rtcController, nodeConfigurationRepository);
+StoreICListenConfigurationRoutine storeICListenConfigurationRoutine(icListenService);
 
 std::map<OperationCode::Code, IRoutine<Packet> *> configurationRoutines = {
     {OperationCode::Code::SET_NODE_DEVICE_CONFIG, &setNodeConfigurationRoutine},
+    {OperationCode::Code::SET_ICLISTEN_CONFIG, &storeICListenConfigurationRoutine},
 };
 
 std::map<OperationCode::Code, IRoutine<VoidType> *> reportingRoutines = {

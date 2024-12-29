@@ -118,8 +118,6 @@ SetICListenConfigurationPayload SetICListenConfigurationPayload::fromBytes(const
         recordingStats = ICListenRecordingStats::fromBytes({data.begin() + offset, data.end()});
         offset += recordingStats->toBytes().size();
     }
-
-
     Serial.println("Exiting SetICListenConfigurationPayload::fromBytes()");
     return SetICListenConfigurationPayload(aspects, status, loggingConfig, streamingConfig, recordingStats);
 }
