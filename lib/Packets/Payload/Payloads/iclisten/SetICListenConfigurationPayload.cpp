@@ -87,20 +87,21 @@ SetICListenConfigurationPayload SetICListenConfigurationPayload::fromBytes(const
     auto recordingStats = std::optional<ICListenRecordingStats>();
     for (const auto &module: modules) {
         switch (module.getType()) {
-            case static_cast<uint8_t>(ICListenAspect::Aspect::STATS):
+            case static_cast<uint8_t>(ModuleCode::TYPES::ICLISTEN_RECORDING_STATS):
                 recordingStats = static_cast<const ICListenRecordingStats &>(module);
                 break;
-            case static_cast<uint8_t>(ICListenAspect::Aspect::STATUS):
+            case static_cast<uint8_t>(ModuleCode::TYPES::ICLISTEN_STATUS):
                 status = static_cast<const ICListenStatus &>(module);
                 break;
-            case static_cast<uint8_t>(ICListenAspect::Aspect::LOGGING):
+            case static_cast<uint8_t>(ModuleCode::TYPES::ICLISTEN_LOGGING_CONFIG):
                 loggingConfig = static_cast<const ICListenLoggingConfig &>(module);
                 break;
-            case static_cast<uint8_t>(ICListenAspect::Aspect::STREAMING):
+            case static_cast<uint8_t>(ModuleCode::TYPES::ICLISTEN_STREAMING_CONFIG):
                 streamingConfig = static_cast<const ICListenStreamingConfig &>(module);
                 break;
             default:
-                ErrorHandler::handleError("SetICListenConfigurationPayload::fromBytes() -> Invalid module type");
+                ErrorHandler::handleError("SetICListenConfigurationPayload::fromBytes() -> "
+                                          "Invalid ICListen aspect " + std::to_string(module.getType()));
         }
     }
 

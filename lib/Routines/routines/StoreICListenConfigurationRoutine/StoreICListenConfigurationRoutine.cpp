@@ -6,7 +6,7 @@ StoreICListenConfigurationRoutine::StoreICListenConfigurationRoutine(ICListenSer
 
 Result<Packet> StoreICListenConfigurationRoutine::execute(const Packet &packet) {
     const SetICListenConfigurationPayload configurationPayload = packet.getPayloadAs<SetICListenConfigurationPayload>();
-    Logger::logInfo(getClassNameString() + "Storing ICListen configuration ");
+    Logger::logInfo(getClassNameString() + ": Storing ICListen configuration ");
 
     const auto status = configurationPayload.getStatus();
     const auto loggingConfig = configurationPayload.getLoggingConfig();

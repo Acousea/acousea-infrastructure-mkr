@@ -132,7 +132,7 @@ void NodeOperationRunner::processIncomingPackets(const Address &localAddress) {
 void NodeOperationRunner::processPacket(IPort::PortType portType, const Packet &packet, const Address &localAddress) {
     Logger::logInfo(
         "Processing packet " + packet.encode() +
-        "from " + std::to_string(packet.getRoutingChunk().getSender().getValue()) +
+        " from " + std::to_string(packet.getRoutingChunk().getSender().getValue()) +
         " received through " + IPort::portTypeToString(portType)
     );
 

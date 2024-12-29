@@ -48,10 +48,11 @@ private:
     TYPES type;
 
     // Devuelve todos los tipos de tags disponibles
-    static constexpr std::array<TYPES, 8> getAllTagTypes() {
-        return {TYPES::BATTERY, TYPES::LOCATION, TYPES::NETWORK,
-                TYPES::OPERATION_MODES, TYPES::REPORTING,
-                TYPES::REAL_TIME_CLOCK, TYPES::STORAGE, TYPES::AMBIENT};
+    static constexpr std::array<TYPES, 13> getAllTagTypes() {
+        return {TYPES::BATTERY, TYPES::LOCATION, TYPES::NETWORK, TYPES::OPERATION_MODES, TYPES::REPORTING,
+                TYPES::REAL_TIME_CLOCK, TYPES::STORAGE, TYPES::AMBIENT, TYPES::ICLISTEN_COMPLETE, TYPES::ICLISTEN_STATUS,
+                 TYPES::ICLISTEN_LOGGING_CONFIG, TYPES::ICLISTEN_STREAMING_CONFIG, TYPES::ICLISTEN_RECORDING_STATS
+        };
     }
 };
 

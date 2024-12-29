@@ -65,15 +65,14 @@ bool ModuleCode::operator==(const ModuleCode &other) const {
 
 
 ModuleCode ModuleCode::fromValue(unsigned char code) {
-    char charCode = static_cast<char>(code);
     for (const auto& tagType : getAllTagTypes()) {
-        if (static_cast<char>(tagType) == charCode) {
+        if (static_cast<unsigned char>(tagType) == code) {
             return ModuleCode(tagType);
         }
     }
     // Manejo de error: reinicia el programa o toma la acción necesaria
-    ErrorHandler::handleError("Invalid module code: " + std::to_string(code));
-//        throw std::invalid_argument("Invalid tag type: " + std::to_string(code));
+    ErrorHandler::handleError("ModuleCode::fromValue() -> Invalid module code: " + std::to_string(code));
+    //        throw std::invalid_argument("Invalid tag type: " + std::to_string(code));
 }
 
 ModuleCode::TYPES ModuleCode::enumFromValue(unsigned char code) {
@@ -82,7 +81,7 @@ ModuleCode::TYPES ModuleCode::enumFromValue(unsigned char code) {
             return tagType;
         }
     }
-    ErrorHandler::handleError("Invalid tag type: " + std::to_string(code));
+    ErrorHandler::handleError("ModuleCode::enumFromValue() -> Invalid module code: " + std::to_string(code));
 //        throw std::invalid_argument("Invalid tag type: " + std::to_string(code));
 }
 

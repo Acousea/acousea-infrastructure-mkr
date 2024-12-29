@@ -7,7 +7,7 @@ ReportingConfiguration::ReportType ReportingConfiguration::reportTypeFromJson(ui
         case 'B':
             return ReportingConfiguration::ReportType::BASIC;
         default:
-            ErrorHandler::handleError("Invalid report type value");
+            ErrorHandler::handleError("Invalid report type value " + std::to_string(value));
 //                throw std::invalid_argument("Invalid report type value");
     }
 }
