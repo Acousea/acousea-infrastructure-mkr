@@ -33,13 +33,16 @@ BasicStatusReportRoutine basicSummaryReportRoutine(gps, battery, &rtcController,
 StoreICListenConfigurationRoutine storeICListenConfigurationRoutine(icListenService);
 
 std::map<OperationCode::Code, IRoutine<Packet> *> configurationRoutines = {
-    {OperationCode::Code::SET_NODE_DEVICE_CONFIG, &setNodeConfigurationRoutine},
-    {OperationCode::Code::SET_ICLISTEN_CONFIG, &storeICListenConfigurationRoutine},
+        {OperationCode::Code::SET_NODE_DEVICE_CONFIG, &setNodeConfigurationRoutine},
+        {OperationCode::Code::SET_ICLISTEN_CONFIG,    &storeICListenConfigurationRoutine},
 };
 
 std::map<OperationCode::Code, IRoutine<VoidType> *> reportingRoutines = {
-    {OperationCode::Code::BASIC_STATUS_REPORT, &basicSummaryReportRoutine},
-    {OperationCode::Code::COMPLETE_STATUS_REPORT, &completeSummaryReportRoutine},
+        {OperationCode::Code::BASIC_STATUS_REPORT,    &basicSummaryReportRoutine},
+        {OperationCode::Code::COMPLETE_STATUS_REPORT, &completeSummaryReportRoutine},
 };
 
 NodeOperationRunner nodeOperationRunner(router, reportingRoutines, configurationRoutines, nodeConfigurationRepository);
+
+MosfetController mosfetController;
+RockPiPowerController rockPiPowerController(mosfetController);

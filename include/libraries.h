@@ -17,7 +17,8 @@
 //#include <IridiumSBD.h>
 //#include <ArduinoJson.h>
 //#include <SparkFun_u-blox_GNSS_Arduino_Library.h> //http://librarymanager/All#SparkFun_u-blox_GNSS
-
+//#include <ArduinoLowPower.h>
+//#include <Adafruit_SleepyDog.h>
 
 // ------------------ CUSTOM LIBRARIES ------------------
 // ================== Shared ==================
@@ -27,6 +28,8 @@
 #include "Logger/Logger.h"
 #include <ErrorHandler/ErrorHandler.h>
 #include <ClassName.h>
+
+
 // ============================================
 
 #include <PMICBatteryController/PMICBatteryController.h>
@@ -110,6 +113,9 @@
 #include <NodeOperationRunner/NodeOperationRunner.h>
 
 #include <ICListenService/ICListenService.h>
+
+#include <MosfetController/MosfetController.hpp>
+#include <RockPiPowerController/RockPiPowerController.hpp>
 
 
 #endif

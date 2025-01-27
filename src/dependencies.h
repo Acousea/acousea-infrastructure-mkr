@@ -39,4 +39,7 @@ extern std::map<OperationCode::Code, IRoutine<VoidType> *> reportingRoutines;
 
 extern NodeOperationRunner nodeOperationRunner;
 
+extern MosfetController mosfetController;
+extern RockPiPowerController rockPiPowerController;
+
 #endif // DEPENDENCIES_H
