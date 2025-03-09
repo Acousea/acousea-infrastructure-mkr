@@ -1,9 +1,13 @@
 #include "BasicStatusReportRoutine.h"
 
-BasicStatusReportRoutine::BasicStatusReportRoutine(IGPS *gps, IBatteryController *battery, RTCController *rtc,
-                                                     NodeConfigurationRepository &nodeConfigurationRepository)
-    : IRoutine(getClassNameString()), gps(gps), battery(battery), rtc(rtc),
-      nodeConfigurationRepository(nodeConfigurationRepository) {
+BasicStatusReportRoutine::BasicStatusReportRoutine(
+        IGPS *gps,
+        IBatteryController *battery,
+        RTCController *rtc,
+        NodeConfigurationRepository &nodeConfigurationRepository
+)
+        : IRoutine(getClassNameString()), gps(gps), battery(battery), rtc(rtc),
+          nodeConfigurationRepository(nodeConfigurationRepository) {
 }
 
 Result<Packet> BasicStatusReportRoutine::execute() {
@@ -22,10 +26,10 @@ Result<Packet> BasicStatusReportRoutine::execute() {
                     "), epoch: " + std::to_string(epoch) + "]");
 
     const auto statusPacket = BasicStatusReportPacket(
-        RoutingChunk::fromNodeToBackend(nodeConfig.getLocalAddress()),
-        BatteryModule::from(batteryPercentage, batteryStatus),
-        LocationModule::from(latitude, longitude),
-        RTCModule::from(epoch)
+            RoutingChunk::fromNodeToBackend(nodeConfig.getLocalAddress()),
+            BatteryModule::from(batteryPercentage, batteryStatus),
+            LocationModule::from(latitude, longitude),
+            RTCModule::from(epoch)
     );
     return Result<Packet>::success(statusPacket);
 }

@@ -1,4 +1,6 @@
 #include "dependencies.h"
+#include "RTCController.hpp"
+#include "MockRTCController/MockRTCController.h"
 
 PMICBatteryController pmicBatteryController;
 AdafruitLCBatteryController adafruitLCBatteryController;
@@ -20,7 +22,10 @@ MKRGPS mkrGPS;
 UBloxGNSS uBloxGPS;
 IGPS *gps = &mockGPS;
 
-RTCController rtcController;
+ZeroRTCController zeroRTCController;
+MockRTCController mockRTCController;
+RTCController *rtcController = &zeroRTCController;
+
 SDManager sdManager;
 Router router({&serialPort, &mockLoraPort, &mockIridiumPort});
 
@@ -29,7 +34,7 @@ ICListenService icListenService(router);
 
 SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository);
 CompleteStatusReportRoutine completeSummaryReportRoutine(gps, battery, nodeConfigurationRepository, icListenService);
-BasicStatusReportRoutine basicSummaryReportRoutine(gps, battery, &rtcController, nodeConfigurationRepository);
+BasicStatusReportRoutine basicSummaryReportRoutine(gps, battery, rtcController, nodeConfigurationRepository);
 StoreICListenConfigurationRoutine storeICListenConfigurationRoutine(icListenService);
 
 std::map<OperationCode::Code, IRoutine<Packet> *> configurationRoutines = {

@@ -4,7 +4,7 @@
 #include "IRoutine.h"
 #include "IGPS.h"
 #include "IBatteryController.h"
-#include "RTCController.h"
+#include "RTCController.hpp"
 #include "Packet.h"
 #include "Packets/reports/BasicStatusReportPacket.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
@@ -20,7 +20,7 @@ public:
     CLASS_NAME(BasicSummaryReportRoutine)
 
     BasicStatusReportRoutine(IGPS *gps, IBatteryController *battery, RTCController *rtc,
-                              NodeConfigurationRepository &nodeConfigurationRepository);
+                             NodeConfigurationRepository &nodeConfigurationRepository);
 
     Result<Packet> execute() override;
 };

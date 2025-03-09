@@ -41,7 +41,7 @@
 #include <MKRGPS/MKRGPS.h>
 #include <UBloxGPS/UBloxGPS.h>
 
-#include <RTCController.h>
+#include "ZeroRTCController/ZeroRTCController.h"
 
 #include <AdafruitDisplay/AdafruitDisplay.h>
 #include <SerialUSBDisplay/SerialUSBDisplay.h>

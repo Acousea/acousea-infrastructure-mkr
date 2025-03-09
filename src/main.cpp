@@ -1,4 +1,5 @@
 #include "dependencies.h"
+#include "../lib/MockLib/include/library.h"
 
 #define DRIFTER_MODE 0
 #define LOCALIZER_MODE 1
@@ -7,56 +8,54 @@
 
 void saveLocalizerConfig() {
     nodeConfigurationRepository.saveConfiguration(
-        NodeConfiguration(
-            Address(2),
-            OperationModesGraphModule::from({
-                {
-                    0,
-                    OperationModesGraphModule::Transition(0, 3)
-                },
-            }),
-            std::nullopt,
-            std::nullopt
-        ));
+            NodeConfiguration(
+                    Address(2),
+                    OperationModesGraphModule::from({
+                                                            {
+                                                                    0,
+                                                                    OperationModesGraphModule::Transition(0, 3)
+                                                            },
+                                                    }),
+                    std::nullopt,
+                    std::nullopt
+            ));
 }
 
 void saveDrifterConfig() {
-    nodeConfigurationRepository.saveConfiguration(
-        NodeConfiguration(
+    nodeConfigurationRepository.saveConfiguration(NodeConfiguration(
             Address(2),
             OperationModesGraphModule::from({
-                {
-                    0,
-                    OperationModesGraphModule::Transition(0, 3)
-                },
-            }),
+                                                    {
+                                                            0,
+                                                            OperationModesGraphModule::Transition(0, 3)
+                                                    },
+                                            }),
             LoRaReportingModule(
-                {
-                    {
-                        0, ReportingConfiguration(
-                            0, 15,
-                            ReportingConfiguration::ReportType::BASIC
-                        )
-                    }
-                }),
+                    {{
+                             0, ReportingConfiguration(
+                                    0, 15,
+                                    ReportingConfiguration::ReportType::BASIC
+                            )
+                     }}),
             IridiumReportingModule(
-                {
-                    {
-                        0,
-                        ReportingConfiguration(
-                            0, 15,
-                            ReportingConfiguration::ReportType::COMPLETE)
-                    }
-                }
-            )
-
-        ));
+                    {{
+                             0,
+                             ReportingConfiguration(
+                                     0, 15,
+                                     ReportingConfiguration::ReportType::COMPLETE)
+                     }})
+    ));
 }
 
 
 void setup() {
     // Inicializa la comunicación serial a 9600 baudios
     serialUSBDisplay.init(9600);
+
+    // Test the mock library
+    MockLibrary::print_with_callback([](const char *message) {
+        Serial.println(message);
+    });
 
     // Inicializa la pantalla Adafruit
     //    adafruitDisplay.init();
@@ -70,8 +69,8 @@ void setup() {
     gps->init();
 
     // Inicializa el controlador de tiempo real
-    rtcController.init();
-    rtcController.syncTime(gps->getTimestamp());
+    zeroRTCController.init();
+    zeroRTCController.syncTime(gps->getTimestamp());
 
     // Logger initialization and configuration
     Logger::initialize(&sdManager, "/log.csv", Logger::Mode::Both);

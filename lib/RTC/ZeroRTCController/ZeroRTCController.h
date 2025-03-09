@@ -2,10 +2,11 @@
 #define RTC_CONTROLLER_H
 
 #include "RTCZero.h"
+#include "RTCController.hpp"
 
-class RTCController {
+class ZeroRTCController : public RTCController {
 public:
-    RTCController();
+    ZeroRTCController();
 
     void init();
 

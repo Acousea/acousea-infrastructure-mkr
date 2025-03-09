@@ -23,7 +23,7 @@ extern MKRGPS mkrGPS;
 extern UBloxGNSS uBloxGPS;
 extern IGPS *gps;
 
-extern RTCController rtcController;
+extern ZeroRTCController zeroRTCController;
 extern SDManager sdManager;
 extern Router router;
 extern NodeConfigurationRepository nodeConfigurationRepository;
