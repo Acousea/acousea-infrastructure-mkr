@@ -113,7 +113,7 @@
 // ------------------ PORTS ------------------
 #include <Ports/Serial/MockSerialPort.h>
 #include <Ports/LoRa/MockLoRaPort.h>
-#include <Ports/iridium/MockIridiumPort.h>
+#include <Ports/Iridium/MockIridiumPort.h>
 
 
 #endif
