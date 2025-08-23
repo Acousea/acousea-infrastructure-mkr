@@ -13,6 +13,8 @@ static inline unsigned long getMillis() {
           duration_cast<milliseconds>(steady_clock::now() - t0).count()
       );
   }
+
+
 #endif
 
 #endif //GETMILLIS_HPP

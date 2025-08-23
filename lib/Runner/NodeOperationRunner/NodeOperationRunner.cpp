@@ -15,7 +15,7 @@ NodeOperationRunner::NodeOperationRunner(Router& router,
 
 void NodeOperationRunner::init(){
     Logger::logInfo(
-        "-> Init Operation Cycle for Operation Mode=" + std::to_string(cache.currentOperationMode.key) +
+        "[Init] Operation Cycle for Operation Mode=" + std::to_string(cache.currentOperationMode.key) +
         " with configuration: "
     );
     currentNodeConfiguration.emplace(nodeConfigurationRepository.getNodeConfiguration());
@@ -29,7 +29,7 @@ void NodeOperationRunner::init(){
 }
 
 void NodeOperationRunner::run(){
-    Logger::logInfo("-> Run Operation Cycle for Operation mode=" + std::to_string(cache.currentOperationMode.key));
+    Logger::logInfo("[Run] Operation Cycle for Operation mode=" + std::to_string(cache.currentOperationMode.key));
     checkIfMustTransition();
     processIncomingPackets(currentNodeConfiguration->localAddress);
     runRoutines();
@@ -37,7 +37,7 @@ void NodeOperationRunner::run(){
 
 void NodeOperationRunner::finish(){
     cache.cycleCount++;
-    Logger::logInfo("-> Finish Operation Cycle for Operation mode=" + std::to_string(cache.currentOperationMode.key));
+    Logger::logInfo("[Finish] Operation Cycle for Operation mode=" + std::to_string(cache.currentOperationMode.key));
 }
 
 acousea_OperationModesGraphModule_GraphEntry NodeOperationRunner::searchOperationMode(const uint8_t modeId) const{

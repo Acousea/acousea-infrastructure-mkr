@@ -1,6 +1,5 @@
 #include "NodeConfigurationRepository.h"
 
-#include "Result/Result.h"
 
 NodeConfigurationRepository::NodeConfigurationRepository(StorageManager& sdManager, const char* filePath)
     : storageManager(sdManager), configFilePath(filePath){
@@ -27,48 +26,56 @@ void NodeConfigurationRepository::reset(){
 }
 
 
-void NodeConfigurationRepository::printNodeConfiguration(acousea_NodeConfiguration configuration) const{
-    Logger::logInfo("Node Configuration:");
-    Logger::logInfo("Local Address: ");
-    Logger::logInfo(std::to_string(configuration.localAddress));
 
-    if (configuration.has_operationGraphModule){
-        Logger::logInfo("Operation Graph Module:");
-        for (int i = 0; i < configuration.operationGraphModule.graph_count; ++i){
-            const auto& entry = configuration.operationGraphModule.graph[i];
-            Logger::logInfo("  Key: ");
-            Logger::logInfo(std::to_string(entry.key));
-            if (entry.has_value){
-                Logger::logInfo("    Target Mode: ");
-                Logger::logInfo(std::to_string(entry.value.targetMode));
-                Logger::logInfo("    Duration: ");
-                Logger::logInfo(std::to_string(entry.value.duration));
+void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfiguration& cfg) const {
+    std::string line;
+    line.reserve(256);
+    line += "Node Configuration | LocalAddress=" + std::to_string(cfg.localAddress);
+
+    if (cfg.has_operationGraphModule) {
+        line += " | OperationGraph=[";
+        for (int i = 0; i < cfg.operationGraphModule.graph_count; ++i) {
+            const auto& e = cfg.operationGraphModule.graph[i];
+            if (i) line += ", ";
+            line += "{key=" + std::to_string(e.key);
+            if (e.has_value) {
+                line += ", target=" + std::to_string(e.value.targetMode);
+                line += ", duration=" + std::to_string(e.value.duration);
+            } else {
+                line += ", value=<none>";
             }
+            line += "}";
         }
+        line += "]";
+    } else {
+        line += " | OperationGraph=<none>";
     }
 
-    if (configuration.has_loraModule){
-        Logger::logInfo("LoRa Module:");
-        for (int i = 0; i < configuration.loraModule.entries_count; ++i){
-            const auto& entry = configuration.loraModule.entries[i];
-            Logger::logInfo("  Mode ID: ");
-            Logger::logInfo(std::to_string(entry.modeId));
-            Logger::logInfo("  Period: ");
-            Logger::logInfo(std::to_string(entry.period));
+    if (cfg.has_loraModule) {
+        line += " | LoRa=[";
+        for (int i = 0; i < cfg.loraModule.entries_count; ++i) {
+            const auto& e = cfg.loraModule.entries[i];
+            if (i) line += ", ";
+            line += "{mode=" + std::to_string(e.modeId)
+                 +  ", period=" + std::to_string(e.period) + "}";
         }
+        line += "]";
     }
 
-    if (configuration.has_iridiumModule){
-        Logger::logInfo("Iridium Module:");
-        for (int i = 0; i < configuration.iridiumModule.entries_count; ++i){
-            const auto& entry = configuration.iridiumModule.entries[i];
-            Logger::logInfo("  Mode ID: ");
-            Logger::logInfo(std::to_string(entry.modeId));
-            Logger::logInfo("  Period: ");
-            Logger::logInfo(std::to_string(entry.period));
+    if (cfg.has_iridiumModule) {
+        line += " | Iridium=[";
+        for (int i = 0; i < cfg.iridiumModule.entries_count; ++i) {
+            const auto& e = cfg.iridiumModule.entries[i];
+            if (i) line += ", ";
+            line += "{mode=" + std::to_string(e.modeId)
+                 +  ", period=" + std::to_string(e.period) + "}";
         }
+        line += "]";
     }
+
+    Logger::logInfo(line);
 }
+
 
 
 Result<std::vector<uint8_t>> NodeConfigurationRepository::encodeProto(const acousea_NodeConfiguration& m){

@@ -2,6 +2,7 @@
 #define REPORTING_PERIOD_MANAGER_H
 
 
+#include <string>
 #include "generated/nodeDevice.pb.h"
 #include "ErrorHandler/ErrorHandler.h"
 #include "StorageManager/StorageManager.hpp"
@@ -19,7 +20,8 @@ public:
 
     void reset();
 
-    void printNodeConfiguration(acousea_NodeConfiguration configuration) const;
+    void printNodeConfiguration(const acousea_NodeConfiguration& cfg) const;
+
 
     [[nodiscard]] acousea_NodeConfiguration getNodeConfiguration() const;
     bool saveConfiguration(const acousea_NodeConfiguration& configuration);
