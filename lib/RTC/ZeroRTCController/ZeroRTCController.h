@@ -1,6 +1,8 @@
 #ifndef RTC_CONTROLLER_H
 #define RTC_CONTROLLER_H
 
+#ifdef ARDUINO
+
 #include "RTCZero.h"
 #include "RTCController.hpp"
 
@@ -19,5 +21,8 @@ public:
 private:
     RTCZero rtc;
 };
+
+
+#endif
 
 #endif // RTC_CONTROLLER_H

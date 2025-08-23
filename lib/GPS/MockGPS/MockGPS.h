@@ -1,8 +1,9 @@
 #ifndef MOCKGPS_H
 #define MOCKGPS_H
 
-#include "../IGPS.h"
-#include <Arduino.h>
+#include "IGPS.h"
+#include <Logger/Logger.h>
+#include "time/getMillis.hpp"
 
 class MockGPS : public IGPS {
 public:

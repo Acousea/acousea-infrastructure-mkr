@@ -1,3 +1,5 @@
+#ifdef ARDUINO
+
 #include "AdafruitLCBatteryController.h"
 
 bool AdafruitLCBatteryController::init() {
@@ -38,3 +40,5 @@ float AdafruitLCBatteryController::voltage() {
 float AdafruitLCBatteryController::temperature() {
     return adafruitLC.getCellTemperature();
 }
+
+#endif

@@ -3,43 +3,72 @@
 
 #include <libraries.h>
 
-extern PMICBatteryController pmicBatteryController;
-extern AdafruitLCBatteryController adafruitLCBatteryController;
+// =======================================================
+//       COMMON
+// =======================================================
+// ---- Batería ----
 extern MockBatteryController mockBatteryController;
-extern IBatteryController *battery;
+extern IBatteryController* battery;
 
-extern AdafruitDisplay adafruitDisplay;
-extern SerialUSBDisplay serialUSBDisplay;
-extern IDisplay *display;
+// ---- Display ----
+extern IDisplay* display;
 
-extern SerialPort serialPort;
-extern LoraPort realLoraPort;
-extern IridiumPort realIridiumPort;
-extern MockLoRaPort mockLoraPort;
-extern MockIridiumPort mockIridiumPort;
+// --- Puertos -----
+extern IPort* serialPort;
+extern IPort* loraPort;
+extern IPort* iridiumPort;
 
-extern MockGPS mockGPS;
-extern MKRGPS mkrGPS;
-extern UBloxGNSS uBloxGPS;
-extern IGPS *gps;
+// ---- GPS ----
+extern IGPS* gps;
 
-extern ZeroRTCController zeroRTCController;
-extern SDManager sdManager;
+// ---- RTC ----
+extern RTCController* rtcController;
+
+// ---- Router ----
 extern Router router;
+
+// ---- Storage ----
+extern StorageManager* storageManager;
+
+// Repo + Services
 extern NodeConfigurationRepository nodeConfigurationRepository;
 extern ICListenService icListenService;
 
+// Routines
 extern SetNodeConfigurationRoutine setNodeConfigurationRoutine;
 extern CompleteStatusReportRoutine completeSummaryReportRoutine;
 extern BasicStatusReportRoutine basicSummaryReportRoutine;
-extern StoreICListenConfigurationRoutine storeICListenConfigurationRoutine;
 
-extern std::map<OperationCode::Code, IRoutine<Packet> *> configurationRoutines;
-extern std::map<OperationCode::Code, IRoutine<VoidType> *> reportingRoutines;
+
+extern std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> configurationRoutines;
+extern std::map<uint8_t, IRoutine<VoidType>*> reportingRoutines;
 
 extern NodeOperationRunner nodeOperationRunner;
 
+
+// =======================================================
+//       ARDUINO BUILD
+// =======================================================
+#ifdef ARDUINO
+
+// USB Display
+extern SerialUSBDisplay serialUSBDisplay;
+
+// RealLoraPort
+extern LoraPort realLoraPort;
+
+// Power
 extern MosfetController mosfetController;
 extern RockPiPowerController rockPiPowerController;
 
+// =======================================================
+//       NATIVE BUILD
+// =======================================================
+#else // NATIVE
+
+
+#endif // ARDUINO vs NATIVE
+
 #endif // DEPENDENCIES_H
+
+

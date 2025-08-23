@@ -6,8 +6,6 @@
 
 #include <string>
 #include <functional>
-#include <utility>
-#include "Logger/Logger.h"
 
 // Define a callback type for handling errors
 using ErrorHandlerCallback = std::function<void(const std::string &)>;

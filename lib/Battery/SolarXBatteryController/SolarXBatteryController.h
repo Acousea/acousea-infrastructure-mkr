@@ -2,6 +2,8 @@
 #define SOLARXBATTERYCONTROLLER_H
 
 
+#ifdef ARDUINO
+#include <Arduino.h>
 #include <Wire.h>
 #include "Adafruit_INA219.h"
 #include "IBatteryController.h"
@@ -34,5 +36,6 @@ public:
     float getCurrent();
 };
 
+#endif // ARDUINO
 
 #endif // AdafruitLC_MANAGER_H

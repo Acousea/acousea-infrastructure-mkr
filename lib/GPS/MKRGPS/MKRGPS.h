@@ -1,6 +1,8 @@
 #ifndef MKRGPS_H
 #define MKRGPS_H
 
+#ifdef ARDUINO
+
 #include <Wire.h>
 #include "../IGPS.h"
 #include "Arduino_MKRGPS.h"
@@ -23,4 +25,5 @@ protected:
     const unsigned long GNSS_WAIT_TIME_MS = 120000;    // 2 minutos
 };
 
+#endif // ARDUINO
 #endif // MKRGPS_H

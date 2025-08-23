@@ -1,3 +1,4 @@
+#ifdef ARDUINO
 #include "LoRaPort.h"
 
 #include <ErrorHandler/ErrorHandler.h>
@@ -50,7 +51,7 @@ void LoraPort::send(const std::vector<uint8_t> &data) {
 }
 
 bool LoraPort::available() {
-    return receivedRawPackets.size() > 0;
+    return !receivedRawPackets.empty();
 }
 
 std::vector<std::vector<uint8_t> > LoraPort::read() {
@@ -90,3 +91,5 @@ void LoraPort::configureLora(const LoRaConfig &config) {
     LoRa.setCodingRate4(config.codingRate);
     LoRa.setTxPower(config.txPower, PA_OUTPUT_PA_BOOST_PIN);
 }
+
+#endif // ARDUINO

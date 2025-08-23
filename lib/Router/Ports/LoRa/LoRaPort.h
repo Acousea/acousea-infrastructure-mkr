@@ -1,6 +1,6 @@
 #ifndef LORA_PORT_H
 #define LORA_PORT_H
-
+#ifdef ARDUINO
 
 #include <deque>
 #include "LoRa.h"
@@ -51,5 +51,7 @@ private:
     void configureLora(const LoRaConfig &config);
 };
 
+
+#endif // ARDUINO
 
 #endif // LORA_PORT_H

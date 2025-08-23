@@ -1,3 +1,4 @@
+#ifdef ARDUINO
 #include "RockPiPowerController.hpp"
 
 RockPiPowerController::RockPiPowerController(
@@ -30,3 +31,5 @@ void RockPiPowerController::commandStartup() {
     delay(5000); // Esperar 5 segundos para que el Rock Pi se inicie
     Logger::logInfo("Startup signal completed. Rock Pi should be on.");
 }
+
+#endif // ARDUINO

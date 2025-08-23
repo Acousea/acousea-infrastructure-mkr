@@ -3,7 +3,6 @@
 
 
 #include "Ports/IPort.h"
-#include <Arduino.h>
 
 class MockLoRaPort : public IPort {
 public:

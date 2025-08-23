@@ -1,7 +1,9 @@
 #ifndef SERIAL_USB_DISPLAY_H
 #define SERIAL_USB_DISPLAY_H
 
+#ifdef ARDUINO
 
+#include <Arduino.h>
 #include "IDisplay.h"
 
 class SerialUSBDisplay : public IDisplay {
@@ -14,12 +16,12 @@ public:
 
     virtual void print(const std::vector<uint8_t>& data);
 
-    void print(const String& message) override;
-
    void print(const char *message) override;
 
     void clear() override;
         
 };
 
+
+#endif // ARDUINO
 #endif

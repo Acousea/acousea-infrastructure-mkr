@@ -1,3 +1,4 @@
+#ifdef ARDUINO
 #include "IridiumPort.h"
 
 #include <Logger/Logger.h>
@@ -190,3 +191,5 @@ void IridiumPort::checkSignalQuality() {
     }
     Logger::logInfo("IridiumPort::checkSignalQuality() -> Signal quality: " + std::to_string(signalQuality));
 }
+
+#endif // ARDUINO

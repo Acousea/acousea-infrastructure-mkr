@@ -5,8 +5,7 @@
 #include "IGPS.h"
 #include "IBatteryController.h"
 #include "RTCController.hpp"
-#include "Packet.h"
-#include "Packets/reports/BasicStatusReportPacket.h"
+#include "generated/nodeDevice.pb.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
 
 
@@ -22,7 +21,7 @@ public:
     BasicStatusReportRoutine(IGPS *gps, IBatteryController *battery, RTCController *rtc,
                              NodeConfigurationRepository &nodeConfigurationRepository);
 
-    Result<Packet> execute() override;
+    Result<acousea_CommunicationPacket> execute() override;
 };
 
 #endif // SIMPLEREPORTRROUTINE_H

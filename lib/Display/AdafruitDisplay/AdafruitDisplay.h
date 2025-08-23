@@ -1,7 +1,9 @@
 #ifndef ADAFRUIT_DISPLAY_H
 #define ADAFRUIT_DISPLAY_H
 
+#ifdef ARDUINO
 
+#include <Arduino.h>
 #include "Adafruit_SSD1306.h"
 #include "IDisplay.h"
 
@@ -26,12 +28,13 @@ public:
 
     void print(const std::vector<uint8_t> &data) override;
 
-    void print(const String &message) override;
-
     void print(const char *message) override;
 
     void clear() override;
 
 };
+
+
+#endif // ARDUINO
 
 #endif

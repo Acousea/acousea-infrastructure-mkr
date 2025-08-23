@@ -1,5 +1,6 @@
-#include "PMICBatteryController.h"
+#ifdef ARDUINO
 
+#include "PMICBatteryController.h"
 
 bool PMICBatteryController::init() {
     if (!PMIC.begin()) {
@@ -81,3 +82,5 @@ const char *PMICBatteryController::getChargeStatusMessage(uint8_t chargeStatus) 
         default: return "Unknown status";
     }
 }
+
+#endif // ARDUINO

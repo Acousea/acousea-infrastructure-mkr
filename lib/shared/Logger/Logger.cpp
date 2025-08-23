@@ -1,6 +1,8 @@
 #include "Logger.h"
 
-void Logger::initialize(SDManager *sdManager, const char *logFilePath, Mode mode) {
+void Logger::initialize(
+    IDisplay *display, StorageManager *sdManager, const char *logFilePath, Mode mode) {
+    Logger::display = display;
     Logger::sdManager = sdManager;
     Logger::logFilePath = logFilePath;
     Logger::mode = mode;
@@ -37,15 +39,15 @@ void Logger::log(const std::string &logType, const std::string &message) {
 
 void Logger::printLog() {
     if (mode == Mode::SDCard && sdManager) {
-        String content = sdManager->readFile(logFilePath);
-        if (content.isEmpty()) {
-            Serial.println("Logger::printLog() -> No logs available.");
+        std::string content = sdManager->readFile(logFilePath);
+        if (content.empty()) {
+            display->print("Logger::printLog() -> No logs available.");
             return;
         }
-        Serial.println("Logger::printLog() -> Log Content:");
-        Serial.println(content.c_str());
+        display->print("Logger::printLog() -> Log Content:");
+        display->print(content.c_str());
     } else {
-        Serial.println("Logger::printLog() -> SD card logging not enabled.");
+        display->print("Logger::printLog() -> SD card logging not enabled.");
     }
 }
 
@@ -77,7 +79,7 @@ std::string Logger::getTimestampString() {
 }
 
 void Logger::logToSerial(const std::string &logType, const std::string &message) {
-    Serial.println(("[" + getTimestampString() + "] " + logType + ": " + message).c_str());
+   display->print(("[" + getTimestampString() + "] " + logType + ": " + message).c_str());
 }
 
 void Logger::logToSDCard(const std::string &logType, const std::string &message) {
@@ -85,6 +87,6 @@ void Logger::logToSDCard(const std::string &logType, const std::string &message)
 
     std::string entry = getTimestampString() + "," + logType + "," + message + "\n";
     if (!sdManager->appendToFile(logFilePath, entry.c_str())) {
-        Serial.println("Logger::logToSDCard() -> Failed to append to log file.");
+        display->print("Logger::logToSDCard() -> Failed to append to log file.");
     }
 }

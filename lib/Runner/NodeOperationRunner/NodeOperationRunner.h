@@ -6,42 +6,41 @@
 #include "Router.h"
 #include "routines/CompleteStatusReportRoutine/CompleteStatusReportRoutine.h"
 #include "routines/BasicStatusReportRoutine/BasicStatusReportRoutine.h"
-#include <Packets/ErrorPacket.h>
+#include "time/getMillis.hpp"
 
 
 /**
  * @brief Class that runs the operation modes of the node
  */
-class NodeOperationRunner : public IRunnable {
-
+class NodeOperationRunner : public IRunnable{
 private:
-    Router &router;
+    Router& router;
 
-    std::map<OperationCode::Code, IRoutine<VoidType> *> internalRoutines;
-    std::map<OperationCode::Code, IRoutine<Packet> *> externalRoutines;
+    std::map<uint8_t, IRoutine<VoidType>*> internalRoutines;
+    std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> externalRoutines;
 
     NodeConfigurationRepository nodeConfigurationRepository;
-    std::optional<NodeConfiguration> nodeConfiguration = std::nullopt;
+    std::optional<acousea_NodeConfiguration> currentNodeConfiguration = std::nullopt;
 
 private:
     // Struct to store the current currentOperationMode and cycle count
-    struct Cache {
-        uint8_t currentOperationMode;
+    struct Cache{
+        acousea_OperationModesGraphModule_GraphEntry currentOperationMode;
         uint8_t cycleCount;
-        struct {
+
+        struct{
             unsigned long sbd;
             unsigned long lora;
         } lastReportMinute;
     } cache;
 
-
 public:
     CLASS_NAME(NodeOperationRunner)
 
-    NodeOperationRunner(Router &router,
-                        const std::map<OperationCode::Code, IRoutine<VoidType> *> &internalRoutines,
-                        const std::map<OperationCode::Code, IRoutine<Packet> *> &externalRoutines,
-                        const NodeConfigurationRepository &nodeConfigurationRepository
+    NodeOperationRunner(Router& router,
+                        const std::map<uint8_t, IRoutine<VoidType>*>& internalRoutines,
+                        const std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>& externalRoutines,
+                        const NodeConfigurationRepository& nodeConfigurationRepository
     );
 
     void init() override;
@@ -52,20 +51,28 @@ public:
     void finish() override;
 
 private:
+    [[nodiscard]] acousea_OperationModesGraphModule_GraphEntry searchOperationMode(uint8_t modeId) const;
+    static acousea_ReportingPeriodEntry searchReportingEntry(uint8_t modeId,
+                                                             const acousea_ReportingPeriodEntry* entries,
+                                                             size_t entryCount);
+
     void checkIfMustTransition();
 
     static bool mustReport(unsigned long currentMinute, unsigned long reportingPeriod, unsigned long lastReportMinute);
 
     void runRoutines();
 
-    void processIncomingPackets(const Address &localAddress);
+    void processIncomingPackets(const uint8_t& localAddress);
 
-    void processPacket(IPort::PortType portType, const Packet &packet, const Address &localAddress);
+    void processPacket(IPort::PortType portType, const acousea_CommunicationPacket& packet,
+                       const uint8_t& localAddress);
 
-    void sendResponsePacket(IPort::PortType portType, const Address &localAddress, const Packet &responsePacket) const;
+    void sendResponsePacket(IPort::PortType portType, const uint8_t& localAddress,
+                            const acousea_CommunicationPacket& responsePacket) const;
 
-    void processRoutine(const ReportingConfiguration &config, IPort::PortType portType, unsigned long currentMinute,
-                        unsigned long &lastReportMinute);
+    void reportRoutine(IPort::PortType portType,
+                        unsigned long currentMinute,
+                        unsigned long& lastReportMinute);
 };
 
 #endif // OPERATION_MODE_RUNNER_H

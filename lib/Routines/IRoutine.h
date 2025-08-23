@@ -4,7 +4,8 @@
 
 #include <string>
 #include "Result/Result.h"
-#include <Packet.h>
+
+#include "generated/nodeDevice.pb.h"
 #include "ClassName.h"
 
 class IRoutineGeneric {
@@ -25,7 +26,7 @@ class IRoutine : public IRoutineGeneric {
 public:
     explicit IRoutine(const std::string &name) : IRoutineGeneric(name) {};
 
-    virtual Result<Packet> execute(const T &input) = 0;
+    virtual Result<acousea_CommunicationPacket> execute(const T &input) = 0;
 
     // Virtual destructor para permitir la eliminación correcta de subclases
     virtual ~IRoutine() = default;
@@ -37,7 +38,7 @@ class IRoutine<VoidType> : public IRoutineGeneric {
 public:
     explicit IRoutine(const std::string &name) : IRoutineGeneric(name) {};
 
-    virtual Result<Packet> execute() = 0;
+    virtual Result<acousea_CommunicationPacket> execute() = 0;
 
     virtual ~IRoutine() = default;
 };

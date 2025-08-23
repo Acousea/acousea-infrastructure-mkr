@@ -1,152 +1,123 @@
 #include "ICListenService.h"
 
 
+acousea_CommunicationPacket ICListenService::Requester::buildFetchICListenConfigPacket(acousea_ModuleCode code){
+    acousea_CommunicationPacket packet = acousea_CommunicationPacket_init_default;
+
+    // -------- Routing --------
+    packet.has_routing = true;
+    packet.routing = acousea_RoutingChunk_init_default;
+    packet.routing.sender = static_cast<int32_t>(Router::broadcastAddress);
+    packet.routing.receiver = 0; // backend
+    packet.routing.ttl = 5;
+
+    // -------- Payload --------
+    packet.has_payload = true;
+    packet.payload = acousea_PayloadWrapper_init_default;
+    packet.payload.which_payload = acousea_PayloadWrapper_requestedConfiguration_tag;
+    packet.payload.payload.requestedConfiguration = acousea_GetUpdatedNodeConfigurationPayload_init_default;
+    packet.payload.payload.requestedConfiguration.requestedModules_count = 1;
+    packet.payload.payload.requestedConfiguration.requestedModules[0] = code;
+
+    return packet;
+}
+
 // Implementation of Requester
-void ICListenService::Requester::fetchStatus() const {
-    const auto packet = FetchICListenConfigPacket(
-        RoutingChunk::fromNodeToBackend(Address(255)),
-        FetchICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::STATUS).
-        build()
-    );
-    router.sendFrom(Address(255)).sendSerial(packet);
+void ICListenService::Requester::fetchStatus() const{
+    acousea_CommunicationPacket packet = ICListenService::Requester::buildFetchICListenConfigPacket(
+        acousea_ModuleCode_ICLISTEN_STATUS);
+    router.sendFrom(Router::broadcastAddress).sendSerial(packet);
 }
 
-void ICListenService::Requester::fetchLoggingConfig() const {
-    const auto packet = FetchICListenConfigPacket(
-        RoutingChunk::fromNodeToBackend(Address(255)),
-        FetchICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::LOGGING).
-        build()
-    );
-    router.sendFrom(Address(255)).sendSerial(packet);
+void ICListenService::Requester::fetchLoggingConfig() const{
+    acousea_CommunicationPacket packet = ICListenService::Requester::buildFetchICListenConfigPacket(
+        acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG);
+    router.sendFrom(Router::broadcastAddress).sendSerial(packet);
 }
 
-void ICListenService::Requester::fetchStreamingConfig() const {
-    const auto packet = FetchICListenConfigPacket(
-        RoutingChunk::fromNodeToBackend(Address(255)),
-        FetchICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::STREAMING)
-        .build()
-    );
-    router.sendFrom(Address(255)).sendSerial(packet);
+void ICListenService::Requester::fetchStreamingConfig() const{
+    acousea_CommunicationPacket packet = ICListenService::Requester::buildFetchICListenConfigPacket(
+        acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG);
+    router.sendFrom(Router::broadcastAddress).sendSerial(packet);
 }
 
-void ICListenService::Requester::fetchRecordingStats() const {
-    const auto packet = FetchICListenConfigPacket(
-        RoutingChunk::fromNodeToBackend(Address(255)),
-        FetchICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::STATS).
-        build()
-    );
-    router.sendFrom(Address(255)).sendSerial(packet);
+void ICListenService::Requester::fetchRecordingStats() const{
+    acousea_CommunicationPacket packet = ICListenService::Requester::buildFetchICListenConfigPacket(
+        acousea_ModuleCode_ICLISTEN_RECORDING_STATS);
+    router.sendFrom(Router::broadcastAddress).sendSerial(packet);
 }
 
-void ICListenService::Requester::fetchHFConfiguration() const {
-    const auto packet = FetchICListenConfigPacket(
-        RoutingChunk::fromNodeToBackend(Address(255)),
-        FetchICListenConfigurationPayload::Builder().all().build()
-    );
-    router.sendFrom(Address(255)).sendSerial(packet);
+void ICListenService::Requester::fetchHFConfiguration() const{
+    acousea_CommunicationPacket packet = ICListenService::Requester::buildFetchICListenConfigPacket(
+        acousea_ModuleCode_ICLISTEN_HF);
+    router.sendFrom(Router::broadcastAddress).sendSerial(packet);
 }
 
-void ICListenService::Requester::setICListenStatus(const ICListenStatus &ic_listen_status) const {
-    const auto packet = SetICListenConfigPacket(
-        RoutingChunk::fromNodeToBackend(Address(255)),
-        SetICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::STATUS,
-                                                                 ic_listen_status).build()
-    );
-    router.sendFrom(Address(255)).sendSerial(packet);
+
+Result<acousea_ICListenStatus> ICListenService::Cache::retrieveICListenStatus() const{
+    return Result<acousea_ICListenStatus>::fromOptional(std::move(icListenStatus),
+                                                        "ICListenStatus not available in cache");
 }
 
-void ICListenService::Requester::setICListenLoggingConfig(const ICListenLoggingConfig &ic_listen_logging_config) const {
-    const auto packet = SetICListenConfigPacket(
-        RoutingChunk::fromNodeToBackend(Address(255)),
-        SetICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::LOGGING,
-                                                                 ic_listen_logging_config).build()
-    );
-    router.sendFrom(Address(255)).sendSerial(packet);
+Result<acousea_ICListenLoggingConfig> ICListenService::Cache::retrieveICListenLoggingConfig() const{
+    return Result<acousea_ICListenLoggingConfig>::fromOptional(std::move(icListenLoggingConfig),
+                                                               "ICListenLoggingConfig not available in cache");
 }
 
-void ICListenService::Requester::setICListenStreamingConfig(const ICListenStreamingConfig &ic_listen_streaming_config) const {
-    const auto packet = SetICListenConfigPacket(
-        RoutingChunk::fromNodeToBackend(Address(255)),
-        SetICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::STREAMING,
-                                                                 ic_listen_streaming_config).build()
-    );
-    router.sendFrom(Address(255)).sendSerial(packet);
+Result<acousea_ICListenStreamingConfig> ICListenService::Cache::retrieveICListenStreamingConfig() const{
+    return Result<acousea_ICListenStreamingConfig>::fromOptional(std::move(icListenStreamingConfig),
+                                                                 "ICListenStreamingConfig not available in cache");
 }
 
-void ICListenService::Requester::setICListenRecordingStats(const ICListenRecordingStats &ic_listen_recording_stats) const {
-    const auto packet = SetICListenConfigPacket(
-        RoutingChunk::fromNodeToBackend(Address(255)),
-        SetICListenConfigurationPayload::Builder().includeAspect(ICListenAspect::Aspect::STATS,
-                                                                 ic_listen_recording_stats).build()
-    );
-    router.sendFrom(Address(255)).sendSerial(packet);
+Result<acousea_ICListenRecordingStats> ICListenService::Cache::retrieveICListenRecordingStats() const{
+    return Result<acousea_ICListenRecordingStats>::fromOptional(std::move(icListenRecordingStats),
+                                                                "ICListenRecordingStats not available in cache");
 }
 
-void ICListenService::Requester::setICListenHFConfiguration(const ICListenHF &ic_listen_hf) const {
-    const auto packet = SetICListenConfigPacket(
-        RoutingChunk::fromNodeToBackend(Address(255)),
-        SetICListenConfigurationPayload::Builder()
-        .includeAspect(ICListenAspect::Aspect::STATS, ic_listen_hf.recordingStats)
-        .includeAspect(ICListenAspect::Aspect::STATUS, ic_listen_hf.status)
-        .includeAspect(ICListenAspect::Aspect::LOGGING, ic_listen_hf.loggingConfig)
-        .includeAspect(ICListenAspect::Aspect::STREAMING, ic_listen_hf.streamingConfig)
-        .build()
-    );
-    router.sendFrom(Address(255)).sendSerial(packet);
-}
-
-Result<ICListenStatus> ICListenService::Cache::retrieveICListenStatus() const {
-    return Result<ICListenStatus>::fromOptional(std::move(icListenStatus), "ICListenStatus not available in cache");
-}
-
-Result<ICListenLoggingConfig> ICListenService::Cache::retrieveICListenLoggingConfig() const {
-    return Result<ICListenLoggingConfig>::fromOptional(std::move(icListenLoggingConfig),
-                                                       "ICListenLoggingConfig not available in cache");
-}
-
-Result<ICListenStreamingConfig> ICListenService::Cache::retrieveICListenStreamingConfig() const {
-    return Result<ICListenStreamingConfig>::fromOptional(std::move(icListenStreamingConfig),
-                                                         "ICListenStreamingConfig not available in cache");
-}
-
-Result<ICListenRecordingStats> ICListenService::Cache::retrieveICListenRecordingStats() const {
-    return Result<ICListenRecordingStats>::fromOptional(std::move(icListenRecordingStats),
-                                                        "ICListenRecordingStats not available in cache");
-}
-
-Result<ICListenHF> ICListenService::Cache::getHFCompleteConfiguration() const {
+Result<acousea_ICListenHF> ICListenService::Cache::getHFCompleteConfiguration() const{
     const auto status = retrieveICListenStatus();
     const auto loggingConfig = retrieveICListenLoggingConfig();
     const auto streamingConfig = retrieveICListenStreamingConfig();
     const auto recordingStats = retrieveICListenRecordingStats();
 
-    if (status.isError() || loggingConfig.isError() || streamingConfig.isError() || recordingStats.isError()) {
-        return Result<ICListenHF>::failure("Failed to retrieve HF configuration");
+    if (status.isError() || loggingConfig.isError() || streamingConfig.isError() || recordingStats.isError()){
+        return Result<acousea_ICListenHF>::failure("Failed to retrieve HF configuration");
     }
 
-    return Result<ICListenHF>::success(ICListenHF(status.getValue(), loggingConfig.getValue(),
-                                                  streamingConfig.getValue(), recordingStats.getValue()));
+    acousea_ICListenHF hf = acousea_ICListenHF_init_default;
+    hf.has_status = true;
+    hf.status = status.getValue();
+    hf.has_loggingConfig = true;
+    hf.loggingConfig = loggingConfig.getValue();
+    hf.has_streamingConfig = true;
+    hf.streamingConfig = streamingConfig.getValue();
+    hf.has_recordingStats = true;
+    hf.recordingStats = recordingStats.getValue();
+
+
+    return Result<acousea_ICListenHF>::success(hf);
 }
 
-void ICListenService::Cache::storeICListenStatus(const ICListenStatus &ic_listen_status) const {
-    icListenStatus = std::make_optional<ICListenStatus>(ic_listen_status);
+void ICListenService::Cache::storeICListenStatus(const acousea_ICListenStatus& ic_listen_status) const{
+    icListenStatus = std::make_optional<acousea_ICListenStatus>(ic_listen_status);
 }
 
-void ICListenService::Cache::storeICListenLoggingConfig(const ICListenLoggingConfig &ic_listen_logging_config) const {
-    icListenLoggingConfig = std::make_optional<ICListenLoggingConfig>(ic_listen_logging_config);
+void ICListenService::Cache::storeICListenLoggingConfig(
+    const acousea_ICListenLoggingConfig& ic_listen_logging_config) const{
+    icListenLoggingConfig = std::make_optional<acousea_ICListenLoggingConfig>(ic_listen_logging_config);
 }
 
 void ICListenService::Cache::storeICListenStreamingConfig(
-    const ICListenStreamingConfig &ic_listen_streaming_config) const {
-    icListenStreamingConfig = std::make_optional<ICListenStreamingConfig>(ic_listen_streaming_config);
+    const acousea_ICListenStreamingConfig& ic_listen_streaming_config) const{
+    icListenStreamingConfig = std::make_optional<acousea_ICListenStreamingConfig>(ic_listen_streaming_config);
 }
 
 void ICListenService::Cache::
-storeICListenRecordingStats(const ICListenRecordingStats &ic_listen_recording_stats) const {
-    icListenRecordingStats = std::make_optional<ICListenRecordingStats>(ic_listen_recording_stats);
+storeICListenRecordingStats(const acousea_ICListenRecordingStats& ic_listen_recording_stats) const{
+    icListenRecordingStats = std::make_optional<acousea_ICListenRecordingStats>(ic_listen_recording_stats);
 }
 
-void ICListenService::Cache::storeHFConfiguration(const ICListenHF &hfConfiguration) const {
+void ICListenService::Cache::storeHFConfiguration(const acousea_ICListenHF& hfConfiguration) const{
     storeICListenStatus(hfConfiguration.status);
     storeICListenLoggingConfig(hfConfiguration.loggingConfig);
     storeICListenStreamingConfig(hfConfiguration.streamingConfig);

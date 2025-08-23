@@ -2,7 +2,6 @@
 #define IOPERATIONMODE_H
 
 
-#include "NodeConfiguration/NodeConfiguration.h"
 #include "Logger/Logger.h"
 
 

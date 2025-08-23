@@ -1,6 +1,8 @@
 #ifndef ACOUSEA_MKR1310_NODES_MOSFETCONTROLLER_HPP
 #define ACOUSEA_MKR1310_NODES_MOSFETCONTROLLER_HPP
 
+#ifdef ARDUINO
+
 #include <Arduino.h>
 #include "Logger/Logger.h"
 #include "../PiPowerControlPins.hpp"
@@ -18,5 +20,7 @@ public:
 private:
     const int mosfetControlPin;
 };
+
+#endif // ARDUINO
 
 #endif //ACOUSEA_MKR1310_NODES_MOSFETCONTROLLER_HPP

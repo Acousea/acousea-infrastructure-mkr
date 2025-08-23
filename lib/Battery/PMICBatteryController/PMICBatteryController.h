@@ -1,6 +1,7 @@
 #ifndef PMIC_MANAGER_H
 #define PMIC_MANAGER_H
 
+#ifdef ARDUINO
 
 #include "Arduino_PMIC.h"
 #include "IBatteryController.h"
@@ -30,5 +31,7 @@ private:
 
     [[nodiscard]] const char *getChargeStatusMessage(uint8_t chargeStatus) const;
 };
+
+#endif // ARDUINO
 
 #endif // PMIC_MANAGER_H

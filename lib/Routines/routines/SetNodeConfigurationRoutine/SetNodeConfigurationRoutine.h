@@ -3,23 +3,25 @@
 
 #include "IRoutine.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
+#include "Logger/Logger.h"
 
 
-class SetNodeConfigurationRoutine : public IRoutine<Packet> {
+class SetNodeConfigurationRoutine : public IRoutine<acousea_CommunicationPacket>{
 private:
-    NodeConfigurationRepository &nodeConfigurationRepository;
+    NodeConfigurationRepository& nodeConfigurationRepository;
 
 public:
     CLASS_NAME(SetNodeConfigurationRoutine)
 
-    SetNodeConfigurationRoutine(NodeConfigurationRepository &nodeConfigurationRepository);
+    explicit SetNodeConfigurationRoutine(NodeConfigurationRepository& nodeConfigurationRepository);
 
-    Result<Packet> execute(const Packet &packet) override;
+    Result<acousea_CommunicationPacket> execute(const acousea_CommunicationPacket& packet) override;
 
 private:
-    static void setOperationModes(NodeConfiguration &nodeConfig, const SerializableModule &item);
-    static void setReportingPeriods(NodeConfiguration &nodeConfig, const SerializableModule &item);
-
+    static void setOperationModes(acousea_NodeConfiguration& nodeConfig,
+                                  const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& item);
+    static void setReportingPeriods(acousea_NodeConfiguration& nodeConfig,
+                                    const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& entry);
 };
 
 #endif // CHANGE_MODE_ROUTINE_H

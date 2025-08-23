@@ -3,10 +3,8 @@
 
 #include "IRoutine.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
-#include "Packet.h"
 #include "IBatteryController.h"
 #include "IGPS.h"
-#include <Packets/reports/CompleteStatusReportPacket.h>
 #include <ICListenService/ICListenService.h>
 
 /**
@@ -14,7 +12,7 @@
  * so that it can be retrieved by the corresponding operation mode that sends reports to the backend
  * It returns a NullPacket since it does not need to send any response to the sendFrom
  */
-class CompleteStatusReportRoutine : public IRoutine<VoidType> {
+class CompleteStatusReportRoutine final : public IRoutine<VoidType> {
     IGPS *gps;
     IBatteryController *battery;
     NodeConfigurationRepository &nodeConfigurationRepository;
@@ -30,7 +28,7 @@ public:
         ICListenService &icListenService
     );
 
-    Result<Packet> execute() override;
+    Result<acousea_CommunicationPacket> execute() override;
 };
 
 #endif //  COMPLETE_STATUS_REPORT_ROUTINE_H

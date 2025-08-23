@@ -1,3 +1,4 @@
+#ifdef ARDUINO
 #include "SerialUSBDisplay.h"
 
 void SerialUSBDisplay::init(int baudRate) {
@@ -28,10 +29,6 @@ void SerialUSBDisplay::print(const std::vector<uint8_t> &data) {
     SerialUSB.println();
 }
 
-void SerialUSBDisplay::print(const String &message) {
-    SerialUSB.println(message);
-}
-
 void SerialUSBDisplay::print(const char *message) {
     SerialUSB.println(message);
 }
@@ -39,3 +36,5 @@ void SerialUSBDisplay::print(const char *message) {
 void SerialUSBDisplay::clear() {
     SerialUSB.println("SerialUSBDisplay cleared");
 }
+
+#endif // ARDUINO

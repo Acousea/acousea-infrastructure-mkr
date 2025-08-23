@@ -1,5 +1,6 @@
-#include "MKRGPS.h"
+#ifdef ARDUINO
 
+#include "MKRGPS.h"
 
 bool MKRGPS::init() {
     Logger::logInfo("Initializing GNSS ...");
@@ -60,3 +61,5 @@ void MKRGPS::calculateTrajectory(float targetLat, float targetLon, float &distan
     // Implementación de la fórmula de Haversine
     HaverSine(latitude, longitude, targetLat, targetLon, distance, bearing);
 }
+
+#endif // ARDUINO

@@ -4,56 +4,75 @@
 #include <deque>
 #include <map>
 #include <Ports/IPort.h>
-#include <Packet.h>
 #include <Result/Result.h>
+#include <Logger/Logger.h>
 
-//// Extra dependencies (might not be necessary)
-
-
-
+#include "generated/nodeDevice.pb.h"
+#include "generated/nodeDevice.pb.h"
+#include <pb_encode.h>
+#include <pb_decode.h>
 
 /**
  * @brief Router class that relays packets between ports and processes them if necessary.
  */
 class Router {
+public:
+    static constexpr uint8_t broadcastAddress = 255;
+
 private:
     std::vector<IPort *> relayedPorts;
-    std::map<IPort::PortType, std::deque<Packet>> receivedPackets = {};
+    std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> receivedPackets = {};
 
     // Clase interna para manejar el envío con una dirección
     class RouterSender {
     private:
-        Address localAddress;
+        uint8_t localAddress;
         Router *router;
 
-        [[nodiscard]] Packet configurePacketRouting(const Packet &packet) const {
-            Packet mutablePacket = packet;
-            mutablePacket.setRoutingChunk(RoutingChunk(
-                    localAddress,
-                    packet.getRoutingChunk().getSender())
-            );
-            mutablePacket.computeChecksum();
-            return mutablePacket;
+        [[nodiscard]] acousea_CommunicationPacket configurePacketRouting(const acousea_CommunicationPacket& inPacket) const {
+            acousea_CommunicationPacket outPacket = acousea_CommunicationPacket_init_default;
+
+            // Copiar payload si viene presente
+            if (inPacket.has_payload) {
+                outPacket.has_payload = true;
+                outPacket.payload = inPacket.payload; // copia superficial válida en nanopb
+            }
+
+            // Configurar routing: respondemos al remitente del paquete original
+            outPacket.has_routing = true;
+            outPacket.routing = acousea_RoutingChunk_init_default;
+            outPacket.routing.sender = static_cast<int32_t>(localAddress);
+
+            if (inPacket.has_routing) {
+                outPacket.routing.receiver = inPacket.routing.sender;  // reply-to
+                outPacket.routing.ttl      = inPacket.routing.ttl;     // conservar TTL si procede
+            } else {
+                outPacket.routing.receiver = broadcastAddress;  // broadcast por defecto si no había routing
+                outPacket.routing.ttl      = 0;
+            }
+
+            return outPacket;
         }
 
+
     public:
-        explicit RouterSender(Address address, Router *router)
+        explicit RouterSender(uint8_t address, Router *router)
                 : localAddress(address), router(router) {}
 
 
-        void sendSBD(const Packet &packet) {
-            Packet mutablePacket = configurePacketRouting(packet);
+        void sendSBD(const acousea_CommunicationPacket &packet) {
+            acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
             router->sendSBD(mutablePacket);
         }
 
 
-        void sendLoRa(const Packet &packet) {
-            Packet mutablePacket = configurePacketRouting(packet);
+        void sendLoRa(const acousea_CommunicationPacket &packet) {
+            acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
             router->sendLoRa(mutablePacket);
         }
 
-        void sendSerial(const Packet &packet) {
-            Packet mutablePacket = configurePacketRouting(packet);
+        void sendSerial(const acousea_CommunicationPacket &packet) {
+            acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
             router->sendSerial(mutablePacket);
         }
     };
@@ -63,21 +82,26 @@ public:
 
     void addRelayedPort(IPort *port);
 
-    Router::RouterSender sendFrom(Address senderAddress);
+    Router::RouterSender sendFrom(uint8_t senderAddress);
 
     /**
         * @brief Reads packets from the ports and returns them grouped by port type.
         * @param localAddress The local address of the router.
         * @return A map where keys are port types and values are lists of packets received from those ports.
         */
-    std::map<IPort::PortType, std::deque<Packet>> readPorts(const Address &localAddress);
+    std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> readPorts(const uint8_t &localAddress);
 
 private:
-    void sendSBD(const Packet &packet);
+    // ---------------------- Packet encoding/decoding ----------------------
+    static Result<acousea_CommunicationPacket> decodePacket(const std::vector<uint8_t>& raw);
+    static Result<std::vector<uint8_t>> encodePacket(const acousea_CommunicationPacket& pkt);
 
-    void sendLoRa(const Packet &packet);
+    // ---------------------- Sending to specific ports ----------------------
+    void sendSBD(const acousea_CommunicationPacket &packet) const;
 
-    void sendSerial(const Packet &packet);
+    void sendLoRa(const acousea_CommunicationPacket &packet) const;
+
+    void sendSerial(const acousea_CommunicationPacket &packet) const;
 
 
 

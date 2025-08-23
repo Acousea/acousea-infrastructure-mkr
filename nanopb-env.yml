@@ -1,0 +1,11 @@
+name: nanopb-env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - protobuf=6.31.1
+  - pip:
+      - grpcio==1.74.0
+      - grpcio-tools==1.74.0

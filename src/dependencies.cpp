@@ -1,53 +1,119 @@
 #include "dependencies.h"
-#include "RTCController.hpp"
-#include "MockRTCController/MockRTCController.h"
 
+
+// =======================================================
+//       ARDUINO BUILD
+// =======================================================
+#ifdef ARDUINO
+// --------- Batería ----------
 PMICBatteryController pmicBatteryController;
 AdafruitLCBatteryController adafruitLCBatteryController;
 MockBatteryController mockBatteryController;
-IBatteryController *battery = &mockBatteryController;
+IBatteryController* battery = &adafruitLCBatteryController; // o PMIC según HW
 
+// --------- Display ----------
 AdafruitDisplay adafruitDisplay;
 SerialUSBDisplay serialUSBDisplay;
-IDisplay *display = &serialUSBDisplay;
+IDisplay* display = &adafruitDisplay;
 
-SerialPort serialPort(&Serial1, 4800);
+// --------- Puertos ----------
+SerialPort realSerialPort(&Serial1, 4800);
 LoraPort realLoraPort;
 IridiumPort realIridiumPort;
-MockLoRaPort mockLoraPort;
-MockIridiumPort mockIridiumPort;
 
+IPort* serialPort = &realSerialPort;
+IPort* loraPort = &realLoraPort;
+IPort* iridiumPort = &realIridiumPort;
+
+// --------- GPS ----------
 MockGPS mockGPS(0.0, 0.0, 1.0);
 MKRGPS mkrGPS;
 UBloxGNSS uBloxGPS;
-IGPS *gps = &mockGPS;
+IGPS* gps = &mkrGPS;
 
+// --------- RTC ----------
 ZeroRTCController zeroRTCController;
 MockRTCController mockRTCController;
-RTCController *rtcController = &zeroRTCController;
+RTCController* rtcController = &zeroRTCController;
 
-SDManager sdManager;
-Router router({&serialPort, &mockLoraPort, &mockIridiumPort});
+// --------- Storage ----------
+SDStorageManager sdStorageManager;
+StorageManager* storageManager = &sdStorageManager; // o hddStorageManager según build
 
-NodeConfigurationRepository nodeConfigurationRepository(sdManager, "config.txt");
+// --------- Router ----------
+Router router({serialPort, loraPort, iridiumPort});
+
+// --------- Power ----------
+MosfetController mosfetController;
+RockPiPowerController rockPiPowerController(mosfetController);
+
+
+// =======================================================
+//       NATIVE BUILD
+// =======================================================
+#else // NATIVE
+
+// --------- Batería ----------
+MockBatteryController mockBatteryController;
+IBatteryController* battery = &mockBatteryController;
+
+// --------- Display ----------
+ConsoleDisplay consoleDisplay;
+IDisplay* display = &consoleDisplay;
+
+// --------- Puertos ----------
+MockSerialPort mockSerialPort;
+MockLoRaPort mockLoraPort;
+MockIridiumPort mockIridiumPort;
+
+IPort* serialPort = &mockSerialPort;
+IPort* loraPort = &mockLoraPort;
+IPort* iridiumPort = &mockIridiumPort;
+
+
+// --------- GPS ----------
+MockGPS mockGPS(0.0,0.0,1.0);
+IGPS* gps = &mockGPS;
+
+// --------- RTC ----------
+MockRTCController mockRTCController;
+RTCController* rtcController = &mockRTCController;
+
+// --------- Storage ----------
+HDDStorageManager hddStorageManager;
+StorageManager* storageManager = &hddStorageManager; // o hddStorageManager según build
+
+// --------- Router ----------
+Router router({ &mockLoraPort, &mockIridiumPort });
+
+
+#endif // ARDUINO vs NATIVE
+
+// =======================================================
+//       COMÚN A AMBOS
+// =======================================================
+
+
+NodeConfigurationRepository nodeConfigurationRepository(*storageManager, "config.txt");
 ICListenService icListenService(router);
 
 SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository);
 CompleteStatusReportRoutine completeSummaryReportRoutine(gps, battery, nodeConfigurationRepository, icListenService);
 BasicStatusReportRoutine basicSummaryReportRoutine(gps, battery, rtcController, nodeConfigurationRepository);
-StoreICListenConfigurationRoutine storeICListenConfigurationRoutine(icListenService);
 
-std::map<OperationCode::Code, IRoutine<Packet> *> configurationRoutines = {
-        {OperationCode::Code::SET_NODE_DEVICE_CONFIG, &setNodeConfigurationRoutine},
-        {OperationCode::Code::SET_ICLISTEN_CONFIG,    &storeICListenConfigurationRoutine},
+std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> configurationRoutines = {
+    {acousea_PayloadWrapper_setConfiguration_tag, &setNodeConfigurationRoutine},
 };
 
-std::map<OperationCode::Code, IRoutine<VoidType> *> reportingRoutines = {
-        {OperationCode::Code::BASIC_STATUS_REPORT,    &basicSummaryReportRoutine},
-        {OperationCode::Code::COMPLETE_STATUS_REPORT, &completeSummaryReportRoutine},
+// FIXME: RequestedConfiguration should not execute the basicSummaryReportRoutine
+std::map<uint8_t, IRoutine<VoidType>*> reportingRoutines = {
+    {acousea_PayloadWrapper_requestedConfiguration_tag, &basicSummaryReportRoutine},
+    {acousea_PayloadWrapper_statusPayload_tag, &completeSummaryReportRoutine},
 };
 
-NodeOperationRunner nodeOperationRunner(router, reportingRoutines, configurationRoutines, nodeConfigurationRepository);
-
-MosfetController mosfetController;
-RockPiPowerController rockPiPowerController(mosfetController);
+NodeOperationRunner nodeOperationRunner(
+    router,
+    reportingRoutines,
+    configurationRoutines,
+    nodeConfigurationRepository
+);

@@ -1,3 +1,4 @@
+#ifdef ARDUINO
 #include "AdafruitDisplay.h"
 
 AdafruitDisplay::AdafruitDisplay() : display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET) {}
@@ -50,13 +51,6 @@ void AdafruitDisplay::print(const std::vector<uint8_t> &data) {
     display.display();
 }
 
-void AdafruitDisplay::print(const String &message) {
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.print(message);
-    display.display();
-}
 
 void AdafruitDisplay::print(const char *message) {
     display.setTextSize(1);
@@ -70,3 +64,5 @@ void AdafruitDisplay::clear() {
     display.clearDisplay();
     display.display();
 }
+
+#endif

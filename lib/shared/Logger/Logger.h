@@ -3,9 +3,10 @@
 
 #include <string>
 #include <ctime>
-#include "SDManager/SDManager.h"
-#include <Arduino.h>
 #include <vector>
+
+#include "StorageManager/StorageManager.hpp"
+#include "IDisplay.h"
 
 class Logger {
 public:
@@ -16,7 +17,11 @@ public:
         Both
     };
 
-    static void initialize(SDManager *sdManager, const char *logFilePath, Mode mode = Mode::SerialOnly);
+    static void initialize(
+        IDisplay *display,
+        StorageManager *sdManager,
+        const char *logFilePath,
+        Mode mode = Mode::SerialOnly);
 
     static void logError(const std::string &errorMessage);
 
@@ -30,7 +35,8 @@ public:
 
 
 private:
-    static inline SDManager *sdManager = nullptr;
+    static inline IDisplay *display = nullptr;
+    static inline StorageManager *sdManager = nullptr;
     static inline const char *logFilePath = nullptr;
     static inline Mode mode = Mode::SerialOnly;
     static inline std::time_t currentTime = 0;

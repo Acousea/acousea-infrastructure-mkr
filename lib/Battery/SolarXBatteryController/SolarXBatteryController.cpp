@@ -1,3 +1,5 @@
+#ifdef ARDUINO
+
 #include "SolarXBatteryController.h"
 
 SolarXBatteryController::SolarXBatteryController(uint8_t address) {
@@ -45,3 +47,5 @@ float SolarXBatteryController::getVoltage() {
 float SolarXBatteryController::getCurrent() {
     return ina219.getCurrent_mA() / 1000.0; // Convertir a amperios
 }
+
+#endif

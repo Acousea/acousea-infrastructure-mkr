@@ -1,6 +1,7 @@
 #ifndef ACOUSEA_MKR1310_NODES_ROCKPIPOWERCONTROLLER_HPP
 #define ACOUSEA_MKR1310_NODES_ROCKPIPOWERCONTROLLER_HPP
 
+#ifdef ARDUINO
 #include <Arduino.h>
 #include "../MosfetController/MosfetController.hpp"
 #include "Logger/Logger.h"
@@ -26,5 +27,8 @@ private:
     const int rockPiMonitorPin;
     MosfetController &mosfetController;
 };
+
+#endif // ARDUINO
+
 
 #endif //ACOUSEA_MKR1310_NODES_ROCKPIPOWERCONTROLLER_HPP

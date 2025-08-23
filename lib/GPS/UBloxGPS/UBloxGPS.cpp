@@ -1,7 +1,6 @@
+#ifdef ARDUINO
+
 #include "UBloxGPS.h"
-
-
-
 
 bool UBloxGNSS::init() {
     Logger::logInfo("Initializing GNSS ...");
@@ -72,3 +71,6 @@ void UBloxGNSS::calculateTrajectory(float targetLat, float targetLon, float &dis
     // Implementación de la fórmula de Haversine
     HaverSine(latitude, longitude, targetLat, targetLon, distance, bearing);
 }
+
+
+#endif // ARDUINO

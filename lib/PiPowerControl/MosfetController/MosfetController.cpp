@@ -1,5 +1,6 @@
-#include "MosfetController.hpp"
+#ifdef ARDUINO
 
+#include "MosfetController.hpp"
 MosfetController::MosfetController(int mosfetControlPin)
         : mosfetControlPin(mosfetControlPin) {
     pinMode(mosfetControlPin, OUTPUT);
@@ -19,3 +20,5 @@ void MosfetController::switchOffMOSFET() const {
 bool MosfetController::isMOSFETOn() const {
     return digitalRead(mosfetControlPin) == HIGH;
 }
+
+#endif // ARDUINO

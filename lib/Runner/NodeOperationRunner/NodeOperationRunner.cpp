@@ -1,186 +1,228 @@
 #include "NodeOperationRunner.h"
 
-NodeOperationRunner::NodeOperationRunner(Router &router,
-                                         const std::map<OperationCode::Code, IRoutine<VoidType> *> &internalRoutines,
-                                         const std::map<OperationCode::Code, IRoutine<Packet> *> &externalRoutines,
-                                         const NodeConfigurationRepository &nodeConfigurationRepository)
+NodeOperationRunner::NodeOperationRunner(Router& router,
+                                         const std::map<uint8_t, IRoutine<VoidType>*>& internalRoutines,
+                                         const std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>&
+                                         externalRoutines,
+                                         const NodeConfigurationRepository& nodeConfigurationRepository)
     : IRunnable(),
       router(router),
       internalRoutines(internalRoutines),
       externalRoutines(externalRoutines),
-      nodeConfigurationRepository(nodeConfigurationRepository) {
+      nodeConfigurationRepository(nodeConfigurationRepository){
     cache = {0, 0, {0, 0}};
 }
 
-void NodeOperationRunner::init() {
+void NodeOperationRunner::init(){
     Logger::logInfo(
-        "-> Init Operation Cycle for Operation Mode=" + std::to_string(cache.currentOperationMode) +
+        "-> Init Operation Cycle for Operation Mode=" + std::to_string(cache.currentOperationMode.key) +
         " with configuration: "
     );
-    nodeConfiguration.emplace(nodeConfigurationRepository.getNodeConfiguration());
-    nodeConfiguration->print();
-    cache.currentOperationMode = nodeConfiguration->getOperationGraphModule()->getGraph().begin()->first;
+    currentNodeConfiguration.emplace(nodeConfigurationRepository.getNodeConfiguration());
+    nodeConfigurationRepository.printNodeConfiguration(*currentNodeConfiguration);
+    if (!currentNodeConfiguration->has_operationGraphModule || currentNodeConfiguration->operationGraphModule.
+        graph_count == 0){
+        ErrorHandler::handleError(getClassNameString() + ": No operation graph defined in configuration.");
+        return;
+    }
+    cache.currentOperationMode = currentNodeConfiguration->operationGraphModule.graph[0];
 }
 
-void NodeOperationRunner::run() {
-    Logger::logInfo("-> Run Operation Cycle for Operation mode=" + std::to_string(cache.currentOperationMode));
+void NodeOperationRunner::run(){
+    Logger::logInfo("-> Run Operation Cycle for Operation mode=" + std::to_string(cache.currentOperationMode.key));
     checkIfMustTransition();
-    processIncomingPackets(nodeConfiguration->getLocalAddress());
+    processIncomingPackets(currentNodeConfiguration->localAddress);
     runRoutines();
 }
 
-void NodeOperationRunner::finish() {
+void NodeOperationRunner::finish(){
     cache.cycleCount++;
-    Logger::logInfo("-> Finish Operation Cycle for Operation mode=" + std::to_string(cache.currentOperationMode));
+    Logger::logInfo("-> Finish Operation Cycle for Operation mode=" + std::to_string(cache.currentOperationMode.key));
 }
 
-void NodeOperationRunner::checkIfMustTransition() {
-    const auto maxDuration = nodeConfiguration->getOperationGraphModule()
-            ->getGraph()
-            .at(cache.currentOperationMode).duration;
+acousea_OperationModesGraphModule_GraphEntry NodeOperationRunner::searchOperationMode(const uint8_t modeId) const{
+    for (int i = 0; i < currentNodeConfiguration->operationGraphModule.graph_count; ++i){
+        if (currentNodeConfiguration->operationGraphModule.graph[i].key == modeId){
+            return currentNodeConfiguration->operationGraphModule.graph[i];
+        }
+    }
+    Logger::logError("Operation mode " + std::to_string(modeId) + " not found. Returning default mode.");
+    return currentNodeConfiguration->operationGraphModule.graph[0];
+}
 
-    if (cache.cycleCount >= maxDuration) {
+acousea_ReportingPeriodEntry NodeOperationRunner::searchReportingEntry(
+    const uint8_t modeId,
+    const acousea_ReportingPeriodEntry* entries,
+    const size_t entryCount){
+    for (size_t i = 0; i < entryCount; ++i){
+        if (entries[i].modeId == modeId){
+            return entries[i];
+        }
+    }
+    Logger::logError("Reporting entry for mode " + std::to_string(modeId) + " not found. Returning default entry.");
+    return entries[0];
+}
+
+
+void NodeOperationRunner::checkIfMustTransition(){
+    const auto maxDuration = cache.currentOperationMode.value.duration;
+
+    if (cache.cycleCount >= maxDuration){
         cache.cycleCount = 0;
-        const auto nextOpMode = nodeConfiguration->getOperationGraphModule()
-                ->getGraph()
-                .at(cache.currentOperationMode).nextMode;
+        const auto nextOpMode = searchOperationMode(cache.currentOperationMode.value.targetMode);
         cache.currentOperationMode = nextOpMode;
-        Logger::logInfo("Transitioned to next mode..." + std::to_string(cache.currentOperationMode));
+        Logger::logInfo("Transitioned to next mode..." + std::to_string(cache.currentOperationMode.key));
     }
 }
 
 bool NodeOperationRunner::mustReport(const unsigned long currentMinute, const unsigned long reportingPeriod,
-                                     const unsigned long lastReportMinute) {
+                                     const unsigned long lastReportMinute){
     return (currentMinute - lastReportMinute >= reportingPeriod && reportingPeriod != 0)
-           || lastReportMinute == 0;
+        || lastReportMinute == 0;
 }
 
-void NodeOperationRunner::runRoutines() {
-    const auto currentMinute = millis() / 60000;
-    // Handle Iridium reporting
-    if (nodeConfiguration->getIridiumModule().has_value()) {
-        const auto &iridiumConfig = nodeConfiguration->getIridiumModule()
-                ->getConfigurations()
-                .at(cache.currentOperationMode);
-        Logger::logInfo("Iridium Config: { Period=" + std::to_string(iridiumConfig.getPeriod()) +
-                        ", Current minute=" + std::to_string(currentMinute) +
-                        ", Last report minute=" + std::to_string(cache.lastReportMinute.sbd) + " }");
+void NodeOperationRunner::runRoutines(){
+    const auto currentMinute = getMillis() / 60000;
 
-        if (mustReport(currentMinute, iridiumConfig.getPeriod(), cache.lastReportMinute.sbd)) {
-            processRoutine(iridiumConfig, IPort::PortType::SBDPort, currentMinute, cache.lastReportMinute.sbd);
+    if (!currentNodeConfiguration.has_value()){
+        ErrorHandler::handleError(getClassNameString() + ": Node configuration not loaded.");
+        return;
+    }
+
+    // Handle Iridium reporting
+    if (currentNodeConfiguration->has_iridiumModule){
+        const auto& reportingPeriodEntry = NodeOperationRunner::searchReportingEntry(
+            cache.currentOperationMode.key,
+            currentNodeConfiguration->iridiumModule.entries,
+            currentNodeConfiguration->iridiumModule.entries_count
+        );
+
+        Logger::logInfo("Iridium Config: { Period=" + std::to_string(reportingPeriodEntry.period) +
+            ", Current minute=" + std::to_string(currentMinute) +
+            ", Last report minute=" + std::to_string(cache.lastReportMinute.sbd) + " }");
+
+        if (mustReport(currentMinute, reportingPeriodEntry.period, cache.lastReportMinute.sbd)){
+            reportRoutine(IPort::PortType::SBDPort, currentMinute, cache.lastReportMinute.sbd);
         }
     }
 
     // Handle LoRa reporting
-    if (nodeConfiguration->getLoraModule().has_value()) {
-        const auto &loraConfig = nodeConfiguration->getLoraModule()
-                ->getConfigurations()
-                .at(cache.currentOperationMode);
+    if (currentNodeConfiguration->has_loraModule){
+        const auto& loraConfig = NodeOperationRunner::searchReportingEntry(
+            cache.currentOperationMode.key,
+            currentNodeConfiguration->loraModule.entries,
+            currentNodeConfiguration->loraModule.entries_count
+        );
 
-        Logger::logInfo("Lora Config: { Period=" + std::to_string(loraConfig.getPeriod()) +
-                        ", Current minute=" + std::to_string(currentMinute) +
-                        ", Last report minute=" + std::to_string(cache.lastReportMinute.lora) + " }");
+        Logger::logInfo("LoRa Config: { Period=" + std::to_string(loraConfig.period) +
+            ", Current minute=" + std::to_string(currentMinute) +
+            ", Last report minute=" + std::to_string(cache.lastReportMinute.lora) + " }");
 
-        if (mustReport(currentMinute, loraConfig.getPeriod(), cache.lastReportMinute.lora)) {
-            processRoutine(loraConfig, IPort::PortType::LoraPort, currentMinute, cache.lastReportMinute.lora);
+        if (mustReport(currentMinute, loraConfig.period, cache.lastReportMinute.lora)){
+            reportRoutine(IPort::PortType::LoraPort, currentMinute, cache.lastReportMinute.lora);
         }
     }
 }
 
-void NodeOperationRunner::processRoutine(const ReportingConfiguration &config, IPort::PortType portType,
-                                         unsigned long currentMinute, unsigned long &lastReportMinute) {
-    IRoutine<VoidType> *routine = nullptr;
+void NodeOperationRunner::reportRoutine(IPort::PortType portType,
+                                        unsigned long currentMinute,
+                                        unsigned long& lastReportMinute){
+    IRoutine<VoidType>* routine = nullptr;
 
-    Logger::logInfo("Executing routine for report type: " + config.getReportTypeString());
-    switch (config.getReportType()) {
-        case ReportingConfiguration::ReportType::COMPLETE:
-            routine = internalRoutines.find(OperationCode::Code::COMPLETE_STATUS_REPORT)->second;
-            break;
-        case ReportingConfiguration::ReportType::BASIC:
-            routine = internalRoutines.find(OperationCode::Code::BASIC_STATUS_REPORT)->second;
-            break;
-        default:
-            ErrorHandler::handleError(getClassNameString() + ": Invalid report type");
-            return;
-    }
-
-    if (!routine) {
-        ErrorHandler::handleError(getClassNameString() + ": Routine not found for report type " + config.getReportTypeString());
+    routine = internalRoutines.find(acousea_PayloadWrapper_statusPayload_tag)->second;
+    if (!routine){
+        ErrorHandler::handleError(getClassNameString() + ": StatusReport routine not found.");
         return;
     }
 
-    const Result<Packet> result = routine->execute();
+    const Result<acousea_CommunicationPacket> result = routine->execute();
 
-    if (result.isError()) {
+    if (result.isError()){
         Logger::logError("Routine execution failed: " + result.getError());
         return;
     }
 
-    sendResponsePacket(portType, nodeConfiguration->getLocalAddress(), result.getValue());
+    sendResponsePacket(portType, currentNodeConfiguration->localAddress, result.getValue());
     lastReportMinute = currentMinute;
 }
 
-void NodeOperationRunner::processIncomingPackets(const Address &localAddress) {
+void NodeOperationRunner::processIncomingPackets(const uint8_t& localAddress){
     auto receivedPackets = router.readPorts(localAddress);
-    for (const auto &[portType, packets]: receivedPackets) {
-        for (auto &packet: packets) {
+    for (const auto& [portType, packets] : receivedPackets){
+        for (auto& packet : packets){
             processPacket(portType, packet, localAddress);
         }
     }
 }
 
-void NodeOperationRunner::processPacket(IPort::PortType portType, const Packet &packet, const Address &localAddress) {
+void NodeOperationRunner::processPacket(IPort::PortType portType,
+                                        const acousea_CommunicationPacket& packet,
+                                        const uint8_t& localAddress){
+    if (!packet.has_payload){
+        ErrorHandler::handleError(getClassNameString() + ": Packet without payload.");
+    }
+
+    if (!packet.has_routing){
+        ErrorHandler::handleError(getClassNameString() + ": Packet without routing.");
+    }
+
+
+    const uint8_t payloadTypeTag = packet.payload.which_payload;
+    const uint8_t sender = packet.routing.sender;
+
     Logger::logInfo(
-        "Processing packet " + packet.encode() +
-        " from " + std::to_string(packet.getRoutingChunk().getSender().getValue()) +
+        "Processing packet " + std::to_string(payloadTypeTag) +
+        " from " + std::to_string(sender) +
         " received through " + IPort::portTypeToString(portType)
     );
 
-    const OperationCode::Code opCode = packet.getOpCodeEnum();
-
-    if (externalRoutines.find(opCode) == externalRoutines.end()) {
-        Logger::logError(getClassNameString() + " Exception: No routine found for OpCode: " + std::to_string(opCode));
-        sendResponsePacket(portType, localAddress, ErrorPacket::invalidOpcode(packet.getRoutingChunk()));
+    // Routine
+    const auto routineResultIterator = externalRoutines.find(payloadTypeTag);
+    if (routineResultIterator == externalRoutines.end() || routineResultIterator->second == nullptr){
+        Logger::logError(getClassNameString() +
+            " Exception: No routine found for payload Tag Type: " + std::to_string(payloadTypeTag)
+        );
         return;
     }
 
-    const Result<Packet> result = externalRoutines[opCode]->execute(packet);
-    if (!result.isSuccess()) {
+    IRoutine<acousea_CommunicationPacket>* routine = routineResultIterator->second;
+    const Result<acousea_CommunicationPacket> result = routine->execute(packet);
+
+    if (!result.isSuccess()){
         Logger::logError(getClassNameString() + " Exception: " + result.getError());
-        sendResponsePacket(portType, localAddress, ErrorPacket::invalidPayload(packet.getRoutingChunk()));
         return;
     }
 
-    if (result.isEmpty()) {
-        Logger::logInfo(
-            getClassNameString() + ": Execution successful but no response packet for OpCode: " + std::to_string(opCode));
+    if (result.isEmpty()){
+        Logger::logInfo(getClassNameString() + ": Execution successful but no response packet for OpCode: " +
+            std::to_string(payloadTypeTag));
         return;
     }
 
-    const Packet responsePacket = result.getValue();
+    const acousea_CommunicationPacket responsePacket = result.getValue();
     sendResponsePacket(portType, localAddress, responsePacket);
 }
 
 void NodeOperationRunner::sendResponsePacket(const IPort::PortType portType,
-                                             const Address &localAddress,
-                                             const Packet &responsePacket) const {
+                                             const uint8_t& localAddress,
+                                             const acousea_CommunicationPacket& responsePacket) const{
     Logger::logInfo(
-        "Sending response packet..." + responsePacket.encode() +
-        " to " + std::to_string(localAddress.getValue()) +
+        "Sending response packet with Payload Tag" + std::to_string(responsePacket.payload.which_payload) +
+        " to " + std::to_string(localAddress) +
         " through " + IPort::portTypeToString(portType)
     );
-    switch (portType) {
-        case IPort::PortType::SBDPort:
-            router.sendFrom(localAddress).sendSBD(responsePacket);
-            break;
-        case IPort::PortType::LoraPort:
-            router.sendFrom(localAddress).sendLoRa(responsePacket);
-            break;
-        case IPort::PortType::SerialPort:
-            router.sendFrom(localAddress).sendSerial(responsePacket);
-            break;
-        default:
-            Logger::logError(getClassNameString() + ": Unknown port type for response packet!");
-            break;
+    switch (portType){
+    case IPort::PortType::SBDPort:
+        router.sendFrom(localAddress).sendSBD(responsePacket);
+        break;
+    case IPort::PortType::LoraPort:
+        router.sendFrom(localAddress).sendLoRa(responsePacket);
+        break;
+    case IPort::PortType::SerialPort:
+        router.sendFrom(localAddress).sendSerial(responsePacket);
+        break;
+    default:
+        Logger::logError(getClassNameString() + ": Unknown port type for response packet!");
+        break;
     }
 }

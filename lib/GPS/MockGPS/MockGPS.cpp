@@ -1,6 +1,6 @@
 #include "MockGPS.h"
 
-#include <Logger/Logger.h>
+
 
 
 MockGPS::MockGPS(float startLat, float startLon, float moveRate)
@@ -19,7 +19,7 @@ GPSLocation MockGPS::read() {
 }
 
 unsigned long MockGPS::getTimestamp() {
-    return millis();
+    return getMillis();
 }
 
 void MockGPS::wakeup() {

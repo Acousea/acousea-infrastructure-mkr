@@ -1,6 +1,8 @@
 #ifndef IRIDIUMPORT_H
 #define IRIDIUMPORT_H
 
+#ifdef ARDUINO
+
 #include <Arduino.h>
 #include "wiring_private.h"
 #include "Ports/IPort.h"
@@ -47,5 +49,6 @@ private:
 };
 
 
+#endif // ARDUINO
 
 #endif // IRIDIUMPORT_H

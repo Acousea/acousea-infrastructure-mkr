@@ -1,3 +1,4 @@
+#ifdef ARDUINO
 #include "ZeroRTCController.h"
 
 ZeroRTCController::ZeroRTCController() {}
@@ -17,3 +18,5 @@ uint32_t ZeroRTCController::getEpoch() {
 void ZeroRTCController::setEpoch(unsigned long epoch) {
     rtc.setEpoch(epoch);
 }
+
+#endif // ARDUINO

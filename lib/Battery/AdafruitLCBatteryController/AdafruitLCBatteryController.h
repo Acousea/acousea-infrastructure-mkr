@@ -1,6 +1,6 @@
 #ifndef ADAFRUITLC_MANAGER_H
 #define ADAFRUITLC_MANAGER_H
-
+#ifdef ARDUINO
 
 #include "Adafruit_LC709203F.h"
 #include "IBatteryController.h"
@@ -20,5 +20,7 @@ public:
 private:
     Adafruit_LC709203F adafruitLC; // Battery controller
 };
+
+#endif // ARDUINO
 
 #endif // AdafruitLC_MANAGER_H
