@@ -65,10 +65,11 @@ IDisplay* display = &consoleDisplay;
 MockSerialPort mockSerialPort;
 MockLoRaPort mockLoraPort;
 MockIridiumPort mockIridiumPort;
+HttpPort httpPort("http://localhost:8080", "http://localhost:8080", 10000);
 
 IPort* serialPort = &mockSerialPort;
 IPort* loraPort = &mockLoraPort;
-IPort* iridiumPort = &mockIridiumPort;
+IPort* iridiumPort = &httpPort;
 
 
 // --------- GPS ----------
@@ -84,7 +85,7 @@ HDDStorageManager hddStorageManager;
 StorageManager* storageManager = &hddStorageManager; // o hddStorageManager según build
 
 // --------- Router ----------
-Router router({ &mockLoraPort, &mockIridiumPort });
+Router router({ serialPort, loraPort, iridiumPort });
 
 
 #endif // ARDUINO vs NATIVE

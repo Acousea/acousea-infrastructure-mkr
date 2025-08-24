@@ -114,6 +114,7 @@
 #include <Ports/Serial/MockSerialPort.h>
 #include <Ports/LoRa/MockLoRaPort.h>
 #include <Ports/Iridium/MockIridiumPort.h>
+#include <Ports/http/HttpPort.hpp>
 
 
 #endif
