@@ -1,74 +1,91 @@
 #include "NodeConfigurationRepository.h"
 
 
-NodeConfigurationRepository::NodeConfigurationRepository(StorageManager& sdManager, const char* filePath)
-    : storageManager(sdManager), configFilePath(filePath){
+NodeConfigurationRepository::NodeConfigurationRepository(StorageManager& sdManager)
+    : storageManager(sdManager)
+{
 }
 
-void NodeConfigurationRepository::init(){
+void NodeConfigurationRepository::init()
+{
     const std::string content = storageManager.readFile(configFilePath);
 
-    if (content.empty()){
+    if (content.empty())
+    {
         Logger::logError(
             "NodeConfigurationRepository::begin() -> No configuration file found. Creating default configuration.");
-        if (!saveConfiguration(makeDefault())){
+        if (!saveConfiguration(makeDefault()))
+        {
             ErrorHandler::handleError("NodeConfigurationRepository::begin() -> Error saving default configuration.");
         }
     }
     Logger::logInfo("NodeConfigurationRepository initialized.");
 }
 
-void NodeConfigurationRepository::reset(){
+void NodeConfigurationRepository::reset()
+{
     Logger::logInfo("NodeConfigurationRepository::reset() -> Resetting to default configuration.");
-    if (!saveConfiguration(makeDefault())){
+    if (!saveConfiguration(makeDefault()))
+    {
         ErrorHandler::handleError("NodeConfigurationRepository::reset() -> Error saving default configuration.");
     }
 }
 
 
-
-void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfiguration& cfg) const {
+void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfiguration& cfg) const
+{
     std::string line;
     line.reserve(256);
     line += "Node Configuration | LocalAddress=" + std::to_string(cfg.localAddress);
 
-    if (cfg.has_operationGraphModule) {
+    if (cfg.has_operationGraphModule)
+    {
         line += " | OperationGraph=[";
-        for (int i = 0; i < cfg.operationGraphModule.graph_count; ++i) {
+        for (int i = 0; i < cfg.operationGraphModule.graph_count; ++i)
+        {
             const auto& e = cfg.operationGraphModule.graph[i];
             if (i) line += ", ";
             line += "{key=" + std::to_string(e.key);
-            if (e.has_value) {
+            if (e.has_value)
+            {
                 line += ", target=" + std::to_string(e.value.targetMode);
                 line += ", duration=" + std::to_string(e.value.duration);
-            } else {
+            }
+            else
+            {
                 line += ", value=<none>";
             }
             line += "}";
         }
         line += "]";
-    } else {
+    }
+    else
+    {
         line += " | OperationGraph=<none>";
     }
 
-    if (cfg.has_loraModule) {
+    if (cfg.has_loraModule)
+    {
         line += " | LoRa=[";
-        for (int i = 0; i < cfg.loraModule.entries_count; ++i) {
+        for (int i = 0; i < cfg.loraModule.entries_count; ++i)
+        {
             const auto& e = cfg.loraModule.entries[i];
             if (i) line += ", ";
             line += "{mode=" + std::to_string(e.modeId)
-                 +  ", period=" + std::to_string(e.period) + "}";
+                + ", period=" + std::to_string(e.period) + "}";
         }
         line += "]";
     }
 
-    if (cfg.has_iridiumModule) {
+    if (cfg.has_iridiumModule)
+    {
         line += " | Iridium=[";
-        for (int i = 0; i < cfg.iridiumModule.entries_count; ++i) {
+        for (int i = 0; i < cfg.iridiumModule.entries_count; ++i)
+        {
             const auto& e = cfg.iridiumModule.entries[i];
             if (i) line += ", ";
             line += "{mode=" + std::to_string(e.modeId)
-                 +  ", period=" + std::to_string(e.period) + "}";
+                + ", period=" + std::to_string(e.period) + "}";
         }
         line += "]";
     }
@@ -77,8 +94,8 @@ void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfi
 }
 
 
-
-Result<std::vector<uint8_t>> NodeConfigurationRepository::encodeProto(const acousea_NodeConfiguration& m){
+Result<std::vector<uint8_t>> NodeConfigurationRepository::encodeProto(const acousea_NodeConfiguration& m)
+{
     pb_ostream_t s1 = PB_OSTREAM_SIZING;
     if (!pb_encode(&s1, acousea_NodeConfiguration_fields, &m))
         return Result<std::vector<uint8_t>>::failure(PB_GET_ERROR(&s1));
@@ -94,11 +111,13 @@ Result<std::vector<uint8_t>> NodeConfigurationRepository::encodeProto(const acou
 // ------------------------------------------------------------------
 // Decodifica desde bytes a struct nanopb
 // ------------------------------------------------------------------
-Result<acousea_NodeConfiguration> NodeConfigurationRepository::decodeProto(const std::vector<uint8_t>& bytes){
+Result<acousea_NodeConfiguration> NodeConfigurationRepository::decodeProto(const std::vector<uint8_t>& bytes)
+{
     acousea_NodeConfiguration m = acousea_NodeConfiguration_init_default;
 
     pb_istream_t is = pb_istream_from_buffer(bytes.data(), bytes.size());
-    if (!pb_decode(&is, acousea_NodeConfiguration_fields, &m)){
+    if (!pb_decode(&is, acousea_NodeConfiguration_fields, &m))
+    {
         return Result<acousea_NodeConfiguration>::failure(PB_GET_ERROR(&is));
     }
 
@@ -109,28 +128,33 @@ Result<acousea_NodeConfiguration> NodeConfigurationRepository::decodeProto(const
 // ------------------------------------------------------------------
 // Lee el fichero binario y devuelve la configuración (o default)
 // ------------------------------------------------------------------
-acousea_NodeConfiguration NodeConfigurationRepository::getNodeConfiguration() const{
+acousea_NodeConfiguration NodeConfigurationRepository::getNodeConfiguration() const
+{
     const std::vector<uint8_t> bytes = storageManager.readFileBytes(configFilePath);
-    if (bytes.empty()){
+    if (bytes.empty())
+    {
         return makeDefault();
     }
 
     const auto dec = decodeProto(bytes);
-    if (!dec.isSuccess()){
+    if (!dec.isSuccess())
+    {
         // Opcional: log del error dec.getError()
         return makeDefault();
     }
     return dec.getValue();
 }
 
-bool NodeConfigurationRepository::saveConfiguration(const acousea_NodeConfiguration& cfg){
+bool NodeConfigurationRepository::saveConfiguration(const acousea_NodeConfiguration& cfg)
+{
     auto enc = encodeProto(cfg);
     if (!enc.isSuccess()) return false;
     return storageManager.writeFileBytes(configFilePath, enc.getValue().data(), enc.getValue().size());
 }
 
 
-acousea_NodeConfiguration NodeConfigurationRepository::makeDefault(){
+acousea_NodeConfiguration NodeConfigurationRepository::makeDefault()
+{
     acousea_NodeConfiguration m = acousea_NodeConfiguration_init_default;
     m.localAddress = 255;
 

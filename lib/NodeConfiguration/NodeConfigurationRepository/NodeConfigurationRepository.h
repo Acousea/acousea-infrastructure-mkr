@@ -12,9 +12,10 @@
 #include <pb_decode.h>
 
 
-class NodeConfigurationRepository{
+class NodeConfigurationRepository
+{
 public:
-    NodeConfigurationRepository(StorageManager& sdManager, const char* filePath);
+    explicit NodeConfigurationRepository(StorageManager& sdManager);
 
     void init();
 
@@ -33,7 +34,7 @@ private:
 
 private:
     StorageManager& storageManager;
-    const char* configFilePath;
+    static auto constexpr configFilePath = "node_config";
 };
 
 #endif // REPORTING_PERIOD_MANAGER_H
