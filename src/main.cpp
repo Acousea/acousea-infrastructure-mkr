@@ -108,7 +108,7 @@ void setup(){
     Logger::initialize(
         display,
         storageManager,
-        "/log.csv",
+        "log.csv",
         Logger::Mode::Both
     );
     Logger::logInfo("================ Setting up Node =================");

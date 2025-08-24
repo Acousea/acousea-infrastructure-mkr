@@ -98,6 +98,11 @@ bool SDStorageManager::writeFileBytes(const char* path, const uint8_t* data, siz
     return true;
 }
 
+bool SDStorageManager::writeFileBytes(const char* path, const std::vector<uint8_t>& data)
+{
+    return writeFileBytes(path, data.data(), data.size());
+}
+
 // Lee todo el archivo como vector<uint8_t>
 std::vector<uint8_t> SDStorageManager::readFileBytes(const char* path) {
     File file = SD.open(path, FILE_READ);

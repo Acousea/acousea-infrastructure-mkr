@@ -65,7 +65,7 @@ IDisplay* display = &consoleDisplay;
 MockSerialPort mockSerialPort;
 MockLoRaPort mockLoraPort;
 MockIridiumPort mockIridiumPort;
-HttpPort httpPort("http://localhost:8080", "http://localhost:8080", 10000);
+HttpPort httpPort("http://10.22.146.50:8000", "300234010123456");
 
 IPort* serialPort = &mockSerialPort;
 IPort* loraPort = &mockLoraPort;
@@ -73,7 +73,7 @@ IPort* iridiumPort = &httpPort;
 
 
 // --------- GPS ----------
-MockGPS mockGPS(0.0,0.0,1.0);
+MockGPS mockGPS(0.0, 0.0, 1.0);
 IGPS* gps = &mockGPS;
 
 // --------- RTC ----------
@@ -85,7 +85,7 @@ HDDStorageManager hddStorageManager;
 StorageManager* storageManager = &hddStorageManager; // o hddStorageManager según build
 
 // --------- Router ----------
-Router router({ serialPort, loraPort, iridiumPort });
+Router router({serialPort, loraPort, iridiumPort});
 
 
 #endif // ARDUINO vs NATIVE
@@ -96,20 +96,53 @@ Router router({ serialPort, loraPort, iridiumPort });
 
 
 NodeConfigurationRepository nodeConfigurationRepository(*storageManager, "config.txt");
-ICListenService icListenService(router);
+ICListenService icListenService(router, storageManager);
+auto icListenServicePtr = std::make_shared<ICListenService>(router, storageManager);
 
-SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository);
-CompleteStatusReportRoutine completeSummaryReportRoutine(gps, battery, nodeConfigurationRepository, icListenService);
-BasicStatusReportRoutine basicSummaryReportRoutine(gps, battery, rtcController, nodeConfigurationRepository);
+SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository, icListenServicePtr);
+// SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository, std::nullopt);
 
+GetUpdatedNodeConfigurationRoutine getUpdatedNodeConfigurationRoutine(nodeConfigurationRepository,
+                                                                      icListenServicePtr,
+                                                                      gps,
+                                                                      battery,
+                                                                      rtcController
+);
+
+// GetUpdatedNodeConfigurationRoutine getUpdatedNodeConfigurationRoutine(nodeConfigurationRepository,
+//                                                                       std::nullopt,
+//                                                                       gps,
+//                                                                       battery,
+//                                                                       rtcController
+// );
+
+CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationRepository,
+                                                         icListenServicePtr,
+                                                         gps,
+                                                         battery
+);
+
+// CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationRepository,
+//                                                          std::nullopt,
+//                                                          gps,
+//                                                          battery
+// );
+
+BasicStatusReportRoutine basicSummaryReportRoutine(
+    nodeConfigurationRepository,
+    gps,
+    battery,
+    rtcController
+    );
 std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> configurationRoutines = {
     {acousea_PayloadWrapper_setConfiguration_tag, &setNodeConfigurationRoutine},
+    {acousea_PayloadWrapper_requestedConfiguration_tag, &setNodeConfigurationRoutine},
 };
 
 // FIXME: RequestedConfiguration should not execute the basicSummaryReportRoutine
 std::map<uint8_t, IRoutine<VoidType>*> reportingRoutines = {
     {acousea_PayloadWrapper_requestedConfiguration_tag, &basicSummaryReportRoutine},
-    {acousea_PayloadWrapper_statusPayload_tag, &completeSummaryReportRoutine},
+    {acousea_PayloadWrapper_statusPayload_tag, &basicSummaryReportRoutine},
 };
 
 NodeOperationRunner nodeOperationRunner(

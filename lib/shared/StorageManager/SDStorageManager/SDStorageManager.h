@@ -19,6 +19,7 @@ public:
     bool deleteFile(const char* path) override;
 
     bool writeFileBytes(const char* path, const uint8_t* data, size_t length) override;
+    bool writeFileBytes(const char* path, const std::vector<uint8_t>& data) override;
 
     std::vector<uint8_t> readFileBytes(const char* path) override;
 

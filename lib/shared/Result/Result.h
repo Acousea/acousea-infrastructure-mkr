@@ -11,8 +11,8 @@ public:
         return Result<T>(value, "");
     }
 
-    static Result<T> emptySuccess() {
-        return Result<T>(std::nullopt, "");
+    static Result<T> incomplete(T value) {
+        return Result<T>(value, "__INCOMPLETE_PACKET__");
     }
 
     static Result<T> failure(const std::string &errorMessage) {
@@ -30,7 +30,7 @@ public:
 
     [[nodiscard]] bool isError() const { return !isSuccess(); }
 
-    [[nodiscard]] bool isEmpty() const { return !value.has_value(); }
+    [[nodiscard]] bool isIncomplete() const { return errorMessage == "__INCOMPLETE_PACKET__"; }
 
     [[nodiscard]] const T &getValue() const { return value.value(); }
 

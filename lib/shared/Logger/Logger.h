@@ -36,7 +36,7 @@ public:
 
 private:
     static inline IDisplay *display = nullptr;
-    static inline StorageManager *sdManager = nullptr;
+    static inline StorageManager *storageManager = nullptr;
     static inline const char *logFilePath = nullptr;
     static inline Mode mode = Mode::SerialOnly;
     static inline std::time_t currentTime = 0;

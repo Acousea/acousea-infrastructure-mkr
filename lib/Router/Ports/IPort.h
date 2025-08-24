@@ -11,9 +11,10 @@
 class IPort {
 public:
     enum class PortType {
+        LocalhostPort,
         LoraPort,
         SBDPort,
-        SerialPort
+        SerialPort,
     };
 
     explicit IPort(PortType type) : type(type) {

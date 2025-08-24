@@ -51,8 +51,8 @@ public:
     void finish() override;
 
 private:
-    [[nodiscard]] acousea_OperationModesGraphModule_GraphEntry searchOperationMode(uint8_t modeId) const;
-    static acousea_ReportingPeriodEntry searchReportingEntry(uint8_t modeId,
+    [[nodiscard]] acousea_OperationModesGraphModule_GraphEntry searchForOperationMode(uint8_t modeId) const;
+    static acousea_ReportingPeriodEntry searchForReportingEntry(uint8_t modeId,
                                                              const acousea_ReportingPeriodEntry* entries,
                                                              size_t entryCount);
 

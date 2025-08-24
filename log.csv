@@ -1,0 +1,44 @@
+1970-01-01 01:00:00,INFO,================ Setting up Node =================
+1970-01-01 01:00:00,INFO,MockGPS: GPS initialized
+2025-08-24 01:37:07,INFO,NodeConfigurationRepository initialized.
+2025-08-24 01:37:07,INFO,MOCKSerialPort::init() -> Serial port initialized
+2025-08-24 01:37:07,INFO,MockBatteryController: Initializing battery controller...
+2025-08-24 01:37:07,INFO,MockLoRaPort: Initializing LoRa port...
+2025-08-24 01:37:07,INFO,HttpPort::init() -> OK (libcurl)
+2025-08-24 01:37:07,INFO,[Init] Operation Cycle for Operation Mode=0 with configuration: 
+2025-08-24 01:37:07,INFO,Node Configuration | LocalAddress=1 | OperationGraph=[{key=0, target=0, duration=1}] | LoRa=[{mode=0, period=15}] | Iridium=[{mode=0, period=15}]
+2025-08-24 01:37:07,INFO,[Run] Operation Cycle for Operation mode=0
+2025-08-24 01:37:07,INFO,Iridium Config: { Period=15, Current minute=0, Last report minute=0 }
+2025-08-24 01:37:07,INFO,MOCKSerialPort::send() -> 120808FF0110FF0118051A051A030A010F
+2025-08-24 01:37:07,ERROR,Routine execution failed: ICListenHF configuration not available yet. Requesting from ICListenService.
+2025-08-24 01:37:07,INFO,LoRa Config: { Period=15, Current minute=0, Last report minute=0 }
+2025-08-24 01:37:07,INFO,MOCKSerialPort::send() -> 120808FF0110FF0118051A051A030A010F
+2025-08-24 01:37:07,ERROR,Routine execution failed: ICListenHF configuration not available yet. Requesting from ICListenService.
+2025-08-24 01:37:07,INFO,[Finish] Operation Cycle for Operation mode=0
+2025-08-24 01:37:07,INFO,[Init] Operation Cycle for Operation Mode=0 with configuration: 
+2025-08-24 01:37:07,INFO,Node Configuration | LocalAddress=1 | OperationGraph=[{key=0, target=0, duration=1}] | LoRa=[{mode=0, period=15}] | Iridium=[{mode=0, period=15}]
+2025-08-24 01:37:07,INFO,[Run] Operation Cycle for Operation mode=0
+2025-08-24 01:37:07,INFO,Transitioned to next mode...0
+2025-08-24 01:37:07,INFO,Iridium Config: { Period=15, Current minute=1, Last report minute=0 }
+2025-08-24 01:37:07,INFO,MOCKSerialPort::send() -> 120808FF0110FF0118051A051A030A010F
+2025-08-24 01:37:07,ERROR,Routine execution failed: ICListenHF configuration not available yet. Requesting from ICListenService.
+2025-08-24 01:37:07,INFO,LoRa Config: { Period=15, Current minute=1, Last report minute=0 }
+2025-08-24 01:37:07,INFO,MOCKSerialPort::send() -> 120808FF0110FF0118051A051A030A010F
+2025-08-24 01:37:07,ERROR,Routine execution failed: ICListenHF configuration not available yet. Requesting from ICListenService.
+2025-08-24 01:37:07,INFO,[Finish] Operation Cycle for Operation mode=0
+2025-08-24 01:37:07,INFO,[Init] Operation Cycle for Operation Mode=0 with configuration: 
+2025-08-24 01:37:07,INFO,Node Configuration | LocalAddress=1 | OperationGraph=[{key=0, target=0, duration=1}] | LoRa=[{mode=0, period=15}] | Iridium=[{mode=0, period=15}]
+2025-08-24 01:37:07,INFO,[Run] Operation Cycle for Operation mode=0
+2025-08-24 01:37:07,INFO,Transitioned to next mode...0
+2025-08-24 01:37:07,INFO,Iridium Config: { Period=15, Current minute=1, Last report minute=0 }
+2025-08-24 01:37:07,INFO,MOCKSerialPort::send() -> 120808FF0110FF0118051A051A030A010F
+2025-08-24 01:37:07,ERROR,Routine execution failed: ICListenHF configuration not available yet. Requesting from ICListenService.
+2025-08-24 01:37:07,INFO,LoRa Config: { Period=15, Current minute=1, Last report minute=0 }
+2025-08-24 01:37:07,INFO,MOCKSerialPort::send() -> 120808FF0110FF0118051A051A030A010F
+2025-08-24 01:37:07,ERROR,Routine execution failed: ICListenHF configuration not available yet. Requesting from ICListenService.
+2025-08-24 01:37:07,INFO,[Finish] Operation Cycle for Operation mode=0
+2025-08-24 01:37:07,INFO,[Init] Operation Cycle for Operation Mode=0 with configuration: 
+2025-08-24 01:37:07,INFO,Node Configuration | LocalAddress=1 | OperationGraph=[{key=0, target=0, duration=1}] | LoRa=[{mode=0, period=15}] | Iridium=[{mode=0, period=15}]
+2025-08-24 01:37:07,INFO,[Run] Operation Cycle for Operation mode=0
+2025-08-24 01:37:07,INFO,Transitioned to next mode...0
+2025-08-24 01:37:07,INFO,Iridium Config: { Period=15, Current minute=1, Last report minute=0 }

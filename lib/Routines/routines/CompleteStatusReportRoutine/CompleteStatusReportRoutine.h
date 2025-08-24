@@ -13,19 +13,19 @@
  * It returns a NullPacket since it does not need to send any response to the sendFrom
  */
 class CompleteStatusReportRoutine final : public IRoutine<VoidType> {
+    NodeConfigurationRepository &nodeConfigurationRepository;
+    std::optional<std::shared_ptr<ICListenService>> icListenService;
     IGPS *gps;
     IBatteryController *battery;
-    NodeConfigurationRepository &nodeConfigurationRepository;
-    ICListenService &icListenService;
 
 public:
     CLASS_NAME(CompleteSummaryReportRoutine)
 
     CompleteStatusReportRoutine(
-        IGPS *gps,
-        IBatteryController *battery,
         NodeConfigurationRepository &nodeConfigurationRepository,
-        ICListenService &icListenService
+        std::optional<std::shared_ptr<ICListenService>> icListenService,
+        IGPS *gps,
+        IBatteryController *battery
     );
 
     Result<acousea_CommunicationPacket> execute() override;

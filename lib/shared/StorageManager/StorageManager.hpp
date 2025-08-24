@@ -24,6 +24,8 @@ public:
     // En StorageManager.hpp
     virtual bool writeFileBytes(const char* path, const uint8_t* data, size_t length) = 0;
 
+    virtual bool writeFileBytes(const char* path, const std::vector<uint8_t>& data) = 0;
+
     virtual std::vector<uint8_t> readFileBytes(const char* path) = 0;
 };
 

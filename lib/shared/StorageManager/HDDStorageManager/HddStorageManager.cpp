@@ -37,6 +37,11 @@ bool HDDStorageManager::writeFileBytes(const char* path, const uint8_t* data, si
     }
 }
 
+bool HDDStorageManager::writeFileBytes(const char* path, const std::vector<uint8_t>& data)
+{
+    return writeFileBytes(path, data.data(), data.size());
+}
+
 std::vector<uint8_t> HDDStorageManager::readFileBytes(const char* path) {
     try {
         std::ifstream ifs(path, std::ios::in | std::ios::binary | std::ios::ate);

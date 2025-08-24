@@ -46,6 +46,7 @@
 #include <routines/SetNodeConfigurationRoutine/SetNodeConfigurationRoutine.h>
 #include <routines/CompleteStatusReportRoutine/CompleteStatusReportRoutine.h>
 #include <routines/BasicStatusReportRoutine/BasicStatusReportRoutine.h>
+#include <routines/GetUpdatedNodeConfigurationRoutine/GetUpdatedNodeConfigurationRoutine.hpp>
 
 // ------------------------- REPOSITORIES -------------------------
 #include <NodeConfigurationRepository/NodeConfigurationRepository.h>

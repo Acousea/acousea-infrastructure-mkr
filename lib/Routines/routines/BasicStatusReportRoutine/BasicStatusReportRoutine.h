@@ -9,17 +9,21 @@
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
 
 
-class BasicStatusReportRoutine : public IRoutine<VoidType> {
-    IGPS *gps;
-    IBatteryController *battery;
-    RTCController *rtc;
-    NodeConfigurationRepository &nodeConfigurationRepository;
+class BasicStatusReportRoutine : public IRoutine<VoidType>
+{
+    NodeConfigurationRepository& nodeConfigurationRepository;
+    IGPS* gps;
+    IBatteryController* battery;
+    RTCController* rtc;
 
 public:
     CLASS_NAME(BasicSummaryReportRoutine)
 
-    BasicStatusReportRoutine(IGPS *gps, IBatteryController *battery, RTCController *rtc,
-                             NodeConfigurationRepository &nodeConfigurationRepository);
+    BasicStatusReportRoutine(NodeConfigurationRepository& nodeConfigurationRepository,
+                             IGPS* gps,
+                             IBatteryController* battery,
+                             RTCController* rtc
+    );
 
     Result<acousea_CommunicationPacket> execute() override;
 };

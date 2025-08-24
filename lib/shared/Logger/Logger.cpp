@@ -3,7 +3,7 @@
 void Logger::initialize(
     IDisplay *display, StorageManager *sdManager, const char *logFilePath, Mode mode) {
     Logger::display = display;
-    Logger::sdManager = sdManager;
+    Logger::storageManager = sdManager;
     Logger::logFilePath = logFilePath;
     Logger::mode = mode;
 }
@@ -20,7 +20,7 @@ void Logger::logInfo(const std::string &infoMessage) {
 void Logger::log(const std::string &logType, const std::string &message) {
     switch (mode) {
         case Mode::SDCard:
-            if (sdManager) {
+            if (storageManager) {
                 logToSDCard(logType, message);
             } else {
                 logToSerial(logType, message);
@@ -38,8 +38,8 @@ void Logger::log(const std::string &logType, const std::string &message) {
 
 
 void Logger::printLog() {
-    if (mode == Mode::SDCard && sdManager) {
-        std::string content = sdManager->readFile(logFilePath);
+    if (mode == Mode::SDCard && storageManager) {
+        std::string content = storageManager->readFile(logFilePath);
         if (content.empty()) {
             display->print("Logger::printLog() -> No logs available.");
             return;
@@ -52,8 +52,8 @@ void Logger::printLog() {
 }
 
 bool Logger::clearLog() {
-    if (mode == Mode::SDCard && sdManager) {
-        return sdManager->overwriteFile(logFilePath, "");
+    if (mode == Mode::SDCard && storageManager) {
+        return storageManager->overwriteFile(logFilePath, "");
     }
     return false;
 }
@@ -83,10 +83,10 @@ void Logger::logToSerial(const std::string &logType, const std::string &message)
 }
 
 void Logger::logToSDCard(const std::string &logType, const std::string &message) {
-    if (!sdManager) return;
+    if (!storageManager) return;
 
     std::string entry = getTimestampString() + "," + logType + "," + message + "\n";
-    if (!sdManager->appendToFile(logFilePath, entry.c_str())) {
+    if (!storageManager->appendToFile(logFilePath, entry.c_str())) {
         display->print("Logger::logToSDCard() -> Failed to append to log file.");
     }
 }
