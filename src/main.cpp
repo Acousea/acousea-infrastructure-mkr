@@ -10,7 +10,8 @@
 // #define MODE LOCALIZER_MODE // Cambiar a DRIFTER_MODE o LOCALIZER_MODE según sea necesario
 #define MODE DRIFTER_MODE // Cambiar a DRIFTER_MODE o LOCALIZER_MODE según sea necesario
 
-void saveLocalizerConfig(){
+void saveLocalizerConfig()
+{
     acousea_NodeConfiguration localizerConfig = acousea_NodeConfiguration_init_default;
 
     localizerConfig.localAddress = 2;
@@ -29,7 +30,8 @@ void saveLocalizerConfig(){
     nodeConfigurationRepository.saveConfiguration(localizerConfig);
 }
 
-void saveDrifterConfig(){
+void saveDrifterConfig()
+{
     acousea_NodeConfiguration drifterConfig = acousea_NodeConfiguration_init_default;
     drifterConfig.localAddress = 1;
 
@@ -65,7 +67,8 @@ void saveDrifterConfig(){
 }
 
 
-void setup(){
+void setup()
+{
 #if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
     std::printf("[native] Setup: starting...\n");
 #endif
@@ -97,21 +100,28 @@ void setup(){
     //    adafruitDisplay.init();
 
     // Inicializa el administrador de la tarjeta SD
-    if (!storageManager->begin()){
+    if (!storageManager->begin())
+    {
         ErrorHandler::handleError("Failed to initialize SD card.");
     }
 
 #if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
     std::printf("[native] Setup: Began storageManager\n");
 #endif
+
     // Logger initialization and configuration
     Logger::initialize(
         display,
         storageManager,
-        "log.csv",
+        "log",
         Logger::Mode::Both
     );
     Logger::logInfo("================ Setting up Node =================");
+
+    // Initialize the iclistenServicePtr
+#if MODE == DRIFTER_MODE
+    icListenServicePtr->init();
+#endif
 
     // Inicializa el GPS
     gps->init();
@@ -156,10 +166,12 @@ void setup(){
     iridiumPort->init();
 }
 
-void loop(){
+void loop()
+{
     static unsigned long lastTime = 0;
     // Operate every 30 seconds
-    if (getMillis() - lastTime >= 15000 || lastTime == 0){
+    if (getMillis() - lastTime >= 15000 || lastTime == 0)
+    {
         lastTime = getMillis();
         nodeOperationRunner.init();
         nodeOperationRunner.run();

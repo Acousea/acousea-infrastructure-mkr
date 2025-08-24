@@ -32,7 +32,9 @@ extern StorageManager* storageManager;
 
 // Repo + Services
 extern NodeConfigurationRepository nodeConfigurationRepository;
-extern ICListenService icListenService;
+
+// IcListen
+extern std::shared_ptr<ICListenService> icListenServicePtr;
 
 // Routines
 extern SetNodeConfigurationRoutine setNodeConfigurationRoutine;

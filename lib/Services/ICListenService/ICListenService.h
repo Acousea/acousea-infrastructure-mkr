@@ -89,6 +89,11 @@ public:
     public:
         static constexpr auto ICLISTEN_CONFIG_STORAGE_FILE = "iclisten_config";
 
+        [[nodiscard]] StorageManager* storage_manager() const
+        {
+            return storageManager;
+        }
+
     private:
         void persistHFConfiguration();
 
@@ -103,20 +108,22 @@ public:
 
     ICListenService(Router& router, StorageManager* storageManager);
 
+    // ================== INIT ==================
+    void init();
+
+
     // Métodos para acceder directamente a Cache y Requester
-    [[nodiscard]] std::shared_ptr<Cache> getCache() const
-    {
-        return cache;
+    [[nodiscard]] Cache* getCache() const {
+        return cache.get();
     }
 
-    [[nodiscard]] std::shared_ptr<Requester> getRequester() const
-    {
-        return requester;
+    [[nodiscard]] Requester* getRequester() const {
+        return requester.get();
     }
 
 private:
-    std::shared_ptr<Cache> cache;
-    std::shared_ptr<Requester> requester;
+    std::unique_ptr<Cache> cache;
+    std::unique_ptr<Requester> requester;
 
 private:
     static Result<std::vector<uint8_t>> encodeICListenHF(const acousea_ICListenHF& hfConfiguration);

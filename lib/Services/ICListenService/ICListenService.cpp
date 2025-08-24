@@ -2,12 +2,17 @@
 
 
 ICListenService::ICListenService(Router& router, StorageManager* storageManager):
-    requester(std::make_shared<Requester>(router)),
-    cache(std::make_shared<Cache>(storageManager))
+    requester(std::make_unique<Requester>(router)),
+    cache(std::make_unique<Cache>(storageManager))
 
 {
+
+}
+
+void ICListenService::init()
+{
     // We start by loading the data in the cache from the storage manager if available
-    const auto configBytes = storageManager->readFileBytes(Cache::ICLISTEN_CONFIG_STORAGE_FILE);
+    const auto configBytes = cache->storage_manager()->readFileBytes(Cache::ICLISTEN_CONFIG_STORAGE_FILE);
     if (configBytes.empty())
     {
         Logger::logInfo(getClassNameString() + ": No ICListen configuration file found in storage");

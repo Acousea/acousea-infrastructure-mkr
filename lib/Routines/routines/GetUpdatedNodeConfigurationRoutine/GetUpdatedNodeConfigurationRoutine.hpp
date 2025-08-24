@@ -12,7 +12,7 @@
 #include "Logger/Logger.h"
 #include "Result/Result.h"
 #include "IGPS.h"
-#include "IBatteryController.h""
+#include "IBatteryController.h"
 #include "RTCController.hpp"
 
 

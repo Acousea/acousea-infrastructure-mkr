@@ -45,6 +45,7 @@ bool HDDStorageManager::writeFileBytes(const char* path, const std::vector<uint8
 std::vector<uint8_t> HDDStorageManager::readFileBytes(const char* path) {
     try {
         std::ifstream ifs(path, std::ios::in | std::ios::binary | std::ios::ate);
+
         if (!ifs) {
             std::cerr << "HDDStorageManager::readFileBytes() -> Cannot open: " << path << "\n";
             return {};

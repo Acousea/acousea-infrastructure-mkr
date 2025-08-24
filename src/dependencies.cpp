@@ -95,9 +95,9 @@ Router router({serialPort, loraPort, iridiumPort});
 // =======================================================
 
 
-NodeConfigurationRepository nodeConfigurationRepository(*storageManager, "config.txt");
-ICListenService icListenService(router, storageManager);
-auto icListenServicePtr = std::make_shared<ICListenService>(router, storageManager);
+NodeConfigurationRepository nodeConfigurationRepository(*storageManager);
+
+std::shared_ptr<ICListenService> icListenServicePtr = std::make_shared<ICListenService>(router, storageManager);
 
 SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository, icListenServicePtr);
 // SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository, std::nullopt);
@@ -133,7 +133,7 @@ BasicStatusReportRoutine basicSummaryReportRoutine(
     gps,
     battery,
     rtcController
-    );
+);
 std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> configurationRoutines = {
     {acousea_PayloadWrapper_setConfiguration_tag, &setNodeConfigurationRoutine},
     {acousea_PayloadWrapper_requestedConfiguration_tag, &setNodeConfigurationRoutine},
