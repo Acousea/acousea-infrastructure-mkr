@@ -187,7 +187,7 @@ bool HttpPort::fetchOne() {
 #endif
 }
 
-#if defined(__linux__)
+
 std::string HttpPort::bytesToHex(const std::vector<uint8_t>& in) {
     static const char* digits = "0123456789abcdef";
     std::string out;
@@ -217,4 +217,3 @@ bool HttpPort::hexToBytes(const std::string& hex, std::vector<uint8_t>& out) {
     }
     return true;
 }
-#endif

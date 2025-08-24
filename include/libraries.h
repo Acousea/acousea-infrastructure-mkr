@@ -84,10 +84,10 @@
 // ------------------ PORTS ------------------
 #include <Ports/Serial/SerialPort.h>
 #include <Ports/LoRa/LoRaPort.h>
-#include <Ports/iridium/IridiumPort.h>
+#include <Ports/Iridium/IridiumPort.h>
 #include <Ports/Serial/MockSerialPort.h>
 #include <Ports/LoRa/MockLoRaPort.h>
-#include <Ports/iridium/MockIridiumPort.h>
+#include <Ports/Iridium/MockIridiumPort.h>
 
 
 // ------------------ CONTROLLERS ------------------

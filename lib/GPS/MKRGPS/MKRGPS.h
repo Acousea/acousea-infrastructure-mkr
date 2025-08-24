@@ -4,8 +4,9 @@
 #ifdef ARDUINO
 
 #include <Wire.h>
-#include "../IGPS.h"
-#include "Arduino_MKRGPS.h"
+#include <ctime> // Or <time.h> depending on the environment
+#include <Arduino_MKRGPS.h>
+#include "IGPS.h"
 #include "Logger/Logger.h"
 
 class MKRGPS : public IGPS
@@ -18,8 +19,8 @@ public:
     void calculateTrajectory(float targetLat, float targetLon, float &distance, float &bearing) override;
 
 protected:
-    float latitude;
-    float longitude;
+    float latitude = 0.0;
+    float longitude = 0.0;
     const int GNSS_WAKEUP_PIN = 4;
     const unsigned long GNSS_MAX_FIX_TIME_MS = 900000; // 15 minutos
     const unsigned long GNSS_WAIT_TIME_MS = 120000;    // 2 minutos
