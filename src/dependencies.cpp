@@ -129,20 +129,17 @@ CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationReposi
 // );
 
 BasicStatusReportRoutine basicSummaryReportRoutine(
-    nodeConfigurationRepository,
-    gps,
-    battery,
-    rtcController
+    nodeConfigurationRepository, gps, battery, rtcController
 );
 std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> configurationRoutines = {
     {acousea_PayloadWrapper_setConfiguration_tag, &setNodeConfigurationRoutine},
-    {acousea_PayloadWrapper_requestedConfiguration_tag, &setNodeConfigurationRoutine},
+    {acousea_PayloadWrapper_requestedConfiguration_tag, &getUpdatedNodeConfigurationRoutine},
 };
 
 // FIXME: RequestedConfiguration should not execute the basicSummaryReportRoutine
 std::map<uint8_t, IRoutine<VoidType>*> reportingRoutines = {
-    {acousea_PayloadWrapper_requestedConfiguration_tag, &basicSummaryReportRoutine},
-    {acousea_PayloadWrapper_statusPayload_tag, &basicSummaryReportRoutine},
+    {acousea_PayloadWrapper_statusPayload_tag, &completeSummaryReportRoutine},
+    // {acousea_PayloadWrapper_statusPayload_tag, &basicSummaryReportRoutine},
 };
 
 NodeOperationRunner nodeOperationRunner(

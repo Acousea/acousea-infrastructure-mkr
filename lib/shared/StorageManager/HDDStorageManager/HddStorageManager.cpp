@@ -8,6 +8,10 @@
 
 namespace fs = std::filesystem;
 
+bool HDDStorageManager::begin(){
+    return true;
+}
+
 bool HDDStorageManager::writeFileBytes(const char* path, const uint8_t* data, size_t length) {
     try {
         // Crear directorios padre si hiciera falta
@@ -42,6 +46,27 @@ bool HDDStorageManager::writeFileBytes(const char* path, const std::vector<uint8
     return writeFileBytes(path, data.data(), data.size());
 }
 
+bool HDDStorageManager::appendToFile(const char* path, const std::string& content){
+    std::ofstream ofs(path, std::ios::out | std::ios::app | std::ios::binary);
+    if (!ofs){
+        std::cerr << "HDDStorageManager::appendToFile() -> Cannot open: " << path << "\n";
+        return false;
+    }
+    ofs << content;
+    return true;
+}
+
+bool HDDStorageManager::overwriteFile(const char* path, const std::string& content){
+    // std::ios::trunc para truncar
+    std::ofstream ofs(path, std::ios::out | std::ios::trunc | std::ios::binary);
+    if (!ofs){
+        std::cerr << "HDDStorageManager::overwriteFile() -> Cannot open: " << path << "\n";
+        return false;
+    }
+    ofs << content;
+    return true;
+}
+
 std::vector<uint8_t> HDDStorageManager::readFileBytes(const char* path) {
     try {
         std::ifstream ifs(path, std::ios::in | std::ios::binary | std::ios::ate);
@@ -71,32 +96,6 @@ std::vector<uint8_t> HDDStorageManager::readFileBytes(const char* path) {
         std::cerr << "HDDStorageManager::readFileBytes() -> Exception: " << e.what() << "\n";
         return {};
     }
-}
-
-
-bool HDDStorageManager::begin(){
-    return true;
-}
-
-bool HDDStorageManager::appendToFile(const char* path, const std::string& content){
-    std::ofstream ofs(path, std::ios::out | std::ios::app | std::ios::binary);
-    if (!ofs){
-        std::cerr << "HDDStorageManager::appendToFile() -> Cannot open: " << path << "\n";
-        return false;
-    }
-    ofs << content;
-    return true;
-}
-
-bool HDDStorageManager::overwriteFile(const char* path, const std::string& content){
-    // std::ios::trunc para truncar
-    std::ofstream ofs(path, std::ios::out | std::ios::trunc | std::ios::binary);
-    if (!ofs){
-        std::cerr << "HDDStorageManager::overwriteFile() -> Cannot open: " << path << "\n";
-        return false;
-    }
-    ofs << content;
-    return true;
 }
 
 std::string HDDStorageManager::readFile(const char* path){
