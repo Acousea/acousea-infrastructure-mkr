@@ -321,7 +321,8 @@ service CodecService {
 // ------------------- FOR MKR1310 NODES INFRASTRUCTURE -------------------
 message NodeConfiguration {
     uint32 localAddress = 1;
-    OperationModesGraphModule operationGraphModule = 2;
-    LoRaReportingModule      loraModule            = 3;
-    IridiumReportingModule   iridiumModule         = 4;
+    OperationModesModule operationModesModule = 2;
+    OperationModesGraphModule operationGraphModule = 3;
+    LoRaReportingModule loraModule = 4;
+    IridiumReportingModule iridiumModule = 5;
 }

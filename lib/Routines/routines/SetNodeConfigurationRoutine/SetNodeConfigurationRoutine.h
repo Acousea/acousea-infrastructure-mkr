@@ -22,9 +22,11 @@ public:
     );
 
     Result<acousea_CommunicationPacket> execute(const std::optional<_acousea_CommunicationPacket>& optPacket) override;
+    Result<void> setOperationModes(acousea_NodeConfiguration& nodeConfig,
+                                   const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& item);
 
 private:
-    [[nodiscard]] static Result<void> setOperationModes(acousea_NodeConfiguration& nodeConfig,
+    [[nodiscard]] static Result<void> setOperationModesGraph(acousea_NodeConfiguration& nodeConfig,
                                           const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& item);
     [[nodiscard]] static Result<void> setReportingPeriods(acousea_NodeConfiguration& nodeConfig,
                                             const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& entry);

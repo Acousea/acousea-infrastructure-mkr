@@ -38,7 +38,16 @@ void NodeOperationRunner::init()
         ErrorHandler::handleError(getClassNameString() + ": No operation graph defined in configuration.");
         return;
     }
-    cache.currentOperationMode = currentNodeConfiguration->operationGraphModule.graph[0];
+    const auto activeOpModeIdx = currentNodeConfiguration->operationModesModule.activeOperationModeIdx;
+    if (activeOpModeIdx >= currentNodeConfiguration->operationGraphModule.graph_count)
+    {
+        Logger::logError(
+            getClassNameString() + ": Active operation mode index out of bounds. Defaulting to first mode.");
+        cache.currentOperationMode = currentNodeConfiguration->operationGraphModule.graph[0];
+        return;
+    }
+    cache.currentOperationMode = currentNodeConfiguration->operationGraphModule.graph[activeOpModeIdx];
+    Logger::logInfo("[Init] Starting in Operation Mode=" + std::to_string(cache.currentOperationMode.key));
 }
 
 void NodeOperationRunner::run()
@@ -51,7 +60,6 @@ void NodeOperationRunner::run()
     cache.cycleCount++;
     Logger::logInfo("[Finish] Operation Cycle for Operation mode=" + std::to_string(cache.currentOperationMode.key));
 }
-
 
 
 void NodeOperationRunner::tryReport(
@@ -113,7 +121,6 @@ void NodeOperationRunner::executeRoutine(const uint8_t routineTag,
 
     sendResponsePacket(port, currentNodeConfiguration->localAddress, res.getValue());
 }
-
 
 
 void NodeOperationRunner::checkIfMustTransition()

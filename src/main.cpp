@@ -17,6 +17,16 @@ void saveLocalizerConfig()
     localizerConfig.localAddress = 2;
     localizerConfig.has_loraModule = false;
     localizerConfig.has_iridiumModule = false;
+
+    localizerConfig.has_operationModesModule = true;
+    localizerConfig.operationModesModule = acousea_OperationModesModule_init_default;
+    localizerConfig.operationModesModule.modes_count = 1;
+    localizerConfig.operationModesModule.modes[0] = acousea_OperationMode_init_default;
+    localizerConfig.operationModesModule.modes[0].id = 0;
+    snprintf(localizerConfig.operationModesModule.modes[0].name,
+             sizeof(localizerConfig.operationModesModule.modes[0].name),
+             "Default mode");
+
     localizerConfig.has_operationGraphModule = true;
     localizerConfig.operationGraphModule = acousea_OperationModesGraphModule_init_default;
     localizerConfig.operationGraphModule.graph_count = 1;
@@ -34,6 +44,16 @@ void saveDrifterConfig()
 {
     acousea_NodeConfiguration drifterConfig = acousea_NodeConfiguration_init_default;
     drifterConfig.localAddress = 1;
+
+    drifterConfig.has_operationModesModule = true;
+    drifterConfig.operationModesModule = acousea_OperationModesModule_init_default;
+    drifterConfig.operationModesModule.modes_count = 1;
+    drifterConfig.operationModesModule.modes[0] = acousea_OperationMode_init_default;
+    drifterConfig.operationModesModule.modes[0].id = 0;
+    snprintf(drifterConfig.operationModesModule.modes[0].name,
+             sizeof(drifterConfig.operationModesModule.modes[0].name),
+             "Default mode");
+
 
     drifterConfig.has_operationGraphModule = true;
     drifterConfig.operationGraphModule = acousea_OperationModesGraphModule_init_default;

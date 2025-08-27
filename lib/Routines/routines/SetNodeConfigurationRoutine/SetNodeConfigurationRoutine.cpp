@@ -48,9 +48,17 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
 
         switch (module.key)
         {
-        case acousea_ModuleCode::acousea_ModuleCode_OPERATION_MODES_GRAPH_MODULE:
+        case acousea_ModuleCode::acousea_ModuleCode_OPERATION_MODES_MODULE:
             {
                 if (const auto result = setOperationModes(nodeConfig, module); result.isError())
+                {
+                    return Result<acousea_CommunicationPacket>::failure(result.getError());
+                }
+                break;
+            }
+        case acousea_ModuleCode::acousea_ModuleCode_OPERATION_MODES_GRAPH_MODULE:
+            {
+                if (const auto result = setOperationModesGraph(nodeConfig, module); result.isError())
                 {
                     return Result<acousea_CommunicationPacket>::failure(result.getError());
                 }
@@ -107,6 +115,21 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
 }
 
 Result<void> SetNodeConfigurationRoutine::setOperationModes(
+    acousea_NodeConfiguration& nodeConfig, const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& item)
+{
+    if (!item.has_value || item.value.which_module != acousea_ModuleWrapper_operationModes_tag)
+    {
+        const auto errorStr = "OperationModesModule with key: " + std::to_string(item.key) +
+            " has no value. Skipping.";
+        Logger::logError(errorStr);
+        return Result<void>::failure(errorStr);
+    }
+    const auto operationModesModule = item.value.module.operationModes;
+    nodeConfig.operationModesModule = operationModesModule;
+    return Result<void>::success();
+}
+
+Result<void> SetNodeConfigurationRoutine::setOperationModesGraph(
     acousea_NodeConfiguration& nodeConfig, const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& item)
 {
     if (!item.has_value || item.value.which_module != acousea_ModuleWrapper_operationModesGraph_tag)

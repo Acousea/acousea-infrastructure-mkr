@@ -339,6 +339,8 @@ typedef struct _acousea_StringMessage {
 /* ------------------- FOR MKR1310 NODES INFRASTRUCTURE ------------------- */
 typedef struct _acousea_NodeConfiguration {
     uint32_t localAddress;
+    bool has_operationModesModule;
+    acousea_OperationModesModule operationModesModule;
     bool has_operationGraphModule;
     acousea_OperationModesGraphModule operationGraphModule;
     bool has_loraModule;
@@ -453,7 +455,7 @@ extern "C" {
 #define acousea_CommunicationResult_init_default {_acousea_CommunicationStatus_MIN, {{NULL}, NULL}, 0}
 #define acousea_Bytes_init_default               {{0, {0}}}
 #define acousea_StringMessage_init_default       {""}
-#define acousea_NodeConfiguration_init_default   {0, false, acousea_OperationModesGraphModule_init_default, false, acousea_LoRaReportingModule_init_default, false, acousea_IridiumReportingModule_init_default}
+#define acousea_NodeConfiguration_init_default   {0, false, acousea_OperationModesModule_init_default, false, acousea_OperationModesGraphModule_init_default, false, acousea_LoRaReportingModule_init_default, false, acousea_IridiumReportingModule_init_default}
 #define acousea_AmbientModule_init_zero          {0, 0}
 #define acousea_BatteryModule_init_zero          {0, 0}
 #define acousea_LocationModule_init_zero         {0, 0}
@@ -495,7 +497,7 @@ extern "C" {
 #define acousea_CommunicationResult_init_zero    {_acousea_CommunicationStatus_MIN, {{NULL}, NULL}, 0}
 #define acousea_Bytes_init_zero                  {{0, {0}}}
 #define acousea_StringMessage_init_zero          {""}
-#define acousea_NodeConfiguration_init_zero      {0, false, acousea_OperationModesGraphModule_init_zero, false, acousea_LoRaReportingModule_init_zero, false, acousea_IridiumReportingModule_init_zero}
+#define acousea_NodeConfiguration_init_zero      {0, false, acousea_OperationModesModule_init_zero, false, acousea_OperationModesGraphModule_init_zero, false, acousea_LoRaReportingModule_init_zero, false, acousea_IridiumReportingModule_init_zero}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define acousea_AmbientModule_temperature_tag    1
@@ -625,9 +627,10 @@ extern "C" {
 #define acousea_Bytes_data_tag                   1
 #define acousea_StringMessage_data_tag           1
 #define acousea_NodeConfiguration_localAddress_tag 1
-#define acousea_NodeConfiguration_operationGraphModule_tag 2
-#define acousea_NodeConfiguration_loraModule_tag 3
-#define acousea_NodeConfiguration_iridiumModule_tag 4
+#define acousea_NodeConfiguration_operationModesModule_tag 2
+#define acousea_NodeConfiguration_operationGraphModule_tag 3
+#define acousea_NodeConfiguration_loraModule_tag 4
+#define acousea_NodeConfiguration_iridiumModule_tag 5
 
 /* Struct field encoding specification for nanopb */
 #define acousea_AmbientModule_FIELDLIST(X, a) \
@@ -964,11 +967,13 @@ X(a, STATIC,   SINGULAR, STRING,   data,              1)
 
 #define acousea_NodeConfiguration_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UINT32,   localAddress,      1) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  operationGraphModule,   2) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  loraModule,        3) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  iridiumModule,     4)
+X(a, STATIC,   OPTIONAL, MESSAGE,  operationModesModule,   2) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  operationGraphModule,   3) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  loraModule,        4) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  iridiumModule,     5)
 #define acousea_NodeConfiguration_CALLBACK NULL
 #define acousea_NodeConfiguration_DEFAULT NULL
+#define acousea_NodeConfiguration_operationModesModule_MSGTYPE acousea_OperationModesModule
 #define acousea_NodeConfiguration_operationGraphModule_MSGTYPE acousea_OperationModesGraphModule
 #define acousea_NodeConfiguration_loraModule_MSGTYPE acousea_LoRaReportingModule
 #define acousea_NodeConfiguration_iridiumModule_MSGTYPE acousea_IridiumReportingModule
@@ -1085,7 +1090,7 @@ extern const pb_msgdesc_t acousea_NodeConfiguration_msg;
 #define acousea_ModuleWrapper_size               891
 #define acousea_NetworkModule_size               310
 #define acousea_NetworkRoute_size                22
-#define acousea_NodeConfiguration_size           1304
+#define acousea_NodeConfiguration_size           1622
 #define acousea_NodeDevice_ModulesEntry_size     905
 #define acousea_NodeDevice_size                  13751
 #define acousea_OperationModeTransition_size     22
