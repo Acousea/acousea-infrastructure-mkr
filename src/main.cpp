@@ -172,10 +172,9 @@ void loop()
     // Operate every 30 seconds
     if (getMillis() - lastTime >= 15000 || lastTime == 0)
     {
-        lastTime = getMillis();
         nodeOperationRunner.init();
         nodeOperationRunner.run();
-        nodeOperationRunner.finish();
+        lastTime = getMillis();
     }
 }
 

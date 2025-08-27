@@ -14,20 +14,26 @@ GetUpdatedNodeConfigurationRoutine::GetUpdatedNodeConfigurationRoutine(
 }
 
 Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
-    const acousea_CommunicationPacket& packet
+    const std::optional<_acousea_CommunicationPacket>& optPacket
 )
 {
+    if (!optPacket.has_value())
+    {
+        return Result<acousea_CommunicationPacket>::failure(
+            getClassNameString() + "No packet provided to process");
+    }
+    const acousea_CommunicationPacket& packet = optPacket.value();
     acousea_NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
     if (!packet.has_payload)
     {
         return Result<acousea_CommunicationPacket>::failure(
-            getClassNameString() + ": Packet does not contain any new requested configuration"
+            getClassNameString() + "Packet does not contain any new requested configuration"
         );
     }
 
     if (packet.payload.which_payload != acousea_PayloadWrapper_requestedConfiguration_tag)
     {
-        return Result<acousea_CommunicationPacket>::failure(
+        return Result<acousea_CommunicationPacket>::failure(getClassNameString() +
             "Packet payload is not of type acousea_PayloadWrapper_requestedConfiguration_tag");
     }
 
@@ -53,25 +59,25 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
         {
         case acousea_ModuleCode_AMBIENT_MODULE:
             {
-                Logger::logError(getClassNameString() + ": FIXME: REQUESTED AMBIENT MODULE (NOT IMPLEMENTED YET)");
+                Logger::logError(getClassNameString() + "FIXME: REQUESTED AMBIENT MODULE (NOT IMPLEMENTED YET)");
                 break;
             }
 
         case acousea_ModuleCode_NETWORK_MODULE:
             {
-                Logger::logError(getClassNameString() + ": FIXME: REQUESTED NETWORK MODULE (NOT IMPLEMENTED YET)");
+                Logger::logError(getClassNameString() + "FIXME: REQUESTED NETWORK MODULE (NOT IMPLEMENTED YET)");
                 break;
             }
         case acousea_ModuleCode_STORAGE_MODULE:
             {
-                Logger::logError(getClassNameString() + ": FIXME: REQUESTED STORAGE MODULE (NOT IMPLEMENTED YET)");
+                Logger::logError(getClassNameString() + "FIXME: REQUESTED STORAGE MODULE (NOT IMPLEMENTED YET)");
                 break;
             }
 
         case acousea_ModuleCode_BATTERY_MODULE:
             {
                 acousea_SetNodeConfigurationPayload_ModulesToChangeEntry batteryEntry =
-                   acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
                 batteryEntry.has_value = true;
                 batteryEntry.key = acousea_ModuleCode_BATTERY_MODULE;
                 batteryEntry.value.which_module = acousea_ModuleWrapper_battery_tag;
@@ -88,7 +94,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
         case acousea_ModuleCode_LOCATION_MODULE:
             {
                 acousea_SetNodeConfigurationPayload_ModulesToChangeEntry locationEntry =
-                   acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
                 locationEntry.has_value = true;
                 locationEntry.key = acousea_ModuleCode_LOCATION_MODULE;
                 locationEntry.value.which_module = acousea_ModuleWrapper_location_tag;
@@ -116,7 +122,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 {
                     Logger::logError(
                         getClassNameString() +
-                        ": Node configuration does not have operation modes graph module configured");
+                        "Node configuration does not have operation modes graph module configured");
                     break;
                 }
                 acousea_OperationModesGraphModule opModesGraphModule = nodeConfig.operationGraphModule;
@@ -134,7 +140,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 loraEntry.value.which_module = acousea_ModuleWrapper_loraReporting_tag;
                 if (!nodeConfig.has_loraModule)
                 {
-                    Logger::logError(getClassNameString() + ": Node configuration does not have LoRa module configured");
+                    Logger::logError(getClassNameString() + "Node configuration does not have LoRa module configured");
                     break;
                 }
                 acousea_LoRaReportingModule loraModule = nodeConfig.loraModule;
@@ -146,14 +152,15 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
         case acousea_ModuleCode_IRIDIUM_REPORTING_MODULE:
             {
                 acousea_SetNodeConfigurationPayload_ModulesToChangeEntry iridiumEntry =
-                   acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
 
                 iridiumEntry.has_value = true;
                 iridiumEntry.key = acousea_ModuleCode_IRIDIUM_REPORTING_MODULE;
                 iridiumEntry.value.which_module = acousea_ModuleWrapper_iridiumReporting_tag;
                 if (!nodeConfig.has_iridiumModule)
                 {
-                    Logger::logError(getClassNameString() + ": Node configuration does not have Iridium module configured");
+                    Logger::logError(
+                        getClassNameString() + "Node configuration does not have Iridium module configured");
                     break;
                 }
                 acousea_IridiumReportingModule iridiumModule = nodeConfig.iridiumModule;
@@ -165,7 +172,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
         case acousea_ModuleCode_RTC_MODULE:
             {
                 acousea_SetNodeConfigurationPayload_ModulesToChangeEntry rtcEntry =
-                   acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
                 rtcEntry.has_value = true;
                 rtcEntry.key = acousea_ModuleCode_RTC_MODULE;
                 rtcEntry.value.which_module = acousea_ModuleWrapper_rtc_tag;
@@ -181,7 +188,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
             {
                 if (!icListenService.has_value())
                 {
-                    Logger::logError(getClassNameString() + ": ICListen service is not available");
+                    Logger::logError(getClassNameString() + "ICListen service is not available");
                     break;
                 }
                 acousea_SetNodeConfigurationPayload_ModulesToChangeEntry icListenStatusEntry =
@@ -191,12 +198,13 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 icListenStatusEntry.key = acousea_ModuleCode_ICLISTEN_STATUS;
                 icListenStatusEntry.value.which_module = acousea_ModuleWrapper_icListenStatus_tag;
 
-                Result<acousea_ICListenStatus> statusResult = icListenService.value()->getCache()->retrieveICListenStatus();
+                Result<acousea_ICListenStatus> statusResult = icListenService.value()->getCache()->
+                                                                              getICListenStatus();
                 if (!statusResult.isError())
                 {
-                    Logger::logError(
-                        getClassNameString() + ": Failed to retrieve ICListen status: " + statusResult.getError());
-                    return Result<acousea_CommunicationPacket>::incomplete(packet);
+                    return Result<acousea_CommunicationPacket>::pending(
+                        getClassNameString() + "Failed to retrieve ICListen status: " + statusResult.getError()
+                    );
                 }
 
                 icListenStatusEntry.value.module.icListenStatus = statusResult.getValue();
@@ -208,7 +216,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
             {
                 if (!icListenService.has_value())
                 {
-                    Logger::logError(getClassNameString() + ": ICListen service is not available");
+                    Logger::logError(getClassNameString() + "ICListen service is not available");
                     break;
                 }
                 acousea_SetNodeConfigurationPayload_ModulesToChangeEntry icListenLoggingEntry =
@@ -219,13 +227,12 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 icListenLoggingEntry.value.which_module = acousea_ModuleWrapper_icListenLoggingConfig_tag;
 
                 Result<acousea_ICListenLoggingConfig> loggingConfigResult =
-                    icListenService.value()->getCache()->retrieveICListenLoggingConfig();
+                    icListenService.value()->getCache()->getICListenLoggingConfig();
                 if (loggingConfigResult.isError())
                 {
-                    Logger::logError(
-                        getClassNameString() + ": Failed to retrieve ICListen logging config: " + loggingConfigResult.
+                    return Result<acousea_CommunicationPacket>::pending(
+                        getClassNameString() + "Failed to retrieve ICListen logging config: " + loggingConfigResult.
                         getError());
-                    return Result<acousea_CommunicationPacket>::incomplete(packet);
                 }
                 icListenLoggingEntry.value.module.icListenLoggingConfig = loggingConfigResult.getValue();
                 setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = icListenLoggingEntry;
@@ -237,7 +244,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
             {
                 if (!icListenService.has_value())
                 {
-                    Logger::logError(getClassNameString() + ": ICListen service is not available");
+                    Logger::logError(getClassNameString() + "ICListen service is not available");
                     break;
                 }
                 acousea_SetNodeConfigurationPayload_ModulesToChangeEntry icListenStreamingEntry =
@@ -248,13 +255,12 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 icListenStreamingEntry.value.which_module = acousea_ModuleWrapper_icListenStreamingConfig_tag;
 
                 Result<acousea_ICListenStreamingConfig> streamingConfigResult =
-                    icListenService.value()->getCache()->retrieveICListenStreamingConfig();
+                    icListenService.value()->getCache()->getICListenStreamingConfig();
                 if (streamingConfigResult.isError())
                 {
-                    Logger::logError(
-                        getClassNameString() + ": Failed to retrieve ICListen streaming config: " + streamingConfigResult.
+                    return Result<acousea_CommunicationPacket>::pending(
+                        getClassNameString() + "Failed to retrieve ICListen streaming config: " + streamingConfigResult.
                         getError());
-                    return Result<acousea_CommunicationPacket>::incomplete(packet);
                 }
                 icListenStreamingEntry.value.module.icListenStreamingConfig = streamingConfigResult.getValue();
                 setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = icListenStreamingEntry;
@@ -265,7 +271,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
             {
                 if (!icListenService.has_value())
                 {
-                    Logger::logError(getClassNameString() + ": ICListen service is not available");
+                    Logger::logError(getClassNameString() + "ICListen service is not available");
                     break;
                 }
                 acousea_SetNodeConfigurationPayload_ModulesToChangeEntry icListenRecordingStatsEntry =
@@ -276,13 +282,12 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 icListenRecordingStatsEntry.value.which_module = acousea_ModuleWrapper_icListenRecordingStats_tag;
 
                 Result<acousea_ICListenRecordingStats> recordingStatsResult =
-                    icListenService.value()->getCache()->retrieveICListenRecordingStats();
+                    icListenService.value()->getCache()->getICListenRecordingStats();
                 if (recordingStatsResult.isError())
                 {
-                    Logger::logError(
-                        getClassNameString() + ": Failed to retrieve ICListen recording stats: " + recordingStatsResult.
+                    return Result<acousea_CommunicationPacket>::pending(
+                        getClassNameString() + "Failed to retrieve ICListen recording stats: " + recordingStatsResult.
                         getError());
-                    return Result<acousea_CommunicationPacket>::incomplete(packet);
                 }
                 icListenRecordingStatsEntry.value.module.icListenRecordingStats = recordingStatsResult.getValue();
                 setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = icListenRecordingStatsEntry;
@@ -293,7 +298,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
             {
                 if (!icListenService.has_value())
                 {
-                    Logger::logError(getClassNameString() + ": ICListen service is not available");
+                    Logger::logError(getClassNameString() + "ICListen service is not available");
                     break;
                 }
                 acousea_SetNodeConfigurationPayload_ModulesToChangeEntry icListenHfEntry =
@@ -304,20 +309,19 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 icListenHfEntry.value.which_module = acousea_ModuleWrapper_icListenHF_tag;
 
                 Result<acousea_ICListenHF> hfResult = icListenService.value()->getCache()->
-                                                                      retrieveICListenCompleteConfiguration();
+                                                                      getICListenCompleteConfiguration();
                 if (hfResult.isError())
                 {
-                    Logger::logError(getClassNameString() + ": Failed to retrieve ICListen HF: " + hfResult.getError());
-                    return Result<acousea_CommunicationPacket>::incomplete(packet);
+                    return Result<acousea_CommunicationPacket>::pending(
+                        getClassNameString() + "Failed to retrieve ICListen HF: " + hfResult.getError());
                 }
                 icListenHfEntry.value.module.icListenHF = hfResult.getValue();
                 setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = icListenHfEntry;
                 setConfiguration.modulesToChange_count++;
                 break;
-
             }
         default:
-            Logger::logError(getClassNameString() + ": Unknown module code requested: " + std::to_string(configItem));
+            Logger::logError(getClassNameString() + "Unknown module code requested: " + std::to_string(configItem));
             break;
         }
     }

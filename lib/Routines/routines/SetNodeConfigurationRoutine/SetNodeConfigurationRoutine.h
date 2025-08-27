@@ -21,13 +21,20 @@ public:
         std::optional<std::shared_ptr<ICListenService>> icListenService
     );
 
-    Result<acousea_CommunicationPacket> execute(const acousea_CommunicationPacket& packet) override;
+    Result<acousea_CommunicationPacket> execute(const std::optional<_acousea_CommunicationPacket>& optPacket) override;
 
 private:
-    static void setOperationModes(acousea_NodeConfiguration& nodeConfig,
-                                  const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& item);
-    static void setReportingPeriods(acousea_NodeConfiguration& nodeConfig,
-                                    const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& entry);
+    [[nodiscard]] static Result<void> setOperationModes(acousea_NodeConfiguration& nodeConfig,
+                                          const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& item);
+    [[nodiscard]] static Result<void> setReportingPeriods(acousea_NodeConfiguration& nodeConfig,
+                                            const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& entry);
+
+
+    // ---------------------- ICListen specific methods ----------------------
+    [[nodiscard]] Result<void> setNewICListenConfiguration(uint8_t sender,
+                                                           const
+                                                           acousea_SetNodeConfigurationPayload_ModulesToChangeEntry&
+                                                           module) const;
     void sendNewConfigurationToICListen(const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& entry) const;
     void storeIcListenConfiguration(const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& entry) const;
 };

@@ -17,7 +17,7 @@ BasicStatusReportRoutine::BasicStatusReportRoutine(
 {
 }
 
-Result<_acousea_CommunicationPacket> BasicStatusReportRoutine::execute()
+Result<_acousea_CommunicationPacket> BasicStatusReportRoutine::execute(const std::optional<_acousea_CommunicationPacket>& none)
 {
     Logger::logInfo("BasicSummaryReportRoutine: Executing...");
 

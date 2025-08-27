@@ -5,13 +5,12 @@
 #include "Logger/Logger.h"
 
 
-class IRunnable {
+class IRunnable
+{
 public:
     // Constructor that receives a reference to the display
     virtual void init() = 0;
     virtual void run() = 0;
-    virtual void finish() = 0;
-
 };
 
 #endif // IOPERATIONMODE_H

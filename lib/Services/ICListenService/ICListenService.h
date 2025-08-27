@@ -9,7 +9,6 @@
 #include "ClassName.h"
 #include "nodeDevice.pb.h"
 #include "pb_decode.h"
-#include "pb_encode.h"
 
 class ICListenService
 {
@@ -65,15 +64,15 @@ public:
         explicit Cache(StorageManager* storage_manager);
 
         // Getters
-        [[nodiscard]] Result<acousea_ICListenStatus> retrieveICListenStatus();
+        [[nodiscard]] Result<acousea_ICListenStatus> getICListenStatus();
 
-        [[nodiscard]] Result<acousea_ICListenLoggingConfig> retrieveICListenLoggingConfig();
+        [[nodiscard]] Result<acousea_ICListenLoggingConfig> getICListenLoggingConfig();
 
-        [[nodiscard]] Result<acousea_ICListenStreamingConfig> retrieveICListenStreamingConfig();
+        [[nodiscard]] Result<acousea_ICListenStreamingConfig> getICListenStreamingConfig();
 
-        [[nodiscard]] Result<acousea_ICListenRecordingStats> retrieveICListenRecordingStats();
+        [[nodiscard]] Result<acousea_ICListenRecordingStats> getICListenRecordingStats();
 
-        [[nodiscard]] Result<acousea_ICListenHF> retrieveICListenCompleteConfiguration();
+        [[nodiscard]] Result<acousea_ICListenHF> getICListenCompleteConfiguration();
 
         // Setters
         void storeICListenStatus(const acousea_ICListenStatus& ic_listen_status);
@@ -122,13 +121,15 @@ public:
     }
 
 private:
-    std::unique_ptr<Cache> cache;
     std::unique_ptr<Requester> requester;
+    std::unique_ptr<Cache> cache;
 
 private:
     static Result<std::vector<uint8_t>> encodeICListenHF(const acousea_ICListenHF& hfConfiguration);
     static Result<acousea_ICListenHF> decodeICListenHF(const std::vector<uint8_t>& buffer);
 };
+
+#include "pb_encode.h"
 
 
 #endif //ICLISTEN_SERVICE_H

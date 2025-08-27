@@ -12,7 +12,7 @@
  * so that it can be retrieved by the corresponding operation mode that sends reports to the backend
  * It returns a NullPacket since it does not need to send any response to the sendFrom
  */
-class CompleteStatusReportRoutine final : public IRoutine<VoidType> {
+class CompleteStatusReportRoutine final : public IRoutine<acousea_CommunicationPacket> {
     NodeConfigurationRepository &nodeConfigurationRepository;
     std::optional<std::shared_ptr<ICListenService>> icListenService;
     IGPS *gps;
@@ -28,7 +28,7 @@ public:
         IBatteryController *battery
     );
 
-    Result<acousea_CommunicationPacket> execute() override;
+    Result<acousea_CommunicationPacket> execute(const std::optional<_acousea_CommunicationPacket>& input) override;
 };
 
 #endif //  COMPLETE_STATUS_REPORT_ROUTINE_H

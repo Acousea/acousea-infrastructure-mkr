@@ -18,11 +18,12 @@
 class Router
 {
 public:
+    static constexpr uint8_t originAddress = 0;
     static constexpr uint8_t broadcastAddress = 255;
 
 private:
     std::vector<IPort*> relayedPorts;
-    std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> receivedPackets = {};
+
 
     // Clase interna para manejar el envío con una dirección
     class RouterSender
@@ -102,7 +103,6 @@ public:
         * @return A map where keys are port types and values are lists of packets received from those ports.
         */
     std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> readPorts(const uint8_t& localAddress);
-    void addIncompletePacket(const acousea_CommunicationPacket& packet);
 
 private:
     // ---------------------- Packet encoding/decoding ----------------------

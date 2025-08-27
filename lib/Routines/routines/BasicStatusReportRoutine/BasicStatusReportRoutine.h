@@ -9,7 +9,7 @@
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
 
 
-class BasicStatusReportRoutine : public IRoutine<VoidType>
+class BasicStatusReportRoutine : public IRoutine<acousea_CommunicationPacket>
 {
     NodeConfigurationRepository& nodeConfigurationRepository;
     IGPS* gps;
@@ -25,7 +25,7 @@ public:
                              RTCController* rtc
     );
 
-    Result<acousea_CommunicationPacket> execute() override;
+    Result<acousea_CommunicationPacket> execute(const std::optional<_acousea_CommunicationPacket>& none) override;
 };
 
 #endif // SIMPLEREPORTRROUTINE_H

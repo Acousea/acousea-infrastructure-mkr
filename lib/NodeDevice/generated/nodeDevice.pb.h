@@ -262,12 +262,18 @@ typedef struct _acousea_SetNodeConfigurationPayload {
     acousea_SetNodeConfigurationPayload_ModulesToChangeEntry modulesToChange[8]; /* contiene los módulos que se desean agregar */
 } acousea_SetNodeConfigurationPayload;
 
+typedef struct _acousea_ErrorPayload {
+    /* Mensaje de error en texto plano. // IMPORTANTE: el tamaño debe limitarse en la aplicación (ej. 128 caracteres). */
+    char errorMessage[128];
+} acousea_ErrorPayload;
+
 typedef struct _acousea_PayloadWrapper {
     pb_size_t which_payload;
     union {
         acousea_StatusReportPayload statusPayload;
         acousea_SetNodeConfigurationPayload setConfiguration;
         acousea_GetUpdatedNodeConfigurationPayload requestedConfiguration;
+        acousea_ErrorPayload errorPayload;
     } payload;
 } acousea_PayloadWrapper;
 
@@ -396,6 +402,7 @@ extern "C" {
 
 
 
+
 #define acousea_CommunicationRequest_status_ENUMTYPE acousea_RequestStatus
 
 #define acousea_CommunicationResult_status_ENUMTYPE acousea_CommunicationStatus
@@ -437,6 +444,7 @@ extern "C" {
 #define acousea_StatusReportPayload_ModulesEntry_init_default {0, false, acousea_ModuleWrapper_init_default}
 #define acousea_SetNodeConfigurationPayload_init_default {0, {acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default}}
 #define acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default {0, false, acousea_ModuleWrapper_init_default}
+#define acousea_ErrorPayload_init_default        {""}
 #define acousea_PayloadWrapper_init_default      {0, {acousea_StatusReportPayload_init_default}}
 #define acousea_RockBlockMessage_init_default    {"", "", "", 0, "", 0, 0, 0, ""}
 #define acousea_RoutingChunk_init_default        {0, 0, 0}
@@ -478,6 +486,7 @@ extern "C" {
 #define acousea_StatusReportPayload_ModulesEntry_init_zero {0, false, acousea_ModuleWrapper_init_zero}
 #define acousea_SetNodeConfigurationPayload_init_zero {0, {acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_zero, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_zero, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_zero, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_zero, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_zero, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_zero, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_zero, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_zero}}
 #define acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_zero {0, false, acousea_ModuleWrapper_init_zero}
+#define acousea_ErrorPayload_init_zero           {""}
 #define acousea_PayloadWrapper_init_zero         {0, {acousea_StatusReportPayload_init_zero}}
 #define acousea_RockBlockMessage_init_zero       {"", "", "", 0, "", 0, 0, 0, ""}
 #define acousea_RoutingChunk_init_zero           {0, 0, 0}
@@ -586,9 +595,11 @@ extern "C" {
 #define acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_key_tag 1
 #define acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_value_tag 2
 #define acousea_SetNodeConfigurationPayload_modulesToChange_tag 1
+#define acousea_ErrorPayload_errorMessage_tag    1
 #define acousea_PayloadWrapper_statusPayload_tag 1
 #define acousea_PayloadWrapper_setConfiguration_tag 2
 #define acousea_PayloadWrapper_requestedConfiguration_tag 3
+#define acousea_PayloadWrapper_errorPayload_tag  4
 #define acousea_RockBlockMessage_id_tag          1
 #define acousea_RockBlockMessage_imei_tag        2
 #define acousea_RockBlockMessage_serial_tag      3
@@ -879,15 +890,22 @@ X(a, STATIC,   OPTIONAL, MESSAGE,  value,             2)
 #define acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_DEFAULT NULL
 #define acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_value_MSGTYPE acousea_ModuleWrapper
 
+#define acousea_ErrorPayload_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, STRING,   errorMessage,      1)
+#define acousea_ErrorPayload_CALLBACK NULL
+#define acousea_ErrorPayload_DEFAULT NULL
+
 #define acousea_PayloadWrapper_FIELDLIST(X, a) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (payload,statusPayload,payload.statusPayload),   1) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (payload,setConfiguration,payload.setConfiguration),   2) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (payload,requestedConfiguration,payload.requestedConfiguration),   3)
+X(a, STATIC,   ONEOF,    MESSAGE,  (payload,requestedConfiguration,payload.requestedConfiguration),   3) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (payload,errorPayload,payload.errorPayload),   4)
 #define acousea_PayloadWrapper_CALLBACK NULL
 #define acousea_PayloadWrapper_DEFAULT NULL
 #define acousea_PayloadWrapper_payload_statusPayload_MSGTYPE acousea_StatusReportPayload
 #define acousea_PayloadWrapper_payload_setConfiguration_MSGTYPE acousea_SetNodeConfigurationPayload
 #define acousea_PayloadWrapper_payload_requestedConfiguration_MSGTYPE acousea_GetUpdatedNodeConfigurationPayload
+#define acousea_PayloadWrapper_payload_errorPayload_MSGTYPE acousea_ErrorPayload
 
 #define acousea_RockBlockMessage_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, STRING,   id,                1) \
@@ -987,6 +1005,7 @@ extern const pb_msgdesc_t acousea_StatusReportPayload_msg;
 extern const pb_msgdesc_t acousea_StatusReportPayload_ModulesEntry_msg;
 extern const pb_msgdesc_t acousea_SetNodeConfigurationPayload_msg;
 extern const pb_msgdesc_t acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_msg;
+extern const pb_msgdesc_t acousea_ErrorPayload_msg;
 extern const pb_msgdesc_t acousea_PayloadWrapper_msg;
 extern const pb_msgdesc_t acousea_RockBlockMessage_msg;
 extern const pb_msgdesc_t acousea_RoutingChunk_msg;
@@ -1030,6 +1049,7 @@ extern const pb_msgdesc_t acousea_NodeConfiguration_msg;
 #define acousea_StatusReportPayload_ModulesEntry_fields &acousea_StatusReportPayload_ModulesEntry_msg
 #define acousea_SetNodeConfigurationPayload_fields &acousea_SetNodeConfigurationPayload_msg
 #define acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_fields &acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_msg
+#define acousea_ErrorPayload_fields &acousea_ErrorPayload_msg
 #define acousea_PayloadWrapper_fields &acousea_PayloadWrapper_msg
 #define acousea_RockBlockMessage_fields &acousea_RockBlockMessage_msg
 #define acousea_RoutingChunk_fields &acousea_RoutingChunk_msg
@@ -1048,6 +1068,7 @@ extern const pb_msgdesc_t acousea_NodeConfiguration_msg;
 #define acousea_BatteryModule_size               22
 #define acousea_Bytes_size                       515
 #define acousea_CommunicationPacket_size         7300
+#define acousea_ErrorPayload_size                130
 #define acousea_GetUpdatedNodeConfigurationPayload_size 30
 #define acousea_ICListenHF_size                  436
 #define acousea_ICListenLoggingConfig_Fft_size   55

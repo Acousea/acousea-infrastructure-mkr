@@ -16,7 +16,8 @@ CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationReposi
 {
 }
 
-Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute()
+
+Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(const std::optional<_acousea_CommunicationPacket>&  none)
 {
     // Extract a Summary struct from the packet
     const auto batteryPercentage = battery->percentage();
@@ -29,11 +30,11 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute()
     std::optional<acousea_ICListenHF> icListenHFCompleteConfig;
     if (icListenService.has_value())
     {
-        const auto icListenConfigResult = (*icListenService)->getCache()->retrieveICListenCompleteConfiguration();
+        const auto icListenConfigResult = (*icListenService)->getCache()->getICListenCompleteConfiguration();
         if (!icListenConfigResult.isSuccess())
         {
             (*icListenService)->getRequester()->fetchHFConfiguration();
-            return Result<acousea_CommunicationPacket>::failure(
+            return Result<acousea_CommunicationPacket>::pending(
                 "ICListenHF configuration not available yet. Requested from ICListenService."
             );
         }

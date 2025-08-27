@@ -36,6 +36,8 @@ acousea.IridiumReportingModule.imei                 max_size:16
 acousea.IridiumReportingModule.entries              max_count:8
 
 acousea.GetUpdatedNodeConfigurationPayload.requestedModules max_count:15
+acousea.ErrorPayload.errorMessage                   max_size:128
+
 
 acousea.NodeDevice.modules                          max_count:15   # hay 15 ModuleCode (1..15)
 acousea.StatusReportPayload.modules                 max_count:8    # batería, gps, rtc, etc.

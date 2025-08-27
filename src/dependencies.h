@@ -43,7 +43,6 @@ extern BasicStatusReportRoutine basicSummaryReportRoutine;
 
 
 extern std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> configurationRoutines;
-extern std::map<uint8_t, IRoutine<VoidType>*> reportingRoutines;
 
 extern NodeOperationRunner nodeOperationRunner;
 

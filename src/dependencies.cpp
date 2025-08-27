@@ -65,7 +65,7 @@ IDisplay* display = &consoleDisplay;
 MockSerialPort mockSerialPort;
 MockLoRaPort mockLoraPort;
 MockIridiumPort mockIridiumPort;
-HttpPort httpPort("http://10.22.146.50:8000", "300234010123456");
+HttpPort httpPort("http://10.22.146.50:8000", "123456789012345");
 
 IPort* serialPort = &mockSerialPort;
 IPort* loraPort = &mockLoraPort;
@@ -131,20 +131,16 @@ CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationReposi
 BasicStatusReportRoutine basicSummaryReportRoutine(
     nodeConfigurationRepository, gps, battery, rtcController
 );
-std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> configurationRoutines = {
+std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> routines = {
     {acousea_PayloadWrapper_setConfiguration_tag, &setNodeConfigurationRoutine},
     {acousea_PayloadWrapper_requestedConfiguration_tag, &getUpdatedNodeConfigurationRoutine},
+    {acousea_PayloadWrapper_statusPayload_tag, &completeSummaryReportRoutine},
+    {acousea_PayloadWrapper_statusPayload_tag, &basicSummaryReportRoutine},
 };
 
-// FIXME: RequestedConfiguration should not execute the basicSummaryReportRoutine
-std::map<uint8_t, IRoutine<VoidType>*> reportingRoutines = {
-    {acousea_PayloadWrapper_statusPayload_tag, &completeSummaryReportRoutine},
-    // {acousea_PayloadWrapper_statusPayload_tag, &basicSummaryReportRoutine},
-};
 
 NodeOperationRunner nodeOperationRunner(
     router,
-    reportingRoutines,
-    configurationRoutines,
+    routines,
     nodeConfigurationRepository
 );

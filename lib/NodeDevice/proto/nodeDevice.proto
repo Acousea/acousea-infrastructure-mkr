@@ -203,16 +203,22 @@ message NodeDevice {
 // -------- Serializable Payloads --------
 
 message GetUpdatedNodeConfigurationPayload {
-  repeated ModuleCode requestedModules = 1; // contiene los módulos solicitados
+    repeated ModuleCode requestedModules = 1; // contiene los módulos solicitados
 }
 
 message StatusReportPayload {
-  map<int32, ModuleWrapper> modules = 1; // contiene los módulos que se desean reportar
+    map<int32, ModuleWrapper> modules = 1; // contiene los módulos que se desean reportar
 }
 
 message SetNodeConfigurationPayload {
-  map<int32, ModuleWrapper> modulesToChange = 1; // contiene los módulos que se desean agregar
+    map<int32, ModuleWrapper> modulesToChange = 1; // contiene los módulos que se desean agregar
 }
+
+message ErrorPayload {
+    // Mensaje de error en texto plano. // IMPORTANTE: el tamaño debe limitarse en la aplicación (ej. 128 caracteres).
+    string errorMessage = 1;
+}
+
 
 
 message PayloadWrapper {
@@ -220,6 +226,7 @@ message PayloadWrapper {
         StatusReportPayload statusPayload = 1;
         SetNodeConfigurationPayload setConfiguration = 2;
         GetUpdatedNodeConfigurationPayload requestedConfiguration = 3;
+        ErrorPayload errorPayload = 4;
     }
 }
 

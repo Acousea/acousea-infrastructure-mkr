@@ -102,6 +102,9 @@ PB_BIND(acousea_SetNodeConfigurationPayload, acousea_SetNodeConfigurationPayload
 PB_BIND(acousea_SetNodeConfigurationPayload_ModulesToChangeEntry, acousea_SetNodeConfigurationPayload_ModulesToChangeEntry, 2)
 
 
+PB_BIND(acousea_ErrorPayload, acousea_ErrorPayload, AUTO)
+
+
 PB_BIND(acousea_PayloadWrapper, acousea_PayloadWrapper, 2)
 
 

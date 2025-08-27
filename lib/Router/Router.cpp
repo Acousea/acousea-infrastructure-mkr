@@ -51,11 +51,6 @@ Result<std::vector<uint8_t>> Router::encodePacket(const acousea_CommunicationPac
 Router::Router(const std::vector<IPort*>& relayedPorts)
     : relayedPorts(relayedPorts)
 {
-    receivedPackets[IPort::PortType::LocalhostPort] = std::deque<acousea_CommunicationPacket>();
-    for (const auto& port : relayedPorts)
-    {
-        receivedPackets[port->getType()] = std::deque<acousea_CommunicationPacket>();
-    }
 }
 
 void Router::addRelayedPort(IPort* port)
@@ -70,6 +65,7 @@ Router::RouterSender Router::sendFrom(uint8_t senderAddress)
 
 std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> Router::readPorts(const uint8_t& localAddress)
 {
+    std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> receivedPackets = {};
     for (const auto& port : relayedPorts)
     {
         if (!port->available())
@@ -120,11 +116,6 @@ std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> Router::readP
         }
     }
     return receivedPackets;
-}
-
-void Router::addIncompletePacket(const acousea_CommunicationPacket& packet)
-{
-    receivedPackets[IPort::PortType::LocalhostPort].push_back(packet);
 }
 
 void Router::sendSBD(const acousea_CommunicationPacket& packet) const

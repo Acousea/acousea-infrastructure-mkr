@@ -207,37 +207,37 @@ ICListenService::Cache::Cache(StorageManager* storage_manager): storageManager(s
 }
 
 
-Result<acousea_ICListenStatus> ICListenService::Cache::retrieveICListenStatus()
+Result<acousea_ICListenStatus> ICListenService::Cache::getICListenStatus()
 {
     return Result<acousea_ICListenStatus>::fromOptional(
         icListenStatus, "ICListenStatus not available in cache"
     );
 }
 
-Result<acousea_ICListenLoggingConfig> ICListenService::Cache::retrieveICListenLoggingConfig()
+Result<acousea_ICListenLoggingConfig> ICListenService::Cache::getICListenLoggingConfig()
 {
     return Result<acousea_ICListenLoggingConfig>::fromOptional(
         icListenLoggingConfig, "ICListenLoggingConfig not available in cache");
 }
 
-Result<acousea_ICListenStreamingConfig> ICListenService::Cache::retrieveICListenStreamingConfig()
+Result<acousea_ICListenStreamingConfig> ICListenService::Cache::getICListenStreamingConfig()
 {
     return Result<acousea_ICListenStreamingConfig>::fromOptional(
         icListenStreamingConfig, "ICListenStreamingConfig not available in cache");
 }
 
-Result<acousea_ICListenRecordingStats> ICListenService::Cache::retrieveICListenRecordingStats()
+Result<acousea_ICListenRecordingStats> ICListenService::Cache::getICListenRecordingStats()
 {
     return Result<acousea_ICListenRecordingStats>::fromOptional(
         icListenRecordingStats, "ICListenRecordingStats not available in cache");
 }
 
-Result<acousea_ICListenHF> ICListenService::Cache::retrieveICListenCompleteConfiguration()
+Result<acousea_ICListenHF> ICListenService::Cache::getICListenCompleteConfiguration()
 {
-    const auto status = retrieveICListenStatus();
-    const auto loggingConfig = retrieveICListenLoggingConfig();
-    const auto streamingConfig = retrieveICListenStreamingConfig();
-    const auto recordingStats = retrieveICListenRecordingStats();
+    const auto status = getICListenStatus();
+    const auto loggingConfig = getICListenLoggingConfig();
+    const auto streamingConfig = getICListenStreamingConfig();
+    const auto recordingStats = getICListenRecordingStats();
 
     if (status.isError() || loggingConfig.isError() || streamingConfig.isError() || recordingStats.isError())
     {
