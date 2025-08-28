@@ -38,6 +38,24 @@ void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfi
     line.reserve(256);
     line += "Node Configuration | LocalAddress=" + std::to_string(cfg.localAddress);
 
+    if (cfg.has_operationModesModule)
+    {
+        line += " | OperationModes=[";
+        for (int i = 0; i < cfg.operationModesModule.modes_count; ++i)
+        {
+            const auto& m = cfg.operationModesModule.modes[i];
+            if (i) line += ", ";
+            line += "{id=" + std::to_string(m.id) +
+                    ", name=" + std::string(m.name) + "}";
+        }
+        line += "]";
+        line += " | ActiveIdx=" + std::to_string(cfg.operationModesModule.activeOperationModeIdx);
+    }
+    else
+    {
+        line += " | OperationModes=<none>";
+    }
+
     if (cfg.has_operationGraphModule)
     {
         line += " | OperationGraph=[";

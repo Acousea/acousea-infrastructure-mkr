@@ -32,17 +32,17 @@ void NodeOperationRunner::init()
     );
     currentNodeConfiguration.emplace(nodeConfigurationRepository.getNodeConfiguration());
     nodeConfigurationRepository.printNodeConfiguration(*currentNodeConfiguration);
-    if (!currentNodeConfiguration->has_operationGraphModule || currentNodeConfiguration->operationGraphModule.
-        graph_count == 0)
+    if (!currentNodeConfiguration->has_operationGraphModule ||
+        currentNodeConfiguration->operationGraphModule.graph_count == 0)
     {
-        ErrorHandler::handleError(getClassNameString() + ": No operation graph defined in configuration.");
+        ErrorHandler::handleError(getClassNameString() + "No operation graph defined in configuration.");
         return;
     }
     const auto activeOpModeIdx = currentNodeConfiguration->operationModesModule.activeOperationModeIdx;
     if (activeOpModeIdx >= currentNodeConfiguration->operationGraphModule.graph_count)
     {
         Logger::logError(
-            getClassNameString() + ": Active operation mode index out of bounds. Defaulting to first mode.");
+            getClassNameString() + "Active operation mode index out of bounds. Defaulting to first mode.");
         cache.currentOperationMode = currentNodeConfiguration->operationGraphModule.graph[0];
         return;
     }
