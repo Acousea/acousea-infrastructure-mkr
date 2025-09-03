@@ -38,7 +38,9 @@ public:
 
     [[nodiscard]] bool isPending() const { return type == Type::Incomplete; }
 
-    [[nodiscard]] const T& getValue() const { return value.value(); }
+    [[nodiscard]] const T& getValueConst() const { return value.value(); }
+
+    [[nodiscard]] T& getValue() { return value.value(); }
 
     [[nodiscard]] const std::string& getError() const { return errorMessage; }
 

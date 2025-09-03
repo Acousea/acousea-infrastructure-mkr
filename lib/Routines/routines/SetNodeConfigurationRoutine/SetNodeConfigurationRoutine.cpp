@@ -14,32 +14,32 @@ SetNodeConfigurationRoutine::SetNodeConfigurationRoutine(
 
 
 Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
-    const std::optional<_acousea_CommunicationPacket>& optPacket)
+    const std::optional<acousea_CommunicationPacket>& optPacket)
 {
+    acousea_NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
+
     if (!optPacket.has_value())
     {
         return Result<acousea_CommunicationPacket>::failure(getClassNameString() + ": No packet provided");
     }
     const acousea_CommunicationPacket packet = optPacket.value();
 
-    acousea_NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
-    if (!packet.has_payload)
+    if (packet.which_body != acousea_CommunicationPacket_command_tag)
     {
         return Result<acousea_CommunicationPacket>::failure(
-            getClassNameString() + ": Packet does not contain payload");
+            getClassNameString() + ": Packet is not of type command");
     }
-
-    if (packet.payload.which_payload != acousea_PayloadWrapper_setConfiguration_tag)
+    if (packet.body.command.which_command != acousea_CommandBody_setConfiguration_tag)
     {
         return Result<acousea_CommunicationPacket>::failure(
-            "Packet payload is not of type acousea_PayloadWrapper_setConfiguration_tag");
+            getClassNameString() + ": Packet command is not of type setNodeConfiguration");
     }
 
-    const acousea_SetNodeConfigurationPayload configurationPayload = packet.payload.payload.setConfiguration;
+    const auto [modules_count, modules] = packet.body.command.command.setConfiguration;
 
-    for (size_t moduleIdx = 0; moduleIdx < configurationPayload.modulesToChange_count; ++moduleIdx)
+    for (size_t i = 0; i < modules_count; ++i)
     {
-        const auto& module = configurationPayload.modulesToChange[moduleIdx];
+        const auto& module = modules[i];
         if (!module.has_value)
         {
             Logger::logError("Module with key: " + std::to_string(module.key) + " has no value. Skipping.");
@@ -79,25 +79,16 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
         case acousea_ModuleCode::acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG:
         case acousea_ModuleCode::acousea_ModuleCode_ICLISTEN_HF:
             {
-                // If the node does not have an ICListenService, we cannot process ICListen configurations
-                if (!icListenService.has_value())
+                const auto setIcListenConfigResult = setICListenConfiguration(module);
+                if (setIcListenConfigResult.isError())
                 {
-                    Logger::logError(getClassNameString() +
-                        ": Node does not have ICListenService. Cannot process ICListen configuration."
-                    );
-                    break;
+                    return Result<acousea_CommunicationPacket>::failure(setIcListenConfigResult.getError());
                 }
-                const auto result = setNewICListenConfiguration(packet.routing.sender, module);
-                if (result.isError())
+                if (setIcListenConfigResult.isPending())
                 {
-                    return Result<acousea_CommunicationPacket>::failure(result.getError());
+                    return Result<acousea_CommunicationPacket>::pending(setIcListenConfigResult.getError());
                 }
-                if (result.isPending())
-                {
-                    return Result<acousea_CommunicationPacket>::pending(
-                        getClassNameString() + "Waiting for ICListen confirmation");
-                }
-                Logger::logInfo(getClassNameString() + "New ICListen configuration processed.");
+                Logger::logInfo(getClassNameString() + "New ICListen configuration sent to device.");
                 break;
             }
 
@@ -115,63 +106,65 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
 }
 
 Result<void> SetNodeConfigurationRoutine::setOperationModes(
-    acousea_NodeConfiguration& nodeConfig, const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& item)
+    acousea_NodeConfiguration& nodeConfig, const acousea_SetNodeConfigurationPayload_ModulesEntry& moduleEntry
+)
 {
-    if (!item.has_value || item.value.which_module != acousea_ModuleWrapper_operationModes_tag)
+    if (!moduleEntry.has_value || moduleEntry.value.which_module != acousea_ModuleWrapper_operationModes_tag)
     {
-        const auto errorStr = "OperationModesModule with key: " + std::to_string(item.key) +
+        const auto errorStr = "OperationModesModule with key: " + std::to_string(moduleEntry.key) +
             " has no value. Skipping.";
         Logger::logError(errorStr);
         return Result<void>::failure(errorStr);
     }
-    const auto operationModesModule = item.value.module.operationModes;
+    const auto operationModesModule = moduleEntry.value.module.operationModes;
     nodeConfig.operationModesModule = operationModesModule;
     return Result<void>::success();
 }
 
 Result<void> SetNodeConfigurationRoutine::setOperationModesGraph(
-    acousea_NodeConfiguration& nodeConfig, const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& item)
+    acousea_NodeConfiguration& nodeConfig, const acousea_SetNodeConfigurationPayload_ModulesEntry& moduleEntry)
 {
-    if (!item.has_value || item.value.which_module != acousea_ModuleWrapper_operationModesGraph_tag)
+    if (!moduleEntry.has_value || moduleEntry.value.which_module != acousea_ModuleWrapper_operationModesGraph_tag)
     {
-        const auto errorStr = "OperationModesGraphModule with key: " + std::to_string(item.key) +
+        const auto errorStr = "OperationModesGraphModule with key: " + std::to_string(moduleEntry.key) +
             " has no value. Skipping.";
         Logger::logError(errorStr);
         return Result<void>::failure(errorStr);
     }
-    const auto operationModesModule = item.value.module.operationModesGraph;
+    const auto operationModesModule = moduleEntry.value.module.operationModesGraph;
     nodeConfig.operationGraphModule = operationModesModule;
     return Result<void>::success();
 }
 
 Result<void> SetNodeConfigurationRoutine::setReportingPeriods(
-    acousea_NodeConfiguration& nodeConfig, const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& entry
+    acousea_NodeConfiguration& nodeConfig, const acousea_SetNodeConfigurationPayload_ModulesEntry& moduleEntry
 )
 {
-    if (!entry.has_value)
+    if (!moduleEntry.has_value)
     {
-        const auto errorStr = "ReportingModule with key: " + std::to_string(entry.key) + " has no value. Skipping.";
+        const auto errorStr = "ReportingModule with key: " + std::to_string(moduleEntry.key) +
+            " has no value. Skipping.";
         Logger::logError(errorStr);
         return Result<void>::failure(errorStr);
     }
 
-    switch (entry.value.which_module)
+    switch (moduleEntry.value.which_module)
     {
     case acousea_ModuleWrapper_loraReporting_tag:
         {
-            const auto reportingModule = entry.value.module.loraReporting;
+            const auto reportingModule = moduleEntry.value.module.loraReporting;
             nodeConfig.loraModule = reportingModule;
             break;
         }
     case acousea_ModuleWrapper_iridiumReporting_tag:
         {
-            const auto reportingModule = entry.value.module.iridiumReporting;
+            const auto reportingModule = moduleEntry.value.module.iridiumReporting;
             nodeConfig.iridiumModule = reportingModule;
             break;
         }
     default:
         {
-            const auto errorStr = "ReportingModule with key: " + std::to_string(entry.key) +
+            const auto errorStr = "ReportingModule with key: " + std::to_string(moduleEntry.key) +
                 " has invalid type (NOT LORA NOR IRIDIUM). Skipping.";
             Logger::logError(errorStr);
             return Result<void>::failure(errorStr);
@@ -180,112 +173,35 @@ Result<void> SetNodeConfigurationRoutine::setReportingPeriods(
     return Result<void>::success();
 }
 
-Result<void> SetNodeConfigurationRoutine::setNewICListenConfiguration(
-    const uint8_t sender, const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& module) const
+Result<void> SetNodeConfigurationRoutine::setICListenConfiguration(
+    const acousea_SetNodeConfigurationPayload_ModulesEntry& entry) const
 {
-    // TO CHECK IF THE CONFIGURATION IS CONFIRMED BY THE ICLISTEN, WE CHECK THE SENDER.
-    // -  If the sender is the ICListen it should have BROADCAST address, we store the ICLISTEN configuration
-    // -  If the sender is not the ICListen (i.e. a remote user) changing the configuration remotely):
-    //     1. We then send the new configuration to the ICLISTEN device.
-    //     2. We clear the ICLISTEN configuration from the response packet to avoid incorrectly indicating
-    //     that the ICLISTEN has confirmed the change.
-    if (sender == Router::broadcastAddress)
-    {
-        storeIcListenConfiguration(module);
-        return Result<void>::success();
-    }
-
-    sendNewConfigurationToICListen(module);
-    return Result<void>::pending("Waiting for ICListen confirmation");
-}
-
-void SetNodeConfigurationRoutine::storeIcListenConfiguration(
-    const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& entry
-) const
-{
-    if (!icListenService.has_value())
-    {
-        Logger::logError(getClassNameString() + ": Node does not have ICListenService. Cannot store configuration.");
-        return;
-    }
-
-    if (!entry.has_value)
-    {
-        Logger::logError("ICListenModule with key: " + std::to_string(entry.key) + " has no value. Skipping.");
-        return;
-    }
-
-    switch (entry.value.which_module)
-    {
-    case acousea_ModuleWrapper_icListenLoggingConfig_tag:
-        {
-            Logger::logInfo(getClassNameString() + ": Storing ICListen Logging Config from device.");
-            icListenService.value()->getCache()->storeICListenLoggingConfig(entry.value.module.icListenLoggingConfig);
-            break;
-        }
-    case acousea_ModuleWrapper_icListenStreamingConfig_tag:
-        {
-            // Example: store streaming config
-            icListenService.value()->getCache()->storeICListenStreamingConfig(
-                entry.value.module.icListenStreamingConfig);
-            Logger::logInfo(getClassNameString() + ": Storing ICListen Streaming Config from device.");
-            break;
-        }
-    case acousea_ModuleWrapper_icListenHF_tag:
-        {
-            // Example: store HF config
-            Logger::logInfo(getClassNameString() + ": Storing ICListen HF Config from device.");
-            const acousea_ICListenLoggingConfig loggingConfig = entry.value.module.icListenHF.loggingConfig;
-            const acousea_ICListenStreamingConfig streamingConfig = entry.value.module.icListenHF.streamingConfig;
-            icListenService.value()->getCache()->storeICListenLoggingConfig(loggingConfig);
-            icListenService.value()->getCache()->storeICListenStreamingConfig(streamingConfig);
-            break;
-        }
-    default:
-        Logger::logError(
-            getClassNameString() + ": ICListenModule with key: " + std::to_string(entry.key) +
-            " has invalid type. Skipping.");
-        break;
-    }
-}
-
-void SetNodeConfigurationRoutine::sendNewConfigurationToICListen(
-    const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& entry
-) const
-{
+    // If the node does not have an ICListenService, we cannot process ICListen configurations
     if (!icListenService.has_value())
     {
         Logger::logError(getClassNameString() + ": Node does not have ICListenService. Cannot send configuration.");
-        return;
+        return Result<void>::failure("No ICListenService available");
     }
     if (!entry.has_value)
     {
         Logger::logError("ICListenModule with key: " + std::to_string(entry.key) + " has no value. Skipping.");
-        return;
+        return Result<void>::failure("No value in ICListen module entry");
     }
 
-    if (entry.value.which_module != acousea_ModuleWrapper_icListenLoggingConfig_tag &&
-        entry.value.which_module != acousea_ModuleWrapper_icListenStreamingConfig_tag &&
-        entry.value.which_module != acousea_ModuleWrapper_icListenHF_tag)
-    {
-        Logger::logError(
-            "ICListenModule with key: " + std::to_string(entry.key) +
-            " has invalid type (NOT LOGGING, NOT STREAMING, NOT HF). Skipping.");
-        return;
-    }
+    const auto hfService = icListenService.value();
 
     switch (entry.value.which_module)
     {
     case acousea_ModuleWrapper_icListenLoggingConfig_tag:
         {
             const auto loggingConfig = entry.value.module.icListenLoggingConfig;
-            icListenService.value()->getRequester()->sendLoggingConfig(loggingConfig);
+            hfService->sendLoggingConfig(loggingConfig);
         }
 
     case acousea_ModuleWrapper_icListenStreamingConfig_tag:
         {
             const auto streamingConfig = entry.value.module.icListenStreamingConfig;
-            icListenService.value()->getRequester()->sendStreamingConfig(streamingConfig);
+            hfService->sendStreamingConfig(streamingConfig);
         }
 
     case acousea_ModuleWrapper_icListenHF_tag:
@@ -294,12 +210,12 @@ void SetNodeConfigurationRoutine::sendNewConfigurationToICListen(
             if (hfConfig.has_loggingConfig)
             {
                 Logger::logInfo("Sending ICListen HF Logging Config");
-                icListenService.value()->getRequester()->sendLoggingConfig(hfConfig.loggingConfig);
+                hfService->sendLoggingConfig(hfConfig.loggingConfig);
             }
             if (hfConfig.has_streamingConfig)
             {
                 Logger::logInfo("Sending ICListen HF Streaming Config");
-                icListenService.value()->getRequester()->sendStreamingConfig(hfConfig.streamingConfig);
+                hfService->sendStreamingConfig(hfConfig.streamingConfig);
             }
         }
 
@@ -310,4 +226,18 @@ void SetNodeConfigurationRoutine::sendNewConfigurationToICListen(
                 " has invalid type (NOT LORA NOR IRIDIUM). Skipping.");
         }
     }
+
+
+    // Check if the set configuration is all fresh
+    if (!hfService->getCache()->getICListenLoggingConfig().isFresh ||
+        !hfService->getCache()->getICListenStreamingConfig().isFresh)
+    {
+        Logger::logInfo(getClassNameString() + ": ICListen configuration is NOT fresh.");
+        return Result<void>::pending("ICListen configuration is not fresh");
+    }
+
+    Logger::logInfo(getClassNameString() + ": ICListen configuration is fresh.");
+
+
+    return Result<void>::success();
 }

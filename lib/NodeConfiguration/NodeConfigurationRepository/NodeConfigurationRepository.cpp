@@ -160,7 +160,7 @@ acousea_NodeConfiguration NodeConfigurationRepository::getNodeConfiguration() co
         // Opcional: log del error dec.getError()
         return makeDefault();
     }
-    return dec.getValue();
+    return dec.getValueConst();
 }
 
 bool NodeConfigurationRepository::saveConfiguration(const acousea_NodeConfiguration& cfg)

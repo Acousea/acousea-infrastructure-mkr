@@ -83,9 +83,10 @@ Result<_acousea_CommunicationPacket> BasicStatusReportRoutine::execute(const std
     }
 
     // -------- 2) PayloadWrapper --------
-    acousea_PayloadWrapper pw = acousea_PayloadWrapper_init_default;
-    pw.which_payload = acousea_PayloadWrapper_statusPayload_tag;
-    pw.payload.statusPayload = status;
+    acousea_ReportBody reportBody = acousea_ReportBody_init_default;
+    reportBody.which_report = acousea_ReportBody_statusPayload_tag;
+    reportBody.report.statusPayload = status;
+
 
     // -------- 3) CommunicationPacket --------
     acousea_CommunicationPacket pkt = acousea_CommunicationPacket_init_default;
@@ -95,8 +96,8 @@ Result<_acousea_CommunicationPacket> BasicStatusReportRoutine::execute(const std
     pkt.routing.receiver = 0; // destino (ajustar)
     pkt.routing.ttl = 5;
 
-    pkt.has_payload = true;
-    pkt.payload = pw;
+    pkt.which_body = acousea_CommunicationPacket_report_tag;
+    pkt.body.report = reportBody;
 
     return Result<acousea_CommunicationPacket>::success(pkt);
 }

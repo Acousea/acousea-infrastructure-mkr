@@ -17,27 +17,31 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
     const std::optional<_acousea_CommunicationPacket>& optPacket
 )
 {
+    acousea_NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
+
     if (!optPacket.has_value())
     {
         return Result<acousea_CommunicationPacket>::failure(
             getClassNameString() + "No packet provided to process");
     }
     const acousea_CommunicationPacket& packet = optPacket.value();
-    acousea_NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
-    if (!packet.has_payload)
+
+
+    if (packet.which_body != acousea_CommunicationPacket_command_tag)
     {
         return Result<acousea_CommunicationPacket>::failure(
-            getClassNameString() + "Packet does not contain any new requested configuration"
+            getClassNameString() + "Packet is not of type command"
         );
     }
 
-    if (packet.payload.which_payload != acousea_PayloadWrapper_requestedConfiguration_tag)
+    if (packet.body.command.which_command != acousea_CommandBody_requestedConfiguration_tag)
     {
-        return Result<acousea_CommunicationPacket>::failure(getClassNameString() +
-            "Packet payload is not of type acousea_PayloadWrapper_requestedConfiguration_tag");
+        return Result<acousea_CommunicationPacket>::failure(
+            getClassNameString() + "Packet command is not of type requestedConfiguration"
+        );
     }
 
-    acousea_GetUpdatedNodeConfigurationPayload requestedConfigurationPayload = packet.payload.payload.
+    acousea_GetUpdatedNodeConfigurationPayload requestedConfigurationPayload = packet.body.command.command.
         requestedConfiguration;
 
     acousea_CommunicationPacket responsePacket = acousea_CommunicationPacket_init_default;
@@ -49,10 +53,9 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
     responsePacket.routing.ttl = 0;
 
     // Payload
-    responsePacket.has_payload = true;
-    responsePacket.payload.which_payload = acousea_PayloadWrapper_setConfiguration_tag;
+    responsePacket.which_body = acousea_CommunicationPacket_response_tag;
 
-    acousea_SetNodeConfigurationPayload setConfiguration = acousea_SetNodeConfigurationPayload_init_default;
+    acousea_UpdatedNodeConfigurationPayload updatedConfiguration = acousea_UpdatedNodeConfigurationPayload_init_default;
     for (auto& configItem : requestedConfigurationPayload.requestedModules)
     {
         switch (configItem)
@@ -76,8 +79,8 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
 
         case acousea_ModuleCode_BATTERY_MODULE:
             {
-                acousea_SetNodeConfigurationPayload_ModulesToChangeEntry batteryEntry =
-                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                acousea_UpdatedNodeConfigurationPayload_ModulesEntry batteryEntry =
+                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
                 batteryEntry.has_value = true;
                 batteryEntry.key = acousea_ModuleCode_BATTERY_MODULE;
                 batteryEntry.value.which_module = acousea_ModuleWrapper_battery_tag;
@@ -87,14 +90,14 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 batteryModule.batteryPercentage = battery->percentage();
 
                 batteryEntry.value.module.battery = batteryModule;
-                setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = batteryEntry;
-                setConfiguration.modulesToChange_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count] = batteryEntry;
+                updatedConfiguration.modules_count++;
                 break;
             }
         case acousea_ModuleCode_LOCATION_MODULE:
             {
-                acousea_SetNodeConfigurationPayload_ModulesToChangeEntry locationEntry =
-                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                acousea_UpdatedNodeConfigurationPayload_ModulesEntry locationEntry =
+                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
                 locationEntry.has_value = true;
                 locationEntry.key = acousea_ModuleCode_LOCATION_MODULE;
                 locationEntry.value.which_module = acousea_ModuleWrapper_location_tag;
@@ -104,8 +107,8 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 locationModule.latitude = latitude;
                 locationModule.longitude = longitude;
                 locationEntry.value.module.location = locationModule;
-                setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = locationEntry;
-                setConfiguration.modulesToChange_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count] = locationEntry;
+                updatedConfiguration.modules_count++;
                 break;
             }
 
@@ -113,8 +116,8 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
         case acousea_ModuleCode_OPERATION_MODES_MODULE:
         case acousea_ModuleCode_OPERATION_MODES_GRAPH_MODULE:
             {
-                acousea_SetNodeConfigurationPayload_ModulesToChangeEntry opModesGraphEntry =
-                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                acousea_UpdatedNodeConfigurationPayload_ModulesEntry opModesGraphEntry =
+                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
                 opModesGraphEntry.has_value = true;
                 opModesGraphEntry.key = acousea_ModuleCode_OPERATION_MODES_GRAPH_MODULE;
                 opModesGraphEntry.value.which_module = acousea_ModuleWrapper_operationModesGraph_tag;
@@ -127,14 +130,14 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 }
                 acousea_OperationModesGraphModule opModesGraphModule = nodeConfig.operationGraphModule;
                 opModesGraphEntry.value.module.operationModesGraph = opModesGraphModule;
-                setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = opModesGraphEntry;
-                setConfiguration.modulesToChange_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count] = opModesGraphEntry;
+                updatedConfiguration.modules_count++;
                 break;
             }
         case acousea_ModuleCode_LORA_REPORTING_MODULE:
             {
-                acousea_SetNodeConfigurationPayload_ModulesToChangeEntry loraEntry =
-                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                acousea_UpdatedNodeConfigurationPayload_ModulesEntry loraEntry =
+                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
                 loraEntry.has_value = true;
                 loraEntry.key = acousea_ModuleCode_LORA_REPORTING_MODULE;
                 loraEntry.value.which_module = acousea_ModuleWrapper_loraReporting_tag;
@@ -145,14 +148,14 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 }
                 acousea_LoRaReportingModule loraModule = nodeConfig.loraModule;
                 loraEntry.value.module.loraReporting = loraModule;
-                setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = loraEntry;
-                setConfiguration.modulesToChange_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count] = loraEntry;
+                updatedConfiguration.modules_count++;
                 break;
             }
         case acousea_ModuleCode_IRIDIUM_REPORTING_MODULE:
             {
-                acousea_SetNodeConfigurationPayload_ModulesToChangeEntry iridiumEntry =
-                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                acousea_UpdatedNodeConfigurationPayload_ModulesEntry iridiumEntry =
+                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
 
                 iridiumEntry.has_value = true;
                 iridiumEntry.key = acousea_ModuleCode_IRIDIUM_REPORTING_MODULE;
@@ -165,22 +168,22 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 }
                 acousea_IridiumReportingModule iridiumModule = nodeConfig.iridiumModule;
                 iridiumEntry.value.module.iridiumReporting = iridiumModule;
-                setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = iridiumEntry;
-                setConfiguration.modulesToChange_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count] = iridiumEntry;
+                updatedConfiguration.modules_count++;
                 break;
             }
         case acousea_ModuleCode_RTC_MODULE:
             {
-                acousea_SetNodeConfigurationPayload_ModulesToChangeEntry rtcEntry =
-                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                acousea_UpdatedNodeConfigurationPayload_ModulesEntry rtcEntry =
+                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
                 rtcEntry.has_value = true;
                 rtcEntry.key = acousea_ModuleCode_RTC_MODULE;
                 rtcEntry.value.which_module = acousea_ModuleWrapper_rtc_tag;
                 acousea_RTCModule rtcModule = acousea_RTCModule_init_default;
                 rtcModule.epochSeconds = rtcController->getEpoch();
                 rtcEntry.value.module.rtc = rtcModule;
-                setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = rtcEntry;
-                setConfiguration.modulesToChange_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count] = rtcEntry;
+                updatedConfiguration.modules_count++;
                 break;
             }
 
@@ -191,25 +194,28 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                     Logger::logError(getClassNameString() + "ICListen service is not available");
                     break;
                 }
-                acousea_SetNodeConfigurationPayload_ModulesToChangeEntry icListenStatusEntry =
-                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenStatusEntry =
+                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
 
                 icListenStatusEntry.has_value = true;
                 icListenStatusEntry.key = acousea_ModuleCode_ICLISTEN_STATUS;
                 icListenStatusEntry.value.which_module = acousea_ModuleWrapper_icListenStatus_tag;
 
-                Result<acousea_ICListenStatus> statusResult = icListenService.value()->getCache()->
-                                                                              getICListenStatus();
-                if (!statusResult.isError())
+                ICListenService::CachedValue<acousea_ICListenStatus> statusCachedValue = icListenService.value()->
+                    getCache()->
+                    getICListenStatus();
+
+                if (!statusCachedValue.isFresh)
                 {
+                    icListenService.value()->fetchStatus();
                     return Result<acousea_CommunicationPacket>::pending(
-                        getClassNameString() + "Failed to retrieve ICListen status: " + statusResult.getError()
+                        getClassNameString() + "ICListen status is not fresh"
                     );
                 }
 
-                icListenStatusEntry.value.module.icListenStatus = statusResult.getValue();
-                setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = icListenStatusEntry;
-                setConfiguration.modulesToChange_count++;
+                icListenStatusEntry.value.module.icListenStatus = statusCachedValue.get();
+                updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenStatusEntry;
+                updatedConfiguration.modules_count++;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG:
@@ -219,24 +225,25 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                     Logger::logError(getClassNameString() + "ICListen service is not available");
                     break;
                 }
-                acousea_SetNodeConfigurationPayload_ModulesToChangeEntry icListenLoggingEntry =
-                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenLoggingEntry =
+                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
 
                 icListenLoggingEntry.has_value = true;
                 icListenLoggingEntry.key = acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG;
                 icListenLoggingEntry.value.which_module = acousea_ModuleWrapper_icListenLoggingConfig_tag;
 
-                Result<acousea_ICListenLoggingConfig> loggingConfigResult =
-                    icListenService.value()->getCache()->getICListenLoggingConfig();
-                if (loggingConfigResult.isError())
+                ICListenService::CachedValue<acousea_ICListenLoggingConfig> loggingCfgCachedValue = icListenService.
+                    value()->getCache()->getICListenLoggingConfig();
+                if (!loggingCfgCachedValue.isFresh)
                 {
+                    icListenService.value()->fetchLoggingConfig();
                     return Result<acousea_CommunicationPacket>::pending(
-                        getClassNameString() + "Failed to retrieve ICListen logging config: " + loggingConfigResult.
-                        getError());
+                        getClassNameString() + "ICListen logging config is not fresh"
+                    );
                 }
-                icListenLoggingEntry.value.module.icListenLoggingConfig = loggingConfigResult.getValue();
-                setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = icListenLoggingEntry;
-                setConfiguration.modulesToChange_count++;
+                icListenLoggingEntry.value.module.icListenLoggingConfig = loggingCfgCachedValue.get();
+                updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenLoggingEntry;
+                updatedConfiguration.modules_count++;
 
                 break;
             }
@@ -247,24 +254,25 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                     Logger::logError(getClassNameString() + "ICListen service is not available");
                     break;
                 }
-                acousea_SetNodeConfigurationPayload_ModulesToChangeEntry icListenStreamingEntry =
-                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenStreamingEntry =
+                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
 
                 icListenStreamingEntry.has_value = true;
                 icListenStreamingEntry.key = acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG;
                 icListenStreamingEntry.value.which_module = acousea_ModuleWrapper_icListenStreamingConfig_tag;
 
-                Result<acousea_ICListenStreamingConfig> streamingConfigResult =
-                    icListenService.value()->getCache()->getICListenStreamingConfig();
-                if (streamingConfigResult.isError())
+                ICListenService::CachedValue<acousea_ICListenStreamingConfig> streamingConfigResult = icListenService.
+                    value()->getCache()->getICListenStreamingConfig();
+                if (!streamingConfigResult.isFresh)
                 {
+                    icListenService.value()->fetchStreamingConfig();
                     return Result<acousea_CommunicationPacket>::pending(
-                        getClassNameString() + "Failed to retrieve ICListen streaming config: " + streamingConfigResult.
-                        getError());
+                        getClassNameString() + "ICListen streaming config is not fresh"
+                    );
                 }
-                icListenStreamingEntry.value.module.icListenStreamingConfig = streamingConfigResult.getValue();
-                setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = icListenStreamingEntry;
-                setConfiguration.modulesToChange_count++;
+                icListenStreamingEntry.value.module.icListenStreamingConfig = streamingConfigResult.get();
+                updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenStreamingEntry;
+                updatedConfiguration.modules_count++;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_RECORDING_STATS:
@@ -274,24 +282,24 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                     Logger::logError(getClassNameString() + "ICListen service is not available");
                     break;
                 }
-                acousea_SetNodeConfigurationPayload_ModulesToChangeEntry icListenRecordingStatsEntry =
-                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenRecordingStatsEntry =
+                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
 
                 icListenRecordingStatsEntry.has_value = true;
                 icListenRecordingStatsEntry.key = acousea_ModuleCode_ICLISTEN_RECORDING_STATS;
                 icListenRecordingStatsEntry.value.which_module = acousea_ModuleWrapper_icListenRecordingStats_tag;
 
-                Result<acousea_ICListenRecordingStats> recordingStatsResult =
-                    icListenService.value()->getCache()->getICListenRecordingStats();
-                if (recordingStatsResult.isError())
+                ICListenService::CachedValue<acousea_ICListenRecordingStats> recordingStatsResult = icListenService.
+                    value()->getCache()->getICListenRecordingStats();
+                if (!recordingStatsResult.isFresh)
                 {
                     return Result<acousea_CommunicationPacket>::pending(
-                        getClassNameString() + "Failed to retrieve ICListen recording stats: " + recordingStatsResult.
-                        getError());
+                        getClassNameString() + "ICListen recording stats is not fresh"
+                    );
                 }
-                icListenRecordingStatsEntry.value.module.icListenRecordingStats = recordingStatsResult.getValue();
-                setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = icListenRecordingStatsEntry;
-                setConfiguration.modulesToChange_count++;
+                icListenRecordingStatsEntry.value.module.icListenRecordingStats = recordingStatsResult.get();
+                updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenRecordingStatsEntry;
+                updatedConfiguration.modules_count++;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_HF:
@@ -301,23 +309,24 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                     Logger::logError(getClassNameString() + "ICListen service is not available");
                     break;
                 }
-                acousea_SetNodeConfigurationPayload_ModulesToChangeEntry icListenHfEntry =
-                    acousea_SetNodeConfigurationPayload_ModulesToChangeEntry_init_default;
+                acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenHfEntry =
+                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
 
                 icListenHfEntry.has_value = true;
                 icListenHfEntry.key = acousea_ModuleCode_ICLISTEN_HF;
                 icListenHfEntry.value.which_module = acousea_ModuleWrapper_icListenHF_tag;
 
-                Result<acousea_ICListenHF> hfResult = icListenService.value()->getCache()->
-                                                                      getICListenCompleteConfiguration();
-                if (hfResult.isError())
+                ICListenService::CachedValue<acousea_ICListenHF> hfResult = icListenService.value()->getCache()->
+                    getICListenCompleteConfiguration();
+                if (!hfResult.isFresh)
                 {
                     return Result<acousea_CommunicationPacket>::pending(
-                        getClassNameString() + "Failed to retrieve ICListen HF: " + hfResult.getError());
+                        getClassNameString() + "ICListen HF config is not fresh"
+                    );
                 }
-                icListenHfEntry.value.module.icListenHF = hfResult.getValue();
-                setConfiguration.modulesToChange[setConfiguration.modulesToChange_count] = icListenHfEntry;
-                setConfiguration.modulesToChange_count++;
+                icListenHfEntry.value.module.icListenHF = hfResult.get();
+                updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenHfEntry;
+                updatedConfiguration.modules_count++;
                 break;
             }
         default:
@@ -326,7 +335,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
         }
     }
     // IMPORTANT: Assign the setConfiguration payload to the response packet
-    responsePacket.payload.payload.setConfiguration = setConfiguration;
+    responsePacket.body.response.response.updatedConfiguration = updatedConfiguration;
 
     return Result<acousea_CommunicationPacket>::success(responsePacket);
 }

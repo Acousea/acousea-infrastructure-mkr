@@ -32,35 +32,13 @@ private:
         uint8_t localAddress;
         Router* router;
 
-        [[nodiscard]] acousea_CommunicationPacket configurePacketRouting(
-            const acousea_CommunicationPacket& inPacket) const
+        [[nodiscard]] acousea_CommunicationPacket configurePacketRouting(acousea_CommunicationPacket& inPacket) const
         {
-            acousea_CommunicationPacket outPacket = acousea_CommunicationPacket_init_default;
-
-            // Copiar payload si viene presente
-            if (inPacket.has_payload)
-            {
-                outPacket.has_payload = true;
-                outPacket.payload = inPacket.payload; // copia superficial válida en nanopb
-            }
-
             // Configurar routing: respondemos al remitente del paquete original
-            outPacket.has_routing = true;
-            outPacket.routing = acousea_RoutingChunk_init_default;
-            outPacket.routing.sender = static_cast<int32_t>(localAddress);
-
-            if (inPacket.has_routing)
-            {
-                outPacket.routing.receiver = inPacket.routing.sender; // reply-to
-                outPacket.routing.ttl = inPacket.routing.ttl; // conservar TTL si procede
-            }
-            else
-            {
-                outPacket.routing.receiver = broadcastAddress; // broadcast por defecto si no había routing
-                outPacket.routing.ttl = 0;
-            }
-
-            return outPacket;
+            inPacket.has_routing = true;
+            inPacket.routing = acousea_RoutingChunk_init_default;
+            inPacket.routing.sender = static_cast<int32_t>(localAddress);
+            return inPacket;
         }
 
     public:
@@ -70,22 +48,22 @@ private:
         }
 
 
-        void sendSBD(const acousea_CommunicationPacket& packet)
+        void sendSBD(acousea_CommunicationPacket& packet) const
         {
-            acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
+            const acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
             router->sendSBD(mutablePacket);
         }
 
 
-        void sendLoRa(const acousea_CommunicationPacket& packet)
+        void sendLoRa(acousea_CommunicationPacket& packet) const
         {
-            acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
+            const acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
             router->sendLoRa(mutablePacket);
         }
 
-        void sendSerial(const acousea_CommunicationPacket& packet)
+        void sendSerial(acousea_CommunicationPacket& packet) const
         {
-            acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
+            const acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
             router->sendSerial(mutablePacket);
         }
     };

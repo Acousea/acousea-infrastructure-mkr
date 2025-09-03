@@ -1,5 +1,7 @@
 #include "dependencies.h"
 
+#include "routines/StoreNodeConfigurationRoutine/StoreNodeConfigurationRoutine.h"
+
 
 // =======================================================
 //       ARDUINO BUILD
@@ -97,7 +99,7 @@ Router router({serialPort, loraPort, iridiumPort});
 
 NodeConfigurationRepository nodeConfigurationRepository(*storageManager);
 
-std::shared_ptr<ICListenService> icListenServicePtr = std::make_shared<ICListenService>(router, storageManager);
+std::shared_ptr<ICListenService> icListenServicePtr = std::make_shared<ICListenService>(router);
 
 SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository, icListenServicePtr);
 // SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository, std::nullopt);
@@ -131,16 +133,31 @@ CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationReposi
 BasicStatusReportRoutine basicSummaryReportRoutine(
     nodeConfigurationRepository, gps, battery, rtcController
 );
-std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> routines = {
-    {acousea_PayloadWrapper_setConfiguration_tag, &setNodeConfigurationRoutine},
-    {acousea_PayloadWrapper_requestedConfiguration_tag, &getUpdatedNodeConfigurationRoutine},
-    {acousea_PayloadWrapper_statusPayload_tag, &completeSummaryReportRoutine},
-    {acousea_PayloadWrapper_statusPayload_tag, &basicSummaryReportRoutine},
+
+StoreNodeConfigurationRoutine storeNodeConfigurationRoutine(
+    nodeConfigurationRepository,
+    icListenServicePtr
+);
+
+std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> commandRoutines = {
+    {acousea_CommandBody_setConfiguration_tag, &setNodeConfigurationRoutine},
+    {acousea_CommandBody_requestedConfiguration_tag, &getUpdatedNodeConfigurationRoutine},
+};
+
+std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> responseRoutines = {
+    {acousea_ResponseBody_setConfiguration_tag, &storeNodeConfigurationRoutine},
+    {acousea_ResponseBody_updatedConfiguration_tag, &storeNodeConfigurationRoutine},
+};
+
+
+std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> reportRoutines = {
+    {acousea_ReportBody_statusPayload_tag, &completeSummaryReportRoutine},
+    {acousea_ReportBody_statusPayload_tag, &basicSummaryReportRoutine},
 };
 
 
 NodeOperationRunner nodeOperationRunner(
     router,
-    routines,
-    nodeConfigurationRepository
+    nodeConfigurationRepository,
+    commandRoutines, responseRoutines, reportRoutines
 );

@@ -127,7 +127,7 @@ void Router::sendSBD(const acousea_CommunicationPacket& packet) const
     {
         if (relayedPort->getType() == IPort::PortType::SBDPort)
         {
-            relayedPort->send(bytesPacketResult.getValue());
+            relayedPort->send(bytesPacketResult.getValueConst());
             return;
         }
     }
@@ -142,7 +142,7 @@ void Router::sendLoRa(const acousea_CommunicationPacket& packet) const
     {
         if (relayedPort->getType() == IPort::PortType::LoraPort)
         {
-            relayedPort->send(bytesPacketResult.getValue());
+            relayedPort->send(bytesPacketResult.getValueConst());
             return;
         }
     }
@@ -157,7 +157,7 @@ void Router::sendSerial(const acousea_CommunicationPacket& packet) const
     {
         if (relayedPort->getType() == IPort::PortType::SerialPort)
         {
-            relayedPort->send(bytesPacketResult.getValue());
+            relayedPort->send(bytesPacketResult.getValueConst());
             return;
         }
     }

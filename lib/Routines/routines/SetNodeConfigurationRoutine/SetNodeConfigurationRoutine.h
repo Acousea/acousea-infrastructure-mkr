@@ -7,7 +7,7 @@
 #include "Logger/Logger.h"
 
 
-class SetNodeConfigurationRoutine : public IRoutine<acousea_CommunicationPacket>
+class SetNodeConfigurationRoutine final : public IRoutine<acousea_CommunicationPacket>
 {
 private:
     NodeConfigurationRepository& nodeConfigurationRepository;
@@ -21,24 +21,25 @@ public:
         std::optional<std::shared_ptr<ICListenService>> icListenService
     );
 
-    Result<acousea_CommunicationPacket> execute(const std::optional<_acousea_CommunicationPacket>& optPacket) override;
-    Result<void> setOperationModes(acousea_NodeConfiguration& nodeConfig,
-                                   const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& item);
+    Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& optPacket) override;
 
 private:
+    Result<void> setOperationModes(acousea_NodeConfiguration& nodeConfig,
+                                   const acousea_SetNodeConfigurationPayload_ModulesEntry& moduleEntry
+    );
     [[nodiscard]] static Result<void> setOperationModesGraph(acousea_NodeConfiguration& nodeConfig,
-                                          const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& item);
+                                                             const acousea_SetNodeConfigurationPayload_ModulesEntry&
+                                                             moduleEntry
+    );
+
     [[nodiscard]] static Result<void> setReportingPeriods(acousea_NodeConfiguration& nodeConfig,
-                                            const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& entry);
+                                                          const acousea_SetNodeConfigurationPayload_ModulesEntry&
+                                                          moduleEntry
+    );
 
-
-    // ---------------------- ICListen specific methods ----------------------
-    [[nodiscard]] Result<void> setNewICListenConfiguration(uint8_t sender,
-                                                           const
-                                                           acousea_SetNodeConfigurationPayload_ModulesToChangeEntry&
-                                                           module) const;
-    void sendNewConfigurationToICListen(const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& entry) const;
-    void storeIcListenConfiguration(const acousea_SetNodeConfigurationPayload_ModulesToChangeEntry& entry) const;
+    [[nodiscard]] Result<void> setICListenConfiguration(
+        const acousea_SetNodeConfigurationPayload_ModulesEntry& entry) const;
 };
+
 
 #endif // CHANGE_MODE_ROUTINE_H

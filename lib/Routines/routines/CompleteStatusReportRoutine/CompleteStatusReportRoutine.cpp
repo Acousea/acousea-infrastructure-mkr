@@ -1,10 +1,8 @@
 #include "CompleteStatusReportRoutine.h"
 
-#include <utility>
-
-
 CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationRepository& nodeConfigurationRepository,
-                                                         std::optional<std::shared_ptr<ICListenService>> icListenService,
+                                                         std::optional<std::shared_ptr<ICListenService>>
+                                                         icListenService,
                                                          IGPS* gps,
                                                          IBatteryController* battery
 )
@@ -17,7 +15,8 @@ CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationReposi
 }
 
 
-Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(const std::optional<_acousea_CommunicationPacket>&  none)
+Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
+    const std::optional<_acousea_CommunicationPacket>& none)
 {
     // Extract a Summary struct from the packet
     const auto batteryPercentage = battery->percentage();
@@ -30,15 +29,15 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(const s
     std::optional<acousea_ICListenHF> icListenHFCompleteConfig;
     if (icListenService.has_value())
     {
-        const auto icListenConfigResult = (*icListenService)->getCache()->getICListenCompleteConfiguration();
-        if (!icListenConfigResult.isSuccess())
+        const auto icListenConfig = (*icListenService)->getCache()->getICListenCompleteConfiguration();
+        if (!icListenConfig.isFresh)
         {
-            (*icListenService)->getRequester()->fetchHFConfiguration();
+            (*icListenService)->fetchHFConfiguration();
             return Result<acousea_CommunicationPacket>::pending(
                 "ICListenHF configuration not available yet. Requested from ICListenService."
             );
         }
-        icListenHFCompleteConfig = icListenConfigResult.getValue();
+        icListenHFCompleteConfig = icListenConfig.get();
     }
 
     Logger::logInfo("Building packet with "
@@ -86,9 +85,11 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(const s
     }
 
     // --- PayloadWrapper ---
-    acousea_PayloadWrapper pw = acousea_PayloadWrapper_init_default;
-    pw.which_payload = acousea_PayloadWrapper_statusPayload_tag;
-    pw.payload.statusPayload = status;
+    // -------- 2) PayloadWrapper --------
+    acousea_ReportBody reportBody = acousea_ReportBody_init_default;
+    reportBody.which_report = acousea_ReportBody_statusPayload_tag;
+    reportBody.report.statusPayload = status;
+
 
     // --- CommunicationPacket ---
     acousea_CommunicationPacket pkt = acousea_CommunicationPacket_init_default;
@@ -97,8 +98,9 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(const s
     pkt.routing.sender = 1;
     pkt.routing.receiver = 0;
     pkt.routing.ttl = 5;
-    pkt.has_payload = true;
-    pkt.payload = pw;
+
+    pkt.which_body = acousea_CommunicationPacket_report_tag;
+    pkt.body.report = reportBody;
 
     return Result<acousea_CommunicationPacket>::success(pkt);
 }

@@ -1,3 +1,5 @@
 .pio
 .vscode
 .idea
+
+lib/NodeDevice/generated

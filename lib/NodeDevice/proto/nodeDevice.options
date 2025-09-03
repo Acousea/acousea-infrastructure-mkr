@@ -1,5 +1,5 @@
 # ============================
-# Nanopb options for codec.proto
+# Nanopb options for codec.proto (adapted to new patch)
 # ============================
 
 # -------- Strings (máximo tamaño en bytes del texto) --------
@@ -36,9 +36,12 @@ acousea.IridiumReportingModule.imei                 max_size:16
 acousea.IridiumReportingModule.entries              max_count:8
 
 acousea.GetUpdatedNodeConfigurationPayload.requestedModules max_count:15
-acousea.ErrorPayload.errorMessage                   max_size:128
 
+# ErrorBody sustituye a ErrorPayload
+acousea.ErrorBody.errorMessage                      max_size:128
 
+# Mapas de módulos
 acousea.NodeDevice.modules                          max_count:15   # hay 15 ModuleCode (1..15)
 acousea.StatusReportPayload.modules                 max_count:8    # batería, gps, rtc, etc.
-acousea.SetNodeConfigurationPayload.modulesToChange max_count:8
+acousea.SetNodeConfigurationPayload.modules         max_count:8
+acousea.UpdatedNodeConfigurationPayload.modules     max_count:8

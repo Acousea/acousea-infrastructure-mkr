@@ -1,27 +1,64 @@
 #include "NodeOperationRunner.h"
 
-inline std::string payloadTagToString(const uint8_t tag)
+inline std::string bodyTagToString(const uint8_t tag)
 {
     switch (tag)
     {
-    case acousea_PayloadWrapper_statusPayload_tag: return "StatusReportPayload";
-    case acousea_PayloadWrapper_setConfiguration_tag: return "SetNodeConfigurationPayload";
-    case acousea_PayloadWrapper_requestedConfiguration_tag: return "GetUpdatedNodeConfigurationPayload";
-    case acousea_PayloadWrapper_errorPayload_tag: return "ErrorPayload";
-    default: return "UnknownPayload";
+    case acousea_CommunicationPacket_command_tag: return "Command";
+    case acousea_CommunicationPacket_response_tag: return "Response";
+    case acousea_CommunicationPacket_report_tag: return "Report";
+    case acousea_CommunicationPacket_error_tag: return "Error";
+    default: return "UnknownBody";
     }
 }
 
-NodeOperationRunner::NodeOperationRunner(Router& router,
-                                         const std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>&
-                                         routines,
-                                         const NodeConfigurationRepository& nodeConfigurationRepository)
-    : IRunnable(),
-      router(router),
-      routines(routines),
-      nodeConfigurationRepository(nodeConfigurationRepository)
+inline std::string commandPayloadTagToString(const uint8_t tag)
+
 {
-    cache = {0, 0, {0, 0}};
+    switch (tag)
+    {
+    case acousea_CommandBody_setConfiguration_tag: return "Command->SetConfiguration";
+    case acousea_CommandBody_requestedConfiguration_tag: return "Command->RequestedConfiguration";
+    default: return "Command->Unknown";
+    }
+}
+
+inline std::string responsePayloadTagToString(const uint8_t tag)
+{
+    switch (tag)
+    {
+    case acousea_ResponseBody_setConfiguration_tag: return "Response->SetConfiguration";
+    case acousea_ResponseBody_updatedConfiguration_tag: return "Response->UpdatedConfiguration";
+    default: return "Response->Unknown";
+    }
+}
+
+inline std::string reportPayloadTagToString(const uint8_t tag)
+{
+    switch (tag)
+    {
+    case acousea_ReportBody_statusPayload_tag: return "Report->StatusPayload";
+    default: return "Report->Unknown";
+    }
+}
+
+
+NodeOperationRunner::NodeOperationRunner(Router& router,
+                                         const NodeConfigurationRepository& nodeConfigurationRepository,
+                                         const std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>&
+                                         commandRoutines,
+                                         const std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>&
+                                         responseRoutines,
+                                         const std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>&
+                                         reportRoutines
+): IRunnable(),
+   router(router),
+   commandRoutines(commandRoutines),
+   responseRoutines(responseRoutines),
+   reportRoutines(reportRoutines),
+   nodeConfigurationRepository(nodeConfigurationRepository)
+{
+    cache = {acousea_OperationModesGraphModule_GraphEntry_init_default, 0, {0, 0}};
 }
 
 void NodeOperationRunner::init()
@@ -62,10 +99,12 @@ void NodeOperationRunner::run()
 }
 
 
-void NodeOperationRunner::tryReport(
-    const std::string& moduleType,
-    const acousea_ReportingPeriodEntry* entries, const size_t entryCount,
-    IPort::PortType port, unsigned long& lastMinute, unsigned long currentMinute)
+void NodeOperationRunner::tryReport(const std::string& moduleType,
+                                    const acousea_ReportingPeriodEntry* entries,
+                                    const size_t entryCount,
+                                    IPort::PortType port,
+                                    unsigned long& lastMinute,
+                                    unsigned long currentMinute)
 {
     auto cfg = searchForReportingEntry(cache.currentOperationMode.key, entries, entryCount);
     if (cfg.isError())
@@ -81,45 +120,20 @@ void NodeOperationRunner::tryReport(
 
     if (mustReport(currentMinute, period, lastMinute))
     {
-        runReportRoutine(port, currentMinute, lastMinute);
-    }
-}
-
-void NodeOperationRunner::executeRoutine(const uint8_t routineTag,
-                                         const std::optional<acousea_CommunicationPacket>& inputPacket,
-                                         IPort::PortType port, const uint8_t destination,
-                                         const bool requeueAllowed)
-{
-    const auto it = routines.find(routineTag);
-    if (it == routines.end() || it->second == nullptr)
-    {
-        ErrorHandler::handleError(getClassNameString() + ": StatusReport routine not found.");
-        return;
-    }
-    IRoutine<acousea_CommunicationPacket>* routine = it->second;
-    const auto res = routine->execute(inputPacket);
-
-    if (res.isPending())
-    {
-        if (!requeueAllowed)
+        const auto it = reportRoutines.find(acousea_ReportBody_statusPayload_tag);
+        if (it == reportRoutines.end() || it->second == nullptr)
         {
-            Logger::logInfo(routine->routineName + " returned pending but requeue not allowed.");
+            Logger::logError("Report routine with tag " + std::to_string(modeId) +
+                " not found. Skipping report...");
             return;
         }
-        pendingRoutines.add({routineTag, inputPacket, 1, port});
-        Logger::logInfo(routine->routineName + " incomplete, requeued");
-        return;
+        auto result = executeRoutine(it->second, std::nullopt, port, false);
+        if (result.has_value())
+        {
+            sendResponsePacket(port, currentNodeConfiguration->localAddress, *result);
+        }
+        lastMinute = currentMinute;
     }
-
-    if (res.isError())
-    {
-        Logger::logError(routine->routineName + " failed: " + res.getError());
-        const auto errorPkt = buildErrorPacket(res.getError(), currentNodeConfiguration->localAddress, destination);
-        sendResponsePacket(port, currentNodeConfiguration->localAddress, errorPkt);
-        return;
-    }
-
-    sendResponsePacket(port, currentNodeConfiguration->localAddress, res.getValue());
 }
 
 
@@ -137,7 +151,7 @@ void NodeOperationRunner::checkIfMustTransition()
             );
             return;
         }
-        cache.currentOperationMode = nextOpModeResult.getValue();
+        cache.currentOperationMode = nextOpModeResult.getValueConst();
         Logger::logInfo("Transitioned to next mode..." + std::to_string(cache.currentOperationMode.key));
     }
 }
@@ -151,15 +165,18 @@ void NodeOperationRunner::processReportingRoutines()
         ErrorHandler::handleError(getClassNameString() + ": Node configuration not loaded.");
         return;
     }
-    currentNodeConfiguration->has_loraModule
-        ? tryReport(
-            "Lora",
-            currentNodeConfiguration->loraModule.entries,
-            currentNodeConfiguration->loraModule.entries_count,
-            IPort::PortType::LoraPort,
-            cache.lastReportMinute.lora, currentMinute
-        )
-        : Logger::logInfo(getClassNameString() + "LoRa module not present, skipping LoRa report.");
+    if (currentNodeConfiguration->has_loraModule)
+    {
+        tryReport(
+           "Lora",
+           currentNodeConfiguration->loraModule.entries,
+           currentNodeConfiguration->loraModule.entries_count,
+           IPort::PortType::LoraPort,
+           cache.lastReportMinute.lora, currentMinute
+       );
+    }
+    else
+        Logger::logInfo(getClassNameString() + "LoRa module not present, skipping LoRa report.");
 
     currentNodeConfiguration->has_iridiumModule
         ? tryReport(
@@ -184,6 +201,7 @@ void NodeOperationRunner::processIncomingPackets(const uint8_t& localAddress)
     }
 }
 
+
 void NodeOperationRunner::processPacket(IPort::PortType portType,
                                         const acousea_CommunicationPacket& packet,
                                         const uint8_t& localAddress)
@@ -193,55 +211,132 @@ void NodeOperationRunner::processPacket(IPort::PortType portType,
         Logger::logError(getClassNameString() + ": Packet without routing. Dropping packet...");
         return;
     }
+    Logger::logInfo("Received Command Packet from " + std::to_string(packet.routing.sender) +
+        " with BODY = " + bodyTagToString(packet.which_body) +
+        " and PAYLOAD = : " + commandPayloadTagToString(packet.body.command.which_command));
 
-    if (!packet.has_payload)
+
+    switch (packet.which_body)
     {
-        ErrorHandler::handleError(getClassNameString() + ": Packet without payload, replying with ERROR_PACKET.");
-        const auto errorPkt = buildErrorPacket("Packet without payload.", localAddress, packet.routing.sender);
-        sendResponsePacket(portType, localAddress, errorPkt);
+    case acousea_CommunicationPacket_command_tag:
+        {
+            const auto it = commandRoutines.find(packet.body.command.which_command);
+            if (it == commandRoutines.end() || it->second == nullptr)
+            {
+                Logger::logError("Routine with tag " + std::to_string(packet.body.command.which_command) +
+                    " not found. Dropping packet...");
+                auto errorPkt = buildErrorPacket("Routine not found.",
+                                                 packet.routing.receiver,
+                                                 packet.routing.sender);
+                return sendResponsePacket(portType, localAddress, errorPkt);
+            }
+            std::optional<acousea_CommunicationPacket> optResponsePacket = executeRoutine(
+                it->second, packet, portType, true);
+            if (optResponsePacket.has_value())
+            {
+                sendResponsePacket(portType, localAddress, *optResponsePacket);
+            }
+            break;
+        }
+    case acousea_CommunicationPacket_response_tag:
+        {
+            const auto it = responseRoutines.find(packet.body.response.which_response);
+            if (it == responseRoutines.end() || it->second == nullptr)
+            {
+                Logger::logError("Routine with tag " + std::to_string(packet.body.response.which_response) +
+                    " not found. Dropping packet...");
+                auto errorPkt = buildErrorPacket("Routine not found.",
+                                                 packet.routing.receiver,
+                                                 packet.routing.sender);
+                return sendResponsePacket(portType, localAddress, errorPkt);
+            }
+            std::optional<acousea_CommunicationPacket> optResponsePacket = executeRoutine(
+                it->second, packet, portType, true);
+            if (optResponsePacket.has_value())
+            {
+                sendResponsePacket(portType, localAddress, *optResponsePacket);
+            }
+            break;
+        }
+    case acousea_CommunicationPacket_report_tag:
+        Logger::logInfo("This node does not process incoming reports. Dropping packet...");
         return;
+    case acousea_CommunicationPacket_error_tag:
+        Logger::logError("Received Error Packet from " + std::to_string(packet.routing.sender) +
+            " with error: " + std::string(packet.body.error.errorMessage));
+        return;
+    default:
+        Logger::logError(getClassNameString() + "Unknown packet body type. Dropping packet...");
+        auto errorPkt = buildErrorPacket("Packet without payload.",
+                                         packet.routing.receiver,
+                                         packet.routing.sender);
+        return sendResponsePacket(portType, localAddress, errorPkt);
+    }
+}
+
+std::optional<acousea_CommunicationPacket> NodeOperationRunner::executeRoutine(
+    IRoutine<_acousea_CommunicationPacket>*& routine,
+    const std::optional<acousea_CommunicationPacket>& optPacket,
+    const IPort::PortType portType,
+    const bool requeueAllowed
+)
+{
+    Result<acousea_CommunicationPacket> result = routine->execute(optPacket);
+
+    if (result.isPending() && !requeueAllowed)
+    {
+        Logger::logError(routine->routineName + " incomplete, but requeue not allowed.");
+        return std::nullopt;
     }
 
-    const uint8_t payloadTypeTag = packet.payload.which_payload;
-    const uint8_t sender = packet.routing.sender;
-    Logger::logInfo(
-        "Processing packet " + payloadTagToString(payloadTypeTag) +
-        " from " + std::to_string(sender) +
-        " received through " + IPort::portTypeToString(portType)
-    );
-    executeRoutine(payloadTypeTag, packet, portType, sender, true);
+    if (result.isPending() && requeueAllowed)
+    {
+        pendingRoutines.add({routine, optPacket, 3, portType});
+        Logger::logInfo(routine->routineName + " incomplete, requeued");
+        return std::nullopt;
+    }
+
+    if (result.isError())
+    {
+        Logger::logError(routine->routineName + " failed: " + result.getError());
+        if (!optPacket.has_value())
+        {
+            Logger::logError(routine->routineName + ": Cannot send error packet, there was no original packet.");
+            return std::nullopt;
+        }
+        const auto& packet = *optPacket;
+        const uint8_t destination = packet.has_routing ? packet.routing.sender : Router::originAddress;
+        const acousea_CommunicationPacket errorPkt = buildErrorPacket(result.getError(),
+                                                                      currentNodeConfiguration->localAddress,
+                                                                      destination);
+        return errorPkt;
+    }
+
+    Logger::logInfo(routine->routineName + " executed successfully.");
+    return result.getValue();
 }
+
 
 void NodeOperationRunner::runPendingRoutines()
 {
     // First run incomplete routines
     while (auto entryOpt = pendingRoutines.next())
     {
-        auto& [routineTag, inputPacket, attempts, portResponseTo] = *entryOpt;
-        Logger::logInfo("Re-attempting pending routine with tag " + payloadTagToString(routineTag) +
-            ", attempt " + std::to_string(attempts)
+        auto& [routinePtr, inputPacket, attempts, portResponseTo] = *entryOpt;
+        Logger::logInfo("Re-attempting pending routine " + routinePtr->routineName +
+            " with " + std::to_string(attempts) + " attempts left."
         );
-        executeRoutine(routineTag, inputPacket, portResponseTo, currentNodeConfiguration->localAddress, false);
+        executeRoutine(routinePtr, inputPacket, portResponseTo, false);
     }
-}
-
-void NodeOperationRunner::runReportRoutine(IPort::PortType portType, unsigned long currentMinute,
-                                           unsigned long& lastReportMinute)
-{
-    executeRoutine(acousea_PayloadWrapper_statusPayload_tag,
-                   std::nullopt, portType,
-                   Router::originAddress,
-                   false);
-    lastReportMinute = currentMinute;
 }
 
 
 void NodeOperationRunner::sendResponsePacket(const IPort::PortType portType,
                                              const uint8_t& localAddress,
-                                             const acousea_CommunicationPacket& responsePacket) const
+                                             acousea_CommunicationPacket& responsePacket) const
 {
     Logger::logInfo(
-        "Sending response packet with Payload " + payloadTagToString(responsePacket.payload.which_payload) +
+        "Sending response packet with Body " + bodyTagToString(responsePacket.which_body) +
         " to " + std::to_string(localAddress) +
         " through " + IPort::portTypeToString(portType)
     );
@@ -267,23 +362,19 @@ acousea_CommunicationPacket NodeOperationRunner::buildErrorPacket(const std::str
                                                                   const uint8_t& localAddress,
                                                                   const uint8_t& destination)
 {
-    acousea_ErrorPayload errorPayload;
-    strncpy(errorPayload.errorMessage, errorMessage.c_str(), sizeof(errorPayload.errorMessage) - 1);
-    errorPayload.errorMessage[sizeof(errorPayload.errorMessage) - 1] = '\0'; // Ensure null termination
-
-    acousea_PayloadWrapper payloadWrapper = acousea_PayloadWrapper_init_default;
-    payloadWrapper.which_payload = acousea_PayloadWrapper_errorPayload_tag;
-    payloadWrapper.payload.errorPayload = errorPayload;
+    acousea_ErrorBody errorBody;
+    strncpy(errorBody.errorMessage, errorMessage.c_str(), sizeof(errorBody.errorMessage) - 1);
+    errorBody.errorMessage[sizeof(errorBody.errorMessage) - 1] = '\0'; // Ensure null termination
 
     acousea_RoutingChunk routing = acousea_RoutingChunk_init_default;
     routing.sender = localAddress;
     routing.receiver = destination;
 
     acousea_CommunicationPacket packet = acousea_CommunicationPacket_init_default;
-    packet.has_payload = true;
-    packet.payload = payloadWrapper;
     packet.has_routing = true;
     packet.routing = routing;
+    packet.which_body = acousea_CommunicationPacket_error_tag;
+    packet.body.error = errorBody;
 
     return packet;
 }

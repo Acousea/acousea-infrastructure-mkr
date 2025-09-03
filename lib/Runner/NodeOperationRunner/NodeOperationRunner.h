@@ -20,7 +20,7 @@ struct PendingRoutines
 
     struct Entry
     {
-        uint8_t routineTag;
+        Routine* routine; // rutina en ejecución
         std::optional<Packet> input{};
         uint8_t attempts = 0;
         IPort::PortType portResponseTo;
@@ -59,7 +59,9 @@ class NodeOperationRunner : public IRunnable
 {
 private:
     Router& router;
-    std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> routines;
+    std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> commandRoutines;
+    std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> responseRoutines;
+    std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> reportRoutines;
 
     // -------------------------
     // Lista de rutinas incompletas (tamaño fijo)
@@ -87,8 +89,10 @@ public:
     CLASS_NAME(NodeOperationRunner)
 
     NodeOperationRunner(Router& router,
-                        const std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>& routines,
-                        const NodeConfigurationRepository& nodeConfigurationRepository
+                        const NodeConfigurationRepository& nodeConfigurationRepository,
+                        const std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>& commandRoutines,
+                        const std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>& responseRoutines,
+                        const std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>& reportRoutines
     );
 
 
@@ -99,20 +103,23 @@ public:
 private:
     void tryReport(const std::string& moduleType, const acousea_ReportingPeriodEntry* entries, size_t entryCount,
                    IPort::PortType port, unsigned long& lastMinute, unsigned long currentMinute);
-    void executeRoutine(
-        uint8_t routineTag,
-        const std::optional<acousea_CommunicationPacket>& inputPacket, IPort::PortType port, uint8_t destination, bool
-        requeueAllowed);
+
+    std::optional<acousea_CommunicationPacket> executeRoutine(IRoutine<_acousea_CommunicationPacket>*& routine,
+                                                              const std::optional<acousea_CommunicationPacket>& optPacket,
+                                                              const IPort::PortType portType,
+                                                              bool requeueAllowed
+    );
 
     void processReportingRoutines();
     void processIncomingPackets(const uint8_t& localAddress);
     void runPendingRoutines();
 
+
     void processPacket(IPort::PortType portType, const acousea_CommunicationPacket& packet,
                        const uint8_t& localAddress);
 
     void sendResponsePacket(IPort::PortType portType, const uint8_t& localAddress,
-                            const acousea_CommunicationPacket& responsePacket) const;
+                            acousea_CommunicationPacket& responsePacket) const;
 
     [[nodiscard]] static acousea_CommunicationPacket buildErrorPacket(const std::string& errorMessage,
                                                                       const uint8_t& localAddress,
@@ -126,7 +133,6 @@ private:
                                                                         const acousea_ReportingPeriodEntry* entries,
                                                                         size_t entryCount);
 
-    void runReportRoutine(IPort::PortType portType, unsigned long currentMinute, unsigned long& lastReportMinute);
 };
 
 #endif // OPERATION_MODE_RUNNER_H

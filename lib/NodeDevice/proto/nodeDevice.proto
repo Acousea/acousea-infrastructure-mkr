@@ -70,7 +70,7 @@ message IridiumReportingModule {
 }
 
 message RTCModule {
-    int32 epochSeconds = 1;
+    uint32 epochSeconds = 1;
 }
 
 message StorageModule {
@@ -152,7 +152,7 @@ message ICListenHF {
 // codec.proto - Protobuf file defining NodeDevice and all module types explicitly
 
 enum ModuleCode {
-    MODULE_UNKNOWN = 0;
+    MODULE_UNKNOWN = 0; // This is the default value, because in Protobuf the first enum value is the default
     AMBIENT_MODULE = 1;
     BATTERY_MODULE = 2;
     LOCATION_MODULE = 3;
@@ -211,24 +211,48 @@ message StatusReportPayload {
 }
 
 message SetNodeConfigurationPayload {
-    map<int32, ModuleWrapper> modulesToChange = 1; // contiene los módulos que se desean agregar
+    map<int32, ModuleWrapper> modules = 1; // contiene los módulos que se desean agregar
 }
 
-message ErrorPayload {
+message UpdatedNodeConfigurationPayload {
+    map<int32, ModuleWrapper> modules = 1; // contiene los módulos que se desean agregar
+}
+
+
+message CommandBody {
+    oneof command {
+        SetNodeConfigurationPayload setConfiguration = 1;
+        GetUpdatedNodeConfigurationPayload requestedConfiguration = 2;
+    }
+}
+
+message ResponseBody {
+    oneof response {
+        SetNodeConfigurationPayload setConfiguration = 1;
+        UpdatedNodeConfigurationPayload updatedConfiguration = 2;
+    }
+}
+
+message ReportBody {
+    oneof report {
+        StatusReportPayload statusPayload = 1;
+    }
+}
+
+message ErrorBody {
     // Mensaje de error en texto plano. // IMPORTANTE: el tamaño debe limitarse en la aplicación (ej. 128 caracteres).
     string errorMessage = 1;
 }
 
 
-
-message PayloadWrapper {
-    oneof payload {
-        StatusReportPayload statusPayload = 1;
-        SetNodeConfigurationPayload setConfiguration = 2;
-        GetUpdatedNodeConfigurationPayload requestedConfiguration = 3;
-        ErrorPayload errorPayload = 4;
-    }
-}
+//message PayloadWrapper {
+//    oneof payload {
+//        StatusReportPayload statusPayload = 1;
+//        SetNodeConfigurationPayload setConfiguration = 2;
+//        GetUpdatedNodeConfigurationPayload requestedConfiguration = 3;
+//        ErrorPayload errorPayload = 4;
+//    }
+//}
 
 // -------------- Rockblock messages --------------
 
@@ -265,8 +289,14 @@ message RoutingChunk {
 }
 
 message CommunicationPacket {
+    uint32 packetId = 1;
     RoutingChunk routing = 2; // Contains routing information
-    PayloadWrapper payload = 3; // Contains the payload of the request
+    oneof body {
+        CommandBody command = 3;
+        ResponseBody response = 4;
+        ReportBody report = 5;
+        ErrorBody error = 6;
+    }
 }
 
 enum RequestStatus {
@@ -311,12 +341,12 @@ message StringMessage {
 
 // -------- Codec Service --------
 
-service CodecService {
-    rpc Encode (NodeDevice) returns (Bytes);
-    rpc Decode (Bytes) returns (NodeDevice);
-    rpc EncodeJson (NodeDevice) returns (StringMessage);
-    rpc DecodeJson (StringMessage) returns (NodeDevice);
-}
+//service CodecService {
+//    rpc Encode (NodeDevice) returns (Bytes);
+//    rpc Decode (Bytes) returns (NodeDevice);
+//    rpc EncodeJson (NodeDevice) returns (StringMessage);
+//    rpc DecodeJson (StringMessage) returns (NodeDevice);
+//}
 
 // ------------------- FOR MKR1310 NODES INFRASTRUCTURE -------------------
 message NodeConfiguration {

@@ -1,6 +1,7 @@
 #ifndef COMPLETE_STATUS_REPORT_ROUTINE_H
 #define COMPLETE_STATUS_REPORT_ROUTINE_H
 
+#include <utility>
 #include "IRoutine.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
 #include "IBatteryController.h"
