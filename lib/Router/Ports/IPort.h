@@ -52,6 +52,7 @@ public:
 
 
 protected:
+    ~IPort() = default;
     PortType type;
     std::deque<std::vector<uint8_t>> receivedRawPackets;
     static const size_t MAX_QUEUE_SIZE = 10;

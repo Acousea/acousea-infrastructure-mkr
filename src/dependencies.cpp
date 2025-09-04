@@ -1,6 +1,5 @@
 #include "dependencies.h"
 
-#include "routines/StoreNodeConfigurationRoutine/StoreNodeConfigurationRoutine.h"
 
 
 // =======================================================
@@ -65,11 +64,12 @@ IDisplay* display = &consoleDisplay;
 
 // --------- Puertos ----------
 MockSerialPort mockSerialPort;
+NativeSerialPort nativeSerialPort("/tmp/ttyV0", 9600);
 MockLoRaPort mockLoraPort;
 MockIridiumPort mockIridiumPort;
 HttpPort httpPort("http://10.22.146.50:8000", "123456789012345");
 
-IPort* serialPort = &mockSerialPort;
+IPort* serialPort = &nativeSerialPort;
 IPort* loraPort = &mockLoraPort;
 IPort* iridiumPort = &httpPort;
 

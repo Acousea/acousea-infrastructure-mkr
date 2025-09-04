@@ -47,6 +47,7 @@
 #include <routines/CompleteStatusReportRoutine/CompleteStatusReportRoutine.h>
 #include <routines/BasicStatusReportRoutine/BasicStatusReportRoutine.h>
 #include <routines/GetUpdatedNodeConfigurationRoutine/GetUpdatedNodeConfigurationRoutine.hpp>
+#include "routines/StoreNodeConfigurationRoutine/StoreNodeConfigurationRoutine.h"
 
 // ------------------------- REPOSITORIES -------------------------
 #include <NodeConfigurationRepository/NodeConfigurationRepository.h>
@@ -112,10 +113,12 @@
 #include <ConsoleDisplay/ConsoleDisplay.hpp>
 
 // ------------------ PORTS ------------------
+#include "Ports/Serial/NativeSerialPort.h"
 #include <Ports/Serial/MockSerialPort.h>
 #include <Ports/LoRa/MockLoRaPort.h>
 #include <Ports/Iridium/MockIridiumPort.h>
 #include <Ports/http/HttpPort.hpp>
+
 
 
 #endif

@@ -77,7 +77,7 @@ void saveDrifterConfig()
     iridiumModule.entries_count = 1;
     iridiumModule.entries[0] = acousea_ReportingPeriodEntry_init_default;
     iridiumModule.entries[0].modeId = 0;
-    iridiumModule.entries[0].period = 15;
+    iridiumModule.entries[0].period = 1;
 
     drifterConfig.has_iridiumModule = true;
     drifterConfig.iridiumModule = iridiumModule;
@@ -138,6 +138,19 @@ void setup()
     );
     Logger::logInfo("================ Setting up Node =================");
 
+
+    // Inicializa el comunicador Serial
+    serialPort->init();
+
+    // Inicializa el administrador de energía
+    battery->init();
+
+    // Inicializa el comunicador LoRa
+    loraPort->init();
+
+    // Inicializa el comunicador Iridium
+    iridiumPort->init();
+
     // Initialize the iclistenServicePtr
 #if MODE == DRIFTER_MODE
     icListenServicePtr->init();
@@ -173,17 +186,6 @@ void setup()
     saveLocalizerConfig();
 #endif
 
-    // Inicializa el comunicador Serial
-    serialPort->init();
-
-    // Inicializa el administrador de energía
-    battery->init();
-
-    // Inicializa el comunicador LoRa
-    loraPort->init();
-
-    // Inicializa el comunicador Iridium
-    iridiumPort->init();
 }
 
 void loop()

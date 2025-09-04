@@ -14,28 +14,27 @@ SetNodeConfigurationRoutine::SetNodeConfigurationRoutine(
 
 
 Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
-    const std::optional<acousea_CommunicationPacket>& optPacket)
+    const std::optional<acousea_CommunicationPacket>& inPacket)
 {
     acousea_NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
 
-    if (!optPacket.has_value())
+    if (!inPacket.has_value())
     {
         return Result<acousea_CommunicationPacket>::failure(getClassNameString() + ": No packet provided");
     }
-    const acousea_CommunicationPacket packet = optPacket.value();
 
-    if (packet.which_body != acousea_CommunicationPacket_command_tag)
+    if (inPacket.value().which_body != acousea_CommunicationPacket_command_tag)
     {
         return Result<acousea_CommunicationPacket>::failure(
             getClassNameString() + ": Packet is not of type command");
     }
-    if (packet.body.command.which_command != acousea_CommandBody_setConfiguration_tag)
+    if (inPacket.value().body.command.which_command != acousea_CommandBody_setConfiguration_tag)
     {
         return Result<acousea_CommunicationPacket>::failure(
             getClassNameString() + ": Packet command is not of type setNodeConfiguration");
     }
 
-    const auto [modules_count, modules] = packet.body.command.command.setConfiguration;
+    const auto [modules_count, modules] = inPacket.value().body.command.command.setConfiguration;
 
     for (size_t i = 0; i < modules_count; ++i)
     {
@@ -62,6 +61,7 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
                 {
                     return Result<acousea_CommunicationPacket>::failure(result.getError());
                 }
+
                 break;
             }
         case acousea_ModuleCode::acousea_ModuleCode_IRIDIUM_REPORTING_MODULE:
@@ -102,7 +102,13 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
     // Important:  Store the updated configuration
     nodeConfigurationRepository.saveConfiguration(nodeConfig);
 
-    return Result<acousea_CommunicationPacket>::success(packet);
+    acousea_CommunicationPacket outPacket = inPacket.value();
+    outPacket.which_body = acousea_CommunicationPacket_response_tag;
+    outPacket.body.response.which_response = acousea_ResponseBody_setConfiguration_tag;
+    outPacket.body.response.response.setConfiguration = inPacket.value().body.command.command.setConfiguration;
+
+
+    return Result<acousea_CommunicationPacket>::success(outPacket);
 }
 
 Result<void> SetNodeConfigurationRoutine::setOperationModes(

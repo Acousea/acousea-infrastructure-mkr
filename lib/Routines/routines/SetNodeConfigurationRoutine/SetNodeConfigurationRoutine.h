@@ -21,7 +21,7 @@ public:
         std::optional<std::shared_ptr<ICListenService>> icListenService
     );
 
-    Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& optPacket) override;
+    Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& inPacket) override;
 
 private:
     Result<void> setOperationModes(acousea_NodeConfiguration& nodeConfig,

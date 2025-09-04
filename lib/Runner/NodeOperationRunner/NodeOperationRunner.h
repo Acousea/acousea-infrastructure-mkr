@@ -8,6 +8,7 @@
 #include "routines/BasicStatusReportRoutine/BasicStatusReportRoutine.h"
 #include "Result/Result.h"
 #include "time/getMillis.hpp"
+#include <climits> // para ULONG_MAX
 
 #include <deque>
 #include <optional>
@@ -115,14 +116,12 @@ private:
     void runPendingRoutines();
 
 
-    void processPacket(IPort::PortType portType, const acousea_CommunicationPacket& packet,
-                       const uint8_t& localAddress);
+    std::optional<acousea_CommunicationPacket> processPacket(IPort::PortType portType, const acousea_CommunicationPacket& packet);
 
     void sendResponsePacket(IPort::PortType portType, const uint8_t& localAddress,
                             acousea_CommunicationPacket& responsePacket) const;
 
     [[nodiscard]] static acousea_CommunicationPacket buildErrorPacket(const std::string& errorMessage,
-                                                                      const uint8_t& localAddress,
                                                                       const uint8_t& destination);
 
     void checkIfMustTransition();

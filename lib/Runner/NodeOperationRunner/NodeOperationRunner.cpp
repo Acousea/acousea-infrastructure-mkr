@@ -58,7 +58,11 @@ NodeOperationRunner::NodeOperationRunner(Router& router,
    reportRoutines(reportRoutines),
    nodeConfigurationRepository(nodeConfigurationRepository)
 {
-    cache = {acousea_OperationModesGraphModule_GraphEntry_init_default, 0, {0, 0}};
+    cache = {
+        acousea_OperationModesGraphModule_GraphEntry_init_default,
+        0,
+        {ULONG_MAX, ULONG_MAX}
+    };
 }
 
 void NodeOperationRunner::init()
@@ -168,12 +172,12 @@ void NodeOperationRunner::processReportingRoutines()
     if (currentNodeConfiguration->has_loraModule)
     {
         tryReport(
-           "Lora",
-           currentNodeConfiguration->loraModule.entries,
-           currentNodeConfiguration->loraModule.entries_count,
-           IPort::PortType::LoraPort,
-           cache.lastReportMinute.lora, currentMinute
-       );
+            "Lora",
+            currentNodeConfiguration->loraModule.entries,
+            currentNodeConfiguration->loraModule.entries_count,
+            IPort::PortType::LoraPort,
+            cache.lastReportMinute.lora, currentMinute
+        );
     }
     else
         Logger::logInfo(getClassNameString() + "LoRa module not present, skipping LoRa report.");
@@ -196,25 +200,34 @@ void NodeOperationRunner::processIncomingPackets(const uint8_t& localAddress)
     {
         for (auto& packet : packets)
         {
-            processPacket(portType, packet, localAddress);
+            std::optional<acousea_CommunicationPacket> processingResult = processPacket(portType, packet);
+            if (!processingResult.has_value())
+            {
+                Logger::logInfo("No response packet generated for received packet with ID " +
+                    std::to_string(packet.packetId) + ". Continuing...");
+                continue;
+            }
+            acousea_CommunicationPacket& optResponsePacket = processingResult.value();
+            optResponsePacket.packetId = packet.packetId;
+            sendResponsePacket(portType, localAddress, optResponsePacket);
         }
     }
 }
 
 
-void NodeOperationRunner::processPacket(IPort::PortType portType,
-                                        const acousea_CommunicationPacket& packet,
-                                        const uint8_t& localAddress)
+std::optional<acousea_CommunicationPacket> NodeOperationRunner::processPacket(IPort::PortType portType,
+                                                                              const acousea_CommunicationPacket& packet)
 {
     if (!packet.has_routing)
     {
         Logger::logError(getClassNameString() + ": Packet without routing. Dropping packet...");
-        return;
+        // Puedes devolver un error, o bien construir una respuesta de error.
+        return std::nullopt;
     }
-    Logger::logInfo("Received Command Packet from " + std::to_string(packet.routing.sender) +
+
+    Logger::logInfo("Received Packet from " + std::to_string(packet.routing.sender) +
         " with BODY = " + bodyTagToString(packet.which_body) +
         " and PAYLOAD = : " + commandPayloadTagToString(packet.body.command.which_command));
-
 
     switch (packet.which_body)
     {
@@ -224,55 +237,48 @@ void NodeOperationRunner::processPacket(IPort::PortType portType,
             if (it == commandRoutines.end() || it->second == nullptr)
             {
                 Logger::logError("Routine with tag " + std::to_string(packet.body.command.which_command) +
-                    " not found. Dropping packet...");
-                auto errorPkt = buildErrorPacket("Routine not found.",
-                                                 packet.routing.receiver,
-                                                 packet.routing.sender);
-                return sendResponsePacket(portType, localAddress, errorPkt);
+                    " not found. Building error packet...");
+                return buildErrorPacket("Routine not found.", packet.routing.sender);
             }
+
             std::optional<acousea_CommunicationPacket> optResponsePacket = executeRoutine(
-                it->second, packet, portType, true);
-            if (optResponsePacket.has_value())
-            {
-                sendResponsePacket(portType, localAddress, *optResponsePacket);
-            }
-            break;
+                it->second, packet, portType, /*shouldRespond*/ true);
+
+            return optResponsePacket;
         }
+
     case acousea_CommunicationPacket_response_tag:
         {
             const auto it = responseRoutines.find(packet.body.response.which_response);
             if (it == responseRoutines.end() || it->second == nullptr)
             {
                 Logger::logError("Routine with tag " + std::to_string(packet.body.response.which_response) +
-                    " not found. Dropping packet...");
-                auto errorPkt = buildErrorPacket("Routine not found.",
-                                                 packet.routing.receiver,
-                                                 packet.routing.sender);
-                return sendResponsePacket(portType, localAddress, errorPkt);
+                    " not found. Building error packet...");
+                return buildErrorPacket("Routine not found.", packet.routing.sender);
             }
             std::optional<acousea_CommunicationPacket> optResponsePacket = executeRoutine(
-                it->second, packet, portType, true);
-            if (optResponsePacket.has_value())
-            {
-                sendResponsePacket(portType, localAddress, *optResponsePacket);
-            }
-            break;
+                it->second, packet, portType, /*shouldRespond*/ true);
+            return optResponsePacket;
         }
+
     case acousea_CommunicationPacket_report_tag:
-        Logger::logInfo("This node does not process incoming reports. Dropping packet...");
-        return;
+        Logger::logInfo("Report packet received, but reports are not processed by nodes. Dropping packet...");
+        return std::nullopt;
+
     case acousea_CommunicationPacket_error_tag:
         Logger::logError("Received Error Packet from " + std::to_string(packet.routing.sender) +
             " with error: " + std::string(packet.body.error.errorMessage));
-        return;
+        return std::nullopt;
+
     default:
-        Logger::logError(getClassNameString() + "Unknown packet body type. Dropping packet...");
-        auto errorPkt = buildErrorPacket("Packet without payload.",
-                                         packet.routing.receiver,
-                                         packet.routing.sender);
-        return sendResponsePacket(portType, localAddress, errorPkt);
+        {
+            Logger::logError(getClassNameString() + ": Unknown packet body type. Building error packet...");
+            return buildErrorPacket("Packet without payload.",
+                                    packet.routing.sender); // devolver al origen
+        }
     }
 }
+
 
 std::optional<acousea_CommunicationPacket> NodeOperationRunner::executeRoutine(
     IRoutine<_acousea_CommunicationPacket>*& routine,
@@ -285,14 +291,14 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::executeRoutine(
 
     if (result.isPending() && !requeueAllowed)
     {
-        Logger::logError(routine->routineName + " incomplete, but requeue not allowed.");
+        Logger::logWarning(routine->routineName + " incomplete, but requeue not allowed.");
         return std::nullopt;
     }
 
     if (result.isPending() && requeueAllowed)
     {
         pendingRoutines.add({routine, optPacket, 3, portType});
-        Logger::logInfo(routine->routineName + " incomplete, requeued");
+        Logger::logWarning(routine->routineName + " incomplete, requeued");
         return std::nullopt;
     }
 
@@ -306,9 +312,7 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::executeRoutine(
         }
         const auto& packet = *optPacket;
         const uint8_t destination = packet.has_routing ? packet.routing.sender : Router::originAddress;
-        const acousea_CommunicationPacket errorPkt = buildErrorPacket(result.getError(),
-                                                                      currentNodeConfiguration->localAddress,
-                                                                      destination);
+        const acousea_CommunicationPacket errorPkt = buildErrorPacket(result.getError(), destination);
         return errorPkt;
     }
 
@@ -359,15 +363,14 @@ void NodeOperationRunner::sendResponsePacket(const IPort::PortType portType,
 
 
 acousea_CommunicationPacket NodeOperationRunner::buildErrorPacket(const std::string& errorMessage,
-                                                                  const uint8_t& localAddress,
                                                                   const uint8_t& destination)
 {
     acousea_ErrorBody errorBody;
     strncpy(errorBody.errorMessage, errorMessage.c_str(), sizeof(errorBody.errorMessage) - 1);
     errorBody.errorMessage[sizeof(errorBody.errorMessage) - 1] = '\0'; // Ensure null termination
 
+
     acousea_RoutingChunk routing = acousea_RoutingChunk_init_default;
-    routing.sender = localAddress;
     routing.receiver = destination;
 
     acousea_CommunicationPacket packet = acousea_CommunicationPacket_init_default;
@@ -385,8 +388,10 @@ bool NodeOperationRunner::mustReport(const unsigned long currentMinute,
                                      const unsigned long reportingPeriod,
                                      const unsigned long lastReportMinute)
 {
-    return (currentMinute - lastReportMinute >= reportingPeriod && reportingPeriod != 0)
-        || lastReportMinute == 0;
+    if (reportingPeriod == 0) return false; // No reporting if period is 0 (disabled)
+    if (lastReportMinute == ULONG_MAX) return true; // Always report if never reported before
+    if (currentMinute == lastReportMinute) return false; // Avoids issues with duplicated reporting for same minute
+    return ((currentMinute - lastReportMinute) >= reportingPeriod);
 }
 
 Result<acousea_OperationModesGraphModule_GraphEntry> NodeOperationRunner::searchForOperationMode(
