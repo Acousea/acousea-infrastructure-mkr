@@ -2,50 +2,79 @@
 
 #include "SolarXBatteryController.h"
 
-SolarXBatteryController::SolarXBatteryController(uint8_t address) {
-    ina219 = Adafruit_INA219(address);
+const LinearCurve SolarXBatteryController::voltageToPercentageCurve(
+    (VOLTAGE_RANGE.max - VOLTAGE_RANGE.min) / 100,
+    VOLTAGE_RANGE.min
+);
+
+SolarXBatteryController::SolarXBatteryController(const std::vector<uint8_t>& addresses)
+{
+    for (const uint8_t addr : addresses)
+    {
+        sensors.emplace_back(addr);
+    }
 }
 
+
 bool SolarXBatteryController::init() {
-    if (!ina219.begin())
-    {
-        Serial.println("Error initializing sensor INA219");
-        return false;
+    for (size_t i = 0; i < sensors.size(); i++) {
+        if (!sensors[i].begin()) {
+            Serial.print("Error inicializando INA219 en índice ");
+            Serial.println(i);
+            return false;
+        }
+        sensors[i].setCalibration_16V_400mA(); // Configuración para 16V y 400mA
     }
-    // Configurar el sensor a un rango específico si es necesario
-    ina219.setCalibration_16V_400mA();
     return true;
 }
 
-uint8_t SolarXBatteryController::percentage() {
+
+uint8_t SolarXBatteryController::percentage()
+{
     float voltage = getVoltage();
 
-    // Asegurarse de que el voltaje esté dentro del rango esperado
-    if (voltage > MAX_VOLTAGE)
-        voltage = MAX_VOLTAGE;
-    if (voltage < MIN_VOLTAGE)
-        voltage = MIN_VOLTAGE;
+    // Clamp al rango válido
+    if (voltage > VOLTAGE_RANGE.max)
+        voltage = VOLTAGE_RANGE.max;
+    if (voltage < VOLTAGE_RANGE.min)
+        voltage = VOLTAGE_RANGE.min;
 
-    // Calcular el porcentaje basado en el voltaje
-    float percentage = ((voltage - MIN_VOLTAGE) / (MAX_VOLTAGE - MIN_VOLTAGE)) * 100.0;
+    // Usar curva lineal definida
+    float percentage = voltageToPercentageCurve.forward(voltage);
 
-    // Devolver el porcentaje en formato uint8_t
     return static_cast<uint8_t>(percentage);
 }
 
-uint8_t SolarXBatteryController::status() {
+uint8_t SolarXBatteryController::status()
+{
     float current = getCurrent();
-    if (current > 0) return 1; // Cargando
-    if (current == 0) return 2; // Desconectada
-    return 0; // Estado desconocido
+
+    if (current > 0.05f) return 1;   // Cargando
+    if (fabs(current) < 0.01f) return 2; // Desconectada (sin flujo)
+    return 0; // Descargando o estado desconocido
 }
 
-float SolarXBatteryController::getVoltage() {
-    return ina219.getBusVoltage_V();
+float SolarXBatteryController::getVoltage()
+{
+    if (sensors.empty()) return 0.0f;
+
+    float total = 0.0f;
+    for (auto& s : sensors)
+        total += s.getBusVoltage_V();
+
+    return total / sensors.size(); // Promedio
 }
 
-float SolarXBatteryController::getCurrent() {
-    return ina219.getCurrent_mA() / 1000.0; // Convertir a amperios
+float SolarXBatteryController::getCurrent()
+{
+    if (sensors.empty()) return 0.0f;
+
+    float total = 0.0f;
+    for (auto& s : sensors)
+        total += s.getCurrent_mA() / 1000.0f; // mA -> A
+
+    return total / sensors.size(); // Promedio
 }
+
 
 #endif

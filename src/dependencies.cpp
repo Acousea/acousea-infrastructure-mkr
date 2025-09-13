@@ -1,5 +1,7 @@
 #include "dependencies.h"
 
+#include "Ports/Serial/MockSerialPort.h"
+#include "SolarXBatteryController/SolarXBatteryController.h"
 
 
 // =======================================================
@@ -10,21 +12,24 @@
 PMICBatteryController pmicBatteryController;
 AdafruitLCBatteryController adafruitLCBatteryController;
 MockBatteryController mockBatteryController;
-IBatteryController* battery = &adafruitLCBatteryController; // o PMIC según HW
+SolarXBatteryController solarXBatteryController(std::vector<uint8_t>{0x40, 0x41});
+IBatteryController* battery = &mockBatteryController; // o PMIC según HW
 
 // --------- Display ----------
 AdafruitDisplay adafruitDisplay;
 SerialUSBDisplay serialUSBDisplay;
-IDisplay* display = &adafruitDisplay;
+IDisplay* display = &serialUSBDisplay;
 
 // --------- Puertos ----------
 SerialPort realSerialPort(&Serial1, 4800);
-LoraPort realLoraPort;
-IridiumPort realIridiumPort;
+MockLoRaPort mockLoraPort;
+MockIridiumPort mockIridiumPort;
+// LoraPort realLoraPort;
+// IridiumPort realIridiumPort;
 
 IPort* serialPort = &realSerialPort;
-IPort* loraPort = &realLoraPort;
-IPort* iridiumPort = &realIridiumPort;
+IPort* loraPort = &mockLoraPort;
+IPort* iridiumPort = &mockIridiumPort;
 
 // --------- GPS ----------
 MockGPS mockGPS(0.0, 0.0, 1.0);
@@ -35,7 +40,7 @@ IGPS* gps = &mkrGPS;
 // --------- RTC ----------
 ZeroRTCController zeroRTCController;
 MockRTCController mockRTCController;
-RTCController* rtcController = &zeroRTCController;
+RTCController* rtcController = &mockRTCController;
 
 // --------- Storage ----------
 SDStorageManager sdStorageManager;
