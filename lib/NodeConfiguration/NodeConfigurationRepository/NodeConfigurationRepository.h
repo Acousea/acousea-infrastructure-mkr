@@ -12,8 +12,7 @@
 #include <pb_decode.h>
 
 
-class NodeConfigurationRepository
-{
+class NodeConfigurationRepository{
 public:
     explicit NodeConfigurationRepository(StorageManager& sdManager);
 
@@ -34,7 +33,7 @@ private:
 
 private:
     StorageManager& storageManager;
-    static auto constexpr configFilePath = "node_config";
+    inline static const char* configFilePath = "nodeconf"; // MAX 8 chars for 8.3 filenames
 };
 
 #endif // REPORTING_PERIOD_MANAGER_H

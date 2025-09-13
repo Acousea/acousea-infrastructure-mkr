@@ -8,7 +8,7 @@
 // =======================================================
 // ---- Batería ----
 extern MockBatteryController mockBatteryController;
-extern IBatteryController* battery;
+extern IBatteryController* batteryController;
 
 // ---- Display ----
 extern IDisplay* display;
