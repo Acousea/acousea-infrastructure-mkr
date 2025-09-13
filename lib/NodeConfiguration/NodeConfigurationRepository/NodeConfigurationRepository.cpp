@@ -9,11 +9,12 @@ NodeConfigurationRepository::NodeConfigurationRepository(StorageManager& sdManag
 void NodeConfigurationRepository::init()
 {
     const std::string content = storageManager.readFile(configFilePath);
+    Logger::logInfo("NodeConfigurationRepository::init() -> Reading configuration from file " + std::string(configFilePath));
 
     if (content.empty())
     {
         Logger::logError(
-            "NodeConfigurationRepository::begin() -> No configuration file found. Creating default configuration.");
+            "NodeConfigurationRepository::init() -> No configuration file found. Creating default configuration.");
         if (!saveConfiguration(makeDefault()))
         {
             ErrorHandler::handleError("NodeConfigurationRepository::begin() -> Error saving default configuration.");

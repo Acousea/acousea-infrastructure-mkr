@@ -13,7 +13,7 @@ PMICBatteryController pmicBatteryController;
 AdafruitLCBatteryController adafruitLCBatteryController;
 MockBatteryController mockBatteryController;
 SolarXBatteryController solarXBatteryController(std::vector<uint8_t>{0x40, 0x41});
-IBatteryController* battery = &mockBatteryController; // o PMIC según HW
+IBatteryController* batteryController = &solarXBatteryController; // o PMIC según HW
 
 // --------- Display ----------
 AdafruitDisplay adafruitDisplay;
@@ -35,7 +35,7 @@ IPort* iridiumPort = &mockIridiumPort;
 MockGPS mockGPS(0.0, 0.0, 1.0);
 MKRGPS mkrGPS;
 UBloxGNSS uBloxGPS;
-IGPS* gps = &mkrGPS;
+IGPS* gps = &mockGPS;
 
 // --------- RTC ----------
 ZeroRTCController zeroRTCController;
@@ -112,7 +112,7 @@ SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationReposit
 GetUpdatedNodeConfigurationRoutine getUpdatedNodeConfigurationRoutine(nodeConfigurationRepository,
                                                                       icListenServicePtr,
                                                                       gps,
-                                                                      battery,
+                                                                      batteryController,
                                                                       rtcController
 );
 
@@ -126,7 +126,7 @@ GetUpdatedNodeConfigurationRoutine getUpdatedNodeConfigurationRoutine(nodeConfig
 CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationRepository,
                                                          icListenServicePtr,
                                                          gps,
-                                                         battery
+                                                         batteryController
 );
 
 // CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationRepository,
@@ -136,7 +136,7 @@ CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationReposi
 // );
 
 BasicStatusReportRoutine basicSummaryReportRoutine(
-    nodeConfigurationRepository, gps, battery, rtcController
+    nodeConfigurationRepository, gps, batteryController, rtcController
 );
 
 StoreNodeConfigurationRoutine storeNodeConfigurationRoutine(

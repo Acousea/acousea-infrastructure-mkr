@@ -96,7 +96,7 @@ void setup()
     ENSURE(display, "display");
     ENSURE(gps, "gps");
     ENSURE(rtcController, "rtcController");
-    ENSURE(battery, "battery");
+    ENSURE(batteryController, "battery");
     ENSURE(serialPort, "serialPort");
     ENSURE(loraPort, "loraPort");
     ENSURE(iridiumPort, "iridiumPort");
@@ -133,7 +133,7 @@ void setup()
     Logger::initialize(
         display,
         storageManager,
-        "log",
+        "log", // MAX 8 chars for 8.3 filenames
         Logger::Mode::Both
     );
     Logger::logInfo("================ Setting up Node =================");
@@ -143,7 +143,7 @@ void setup()
     serialPort->init();
 
     // Inicializa el administrador de energía
-    battery->init();
+    batteryController->init();
 
     // Inicializa el comunicador LoRa
     loraPort->init();
@@ -194,8 +194,10 @@ void loop()
     // Operate every 30 seconds
     if (getMillis() - lastTime >= 15000 || lastTime == 0)
     {
-        nodeOperationRunner.init();
-        nodeOperationRunner.run();
+        // nodeOperationRunner.init();
+        // nodeOperationRunner.run();
+        const auto percentage = batteryController->percentage();
+        const auto status = batteryController->status();
         lastTime = getMillis();
     }
 }
