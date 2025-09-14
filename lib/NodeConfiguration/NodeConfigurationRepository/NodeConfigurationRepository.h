@@ -3,7 +3,7 @@
 
 
 #include <string>
-#include "generated/nodeDevice.pb.h"
+#include "bindings/nodeDevice.pb.h"
 #include "ErrorHandler/ErrorHandler.h"
 #include "StorageManager/StorageManager.hpp"
 #include "Logger/Logger.h"

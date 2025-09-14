@@ -23,7 +23,7 @@
 // ================== Common ==================
 #include <Router.h>
 #include <StorageManager/StorageManager.hpp>
-#include <generated/nodeDevice.pb.h>
+#include <bindings/nodeDevice.pb.h>
 
 // ------------------------- SHARED LIBRARIES -------------------------
 #include <Result/Result.h>

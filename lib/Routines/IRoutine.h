@@ -6,7 +6,7 @@
 #include <utility>
 #include "Result/Result.h"
 
-#include "generated/nodeDevice.pb.h"
+#include "bindings/nodeDevice.pb.h"
 #include "ClassName.h"
 
 

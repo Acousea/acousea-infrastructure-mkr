@@ -1,7 +1,20 @@
 import shutil
 from pathlib import Path
 
-Import("env")
+Import("env", "projenv")
+
+# Dump global construction environment (for debug purpose)
+# print("*" * 30 + " Environment Dump " + "*" * 30)
+# print(env.Dump())
+# print("*" * 30 + " Project Environment Dump " + "*" * 30)
+# print(projenv.Dump())
+
+# Print the target and source files (for debug purpose)
+print("=" * 60)
+print("Current CLI targets", COMMAND_LINE_TARGETS)
+print("Current Build targets", BUILD_TARGETS)
+print("=" * 60)
+
 
 def copy_nanopb_files(source, target, env):
     print("[COPY] Copiando archivos .pb.c y .pb.h generados por Nanopb...")
@@ -9,7 +22,7 @@ def copy_nanopb_files(source, target, env):
     build_dir = Path(env.subst("$BUILD_DIR"))
     nanopb_gen_src_dir = build_dir / "nanopb" / "generated-src"
 
-    dest_dir = Path(env.subst("$PROJECT_DIR")) / "lib"  / "NodeDevice" / "generated"
+    dest_dir = Path(env.subst("$PROJECT_DIR")) / "lib" / "NodeDevice" / "bindings"
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     files_to_copy = list(nanopb_gen_src_dir.glob("*.pb.*"))
@@ -32,4 +45,4 @@ def copy_nanopb_files(source, target, env):
 # Se ejecuta tras compilar el binario principal
 # env.AddPostAction("$BUILD_DIR/${PROGNAME}.elf", copy_nanopb_files)
 # env.AddPreAction("$BUILD_DIR/${PROGNAME}.elf", copy_nanopb_files)
-env.AddPreAction("buildprog", copy_nanopb_files)
+env.AddPreAction("$BUILD_DIR/nanopb/generated-build/nodeDevice.pb.c.o", copy_nanopb_files)

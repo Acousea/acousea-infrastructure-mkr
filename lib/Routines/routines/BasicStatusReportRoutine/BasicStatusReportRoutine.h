@@ -5,7 +5,7 @@
 #include "IGPS.h"
 #include "IBatteryController.h"
 #include "RTCController.hpp"
-#include "generated/nodeDevice.pb.h"
+#include "bindings/nodeDevice.pb.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
 
 

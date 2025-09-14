@@ -1,0 +1,3 @@
+[submodule "lib/NodeDevice"]
+	path = lib/NodeDevice
+	url = https://github.com/acousea/acousea-shared.git

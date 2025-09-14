@@ -7,8 +7,8 @@
 #include <Result/Result.h>
 #include <Logger/Logger.h>
 
-#include "generated/nodeDevice.pb.h"
-#include "generated/nodeDevice.pb.h"
+#include "bindings/nodeDevice.pb.h"
+#include "bindings/nodeDevice.pb.h"
 #include <pb_encode.h>
 #include <pb_decode.h>
 
