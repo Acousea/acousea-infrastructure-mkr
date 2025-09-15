@@ -27,7 +27,7 @@ private:
     Result<void> setOperationModes(acousea_NodeConfiguration& nodeConfig,
                                    const acousea_SetNodeConfigurationPayload_ModulesEntry& moduleEntry
     );
-    [[nodiscard]] static Result<void> setOperationModesGraph(acousea_NodeConfiguration& nodeConfig,
+    [[nodiscard]] static Result<void> setReportTypesModule(acousea_NodeConfiguration& nodeConfig,
                                                              const acousea_SetNodeConfigurationPayload_ModulesEntry&
                                                              moduleEntry
     );

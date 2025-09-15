@@ -10,8 +10,7 @@
 // #define MODE LOCALIZER_MODE // Cambiar a DRIFTER_MODE o LOCALIZER_MODE según sea necesario
 #define MODE DRIFTER_MODE // Cambiar a DRIFTER_MODE o LOCALIZER_MODE según sea necesario
 
-void saveLocalizerConfig()
-{
+void saveLocalizerConfig(){
     acousea_NodeConfiguration localizerConfig = acousea_NodeConfiguration_init_default;
 
     localizerConfig.localAddress = 2;
@@ -26,22 +25,28 @@ void saveLocalizerConfig()
     snprintf(localizerConfig.operationModesModule.modes[0].name,
              sizeof(localizerConfig.operationModesModule.modes[0].name),
              "Default mode");
+    localizerConfig.operationModesModule.modes[0].reportTypeId = 0;
+    localizerConfig.operationModesModule.activeModeId = 0;
 
-    localizerConfig.has_operationGraphModule = true;
-    localizerConfig.operationGraphModule = acousea_OperationModesGraphModule_init_default;
-    localizerConfig.operationGraphModule.graph_count = 1;
-    localizerConfig.operationGraphModule.graph[0] = acousea_OperationModesGraphModule_GraphEntry_init_default;
-    localizerConfig.operationGraphModule.graph[0].key = 0;
-    localizerConfig.operationGraphModule.graph[0].has_value = true;
-    localizerConfig.operationGraphModule.graph[0].value.targetMode = 0;
-    localizerConfig.operationGraphModule.graph[0].value.duration = 3;
+
+    localizerConfig.has_reportTypesModule = true;
+    localizerConfig.reportTypesModule = acousea_ReportTypesModule_init_default;
+    localizerConfig.reportTypesModule.reportTypes_count = 1;
+    localizerConfig.reportTypesModule.reportTypes[0] = acousea_ReportType_init_default;
+    localizerConfig.reportTypesModule.reportTypes[0].id = 0;
+    snprintf(localizerConfig.reportTypesModule.reportTypes[0].name,
+             sizeof(localizerConfig.reportTypesModule.reportTypes[0].name),
+             "Default report");
+
+    localizerConfig.reportTypesModule.reportTypes[0].includedModules_count = 1;
+    localizerConfig.reportTypesModule.reportTypes[0].includedModules[0] = acousea_ModuleCode_LOCATION_MODULE;
+
+
     // Save the configuration
-
     nodeConfigurationRepository.saveConfiguration(localizerConfig);
 }
 
-void saveDrifterConfig()
-{
+void saveDrifterConfig(){
     acousea_NodeConfiguration drifterConfig = acousea_NodeConfiguration_init_default;
     drifterConfig.localAddress = 1;
 
@@ -53,17 +58,26 @@ void saveDrifterConfig()
     snprintf(drifterConfig.operationModesModule.modes[0].name,
              sizeof(drifterConfig.operationModesModule.modes[0].name),
              "Default mode");
+    drifterConfig.operationModesModule.modes[0].reportTypeId = 0;
+    drifterConfig.operationModesModule.activeModeId = 0;
 
 
-    drifterConfig.has_operationGraphModule = true;
-    drifterConfig.operationGraphModule = acousea_OperationModesGraphModule_init_default;
-    drifterConfig.operationGraphModule.graph_count = 1;
-    drifterConfig.operationGraphModule.graph[0] = acousea_OperationModesGraphModule_GraphEntry_init_default;
-    drifterConfig.operationGraphModule.graph[0].key = 0;
-    drifterConfig.operationGraphModule.graph[0].has_value = true;
-    drifterConfig.operationGraphModule.graph[0].value.targetMode = 0;
-    drifterConfig.operationGraphModule.graph[0].value.duration = 1;
+    drifterConfig.has_reportTypesModule = true;
+    drifterConfig.reportTypesModule = acousea_ReportTypesModule_init_default;
+    drifterConfig.reportTypesModule.reportTypes_count = 1;
+    drifterConfig.reportTypesModule.reportTypes[0] = acousea_ReportType_init_default;
+    drifterConfig.reportTypesModule.reportTypes[0].id = 0;
+    snprintf(drifterConfig.reportTypesModule.reportTypes[0].name,
+             sizeof(drifterConfig.reportTypesModule.reportTypes[0].name),
+             "Default report");
 
+    drifterConfig.reportTypesModule.reportTypes[0].includedModules_count = 3;
+    drifterConfig.reportTypesModule.reportTypes[0].includedModules[0] = acousea_ModuleCode_BATTERY_MODULE;
+    drifterConfig.reportTypesModule.reportTypes[0].includedModules[1] = acousea_ModuleCode_AMBIENT_MODULE;
+    drifterConfig.reportTypesModule.reportTypes[0].includedModules[2] = acousea_ModuleCode_LOCATION_MODULE;
+
+
+    // ---------------- LoRa e Iridium con 15s en modo 0 ----------------
     acousea_LoRaReportingModule loraModule = acousea_LoRaReportingModule_init_default;
     loraModule.entries_count = 1;
     loraModule.entries[0] = acousea_ReportingPeriodEntry_init_default;
@@ -87,8 +101,7 @@ void saveDrifterConfig()
 }
 
 
-void setup()
-{
+void setup(){
 #if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
     std::printf("[native] Setup: starting...\n");
 #endif
@@ -120,8 +133,7 @@ void setup()
     //    adafruitDisplay.init();
 
     // Inicializa el administrador de la tarjeta SD
-    if (!storageManager->begin())
-    {
+    if (!storageManager->begin()){
         ErrorHandler::handleError("Failed to initialize SD card.");
     }
 
@@ -185,15 +197,12 @@ void setup()
 #elif MODE == LOCALIZER_MODE
     saveLocalizerConfig();
 #endif
-
 }
 
-void loop()
-{
+void loop(){
     static unsigned long lastTime = 0;
     // Operate every 30 seconds
-    if (getMillis() - lastTime >= 15000 || lastTime == 0)
-    {
+    if (getMillis() - lastTime >= 15000 || lastTime == 0){
         // nodeOperationRunner.init();
         // nodeOperationRunner.run();
         const auto percentage = batteryController->percentage();

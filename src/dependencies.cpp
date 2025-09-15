@@ -123,21 +123,19 @@ GetUpdatedNodeConfigurationRoutine getUpdatedNodeConfigurationRoutine(nodeConfig
 //                                                                       rtcController
 // );
 
-CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationRepository,
-                                                         icListenServicePtr,
-                                                         gps,
-                                                         batteryController
+CompleteStatusReportRoutine completeStatusReportRoutine(nodeConfigurationRepository,
+                                                        icListenServicePtr,
+                                                        gps,
+                                                        batteryController,
+                                                        rtcController
 );
 
 // CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationRepository,
 //                                                          std::nullopt,
 //                                                          gps,
-//                                                          battery
-// );
-
-BasicStatusReportRoutine basicSummaryReportRoutine(
-    nodeConfigurationRepository, gps, batteryController, rtcController
-);
+//                                                          batteryController,
+//                                                          rtcController
+// );s
 
 StoreNodeConfigurationRoutine storeNodeConfigurationRoutine(
     nodeConfigurationRepository,
@@ -156,8 +154,7 @@ std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> responseRoutines = {
 
 
 std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> reportRoutines = {
-    {acousea_ReportBody_statusPayload_tag, &completeSummaryReportRoutine},
-    {acousea_ReportBody_statusPayload_tag, &basicSummaryReportRoutine},
+    {acousea_ReportBody_statusPayload_tag, &completeStatusReportRoutine},
 };
 
 

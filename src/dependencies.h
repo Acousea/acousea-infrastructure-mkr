@@ -38,9 +38,7 @@ extern std::shared_ptr<ICListenService> icListenServicePtr;
 
 // Routines
 extern SetNodeConfigurationRoutine setNodeConfigurationRoutine;
-extern CompleteStatusReportRoutine completeSummaryReportRoutine;
-extern BasicStatusReportRoutine basicSummaryReportRoutine;
-
+extern CompleteStatusReportRoutine completeStatusReportRoutine;
 
 extern std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> configurationRoutines;
 

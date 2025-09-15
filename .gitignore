@@ -2,4 +2,4 @@
 .vscode
 .idea
 
-lib/NodeDevice/generated
+lib/NodeDevice

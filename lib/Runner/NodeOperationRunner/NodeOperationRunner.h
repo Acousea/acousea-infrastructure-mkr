@@ -5,7 +5,6 @@
 #include "IRunnable.h"
 #include "Router.h"
 #include "routines/CompleteStatusReportRoutine/CompleteStatusReportRoutine.h"
-#include "routines/BasicStatusReportRoutine/BasicStatusReportRoutine.h"
 #include "Result/Result.h"
 #include "time/getMillis.hpp"
 #include <climits> // para ULONG_MAX
@@ -56,7 +55,7 @@ struct PendingRoutines
 /**
  * @brief Class that runs the operation modes of the node
  */
-class NodeOperationRunner : public IRunnable
+class NodeOperationRunner final: public IRunnable
 {
 private:
     Router& router;
@@ -76,7 +75,7 @@ private:
     // Struct to store the current currentOperationMode and cycle count
     struct Cache
     {
-        acousea_OperationModesGraphModule_GraphEntry currentOperationMode;
+        acousea_OperationMode currentOperationMode;
         uint8_t cycleCount;
 
         struct
@@ -127,7 +126,7 @@ private:
     void checkIfMustTransition();
     static bool mustReport(unsigned long currentMinute, unsigned long reportingPeriod, unsigned long lastReportMinute);
 
-    [[nodiscard]] Result<acousea_OperationModesGraphModule_GraphEntry> searchForOperationMode(uint8_t modeId) const;
+    [[nodiscard]] Result<acousea_OperationMode> searchForOperationMode(uint8_t modeId) const;
     static Result<acousea_ReportingPeriodEntry> searchForReportingEntry(uint8_t modeId,
                                                                         const acousea_ReportingPeriodEntry* entries,
                                                                         size_t entryCount);
