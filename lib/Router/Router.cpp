@@ -83,7 +83,7 @@ std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> Router::readP
             Result<acousea_CommunicationPacket> decodedPacketResult = decodePacket(rawData);
             if (decodedPacketResult.isError())
             {
-                Logger::logError("Router::readPorts() -> decode falló: " + decodedPacketResult.getError());
+                Logger::logError("Router::readPorts() -> decode failed: " + decodedPacketResult.getError());
                 continue;
             }
 
@@ -92,7 +92,7 @@ std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> Router::readP
             // Si no hay routing, no podemos decidir destino
             if (!packet.has_routing)
             {
-                Logger::logError("Router::readPorts() -> paquete sin routing, ignorado");
+                Logger::logError("Router::readPorts() -> packet has no routing info. Ignoring packet...");
                 continue;
             }
 

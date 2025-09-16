@@ -13,6 +13,12 @@ Import("env", "projenv")
 print("=" * 60)
 print("Current CLI targets", COMMAND_LINE_TARGETS)
 print("Current Build targets", BUILD_TARGETS)
+print("Building project from", env.subst("$PROJECT_DIR"))
+print("Project name is", env.subst("$PROGNAME"))
+print("Project version is", env.subst("$VERSION"))
+print("Building for board", env.subst("$BOARD"))
+print("Building in", env.subst("$BUILD_DIR"))
+print("Using framework", env.subst("$PIOFRAMEWORK"))
 print("=" * 60)
 
 
@@ -43,6 +49,6 @@ def copy_nanopb_files(source, target, env):
 
 
 # Se ejecuta tras compilar el binario principal
-# env.AddPostAction("$BUILD_DIR/${PROGNAME}.elf", copy_nanopb_files)
-# env.AddPreAction("$BUILD_DIR/${PROGNAME}.elf", copy_nanopb_files)
-env.AddPreAction("$BUILD_DIR/nanopb/generated-build/nodeDevice.pb.c.o", copy_nanopb_files)
+env.AddPreAction("$BUILD_DIR/nanopb/generated-build/nodeDevice.pb.c.o", copy_nanopb_files) # For MKR1310
+env.AddPreAction("$BUILD_DIR/nanopb/generated-build/nodeDevice.pb.o", copy_nanopb_files) # For Native
+

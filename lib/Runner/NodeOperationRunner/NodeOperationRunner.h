@@ -101,7 +101,7 @@ public:
     void run() override;
 
 private:
-    void tryReport(const std::string& moduleType, const acousea_ReportingPeriodEntry* entries, size_t entryCount,
+    void tryReport(const std::string& reportModuleTypeStr, const acousea_ReportingPeriodEntry* entries, size_t entryCount,
                    IPort::PortType port, unsigned long& lastMinute, unsigned long currentMinute);
 
     std::optional<acousea_CommunicationPacket> executeRoutine(IRoutine<_acousea_CommunicationPacket>*& routine,

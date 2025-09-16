@@ -56,9 +56,9 @@ NodeOperationRunner::NodeOperationRunner(Router& router,
 }
 
 void NodeOperationRunner::init(){
-    Logger::logInfo(
-        std::string("[Init] Operation Cycle for Operation Mode=") +
-        std::string(cache.currentOperationMode.name) +
+    Logger::logInfo(getClassNameString() +
+        std::string("<Init> Operation Cycle for Operation Mode ") +
+         std::to_string(cache.currentOperationMode.id) + "=" + std::string(cache.currentOperationMode.name) +
         " with configuration: "
     );
 
@@ -74,13 +74,10 @@ void NodeOperationRunner::init(){
     }
 
     cache.currentOperationMode = opModeResult.getValueConst();
-    Logger::logInfo("[Init] Starting in Operation Mode=" + std::to_string(cache.currentOperationMode.id) + "=" +
-        " (" + std::string(cache.currentOperationMode.name) + ")"
-    );
 }
 
 void NodeOperationRunner::run(){
-    Logger::logInfo("[Run] Operation Cycle for Operation mode=" +
+    Logger::logInfo(getClassNameString() + "<Run> Operation Cycle for Operation mode " +
         std::to_string(cache.currentOperationMode.id) + "=" + " (" + std::string(cache.currentOperationMode.name) + ")"
     );
     checkIfMustTransition();
@@ -88,13 +85,13 @@ void NodeOperationRunner::run(){
     runPendingRoutines();
     processReportingRoutines();
     cache.cycleCount++;
-    Logger::logInfo("[Finish] Operation Cycle for Operation mode=" +
+    Logger::logInfo(getClassNameString() + "<Finish> Operation Cycle for Operation mode " +
         std::to_string(cache.currentOperationMode.id) + "=" + " (" + std::string(cache.currentOperationMode.name) + ")"
     );
 }
 
 
-void NodeOperationRunner::tryReport(const std::string& moduleType,
+void NodeOperationRunner::tryReport(const std::string& reportModuleTypeStr,
                                     const acousea_ReportingPeriodEntry* entries,
                                     const size_t entryCount,
                                     IPort::PortType port,
@@ -102,20 +99,20 @@ void NodeOperationRunner::tryReport(const std::string& moduleType,
                                     unsigned long currentMinute){
     const auto cfg = searchForReportingEntry(cache.currentOperationMode.id, entries, entryCount);
     if (cfg.isError()){
-        Logger::logError(moduleType + " reporting entry not found: " + cfg.getError());
+        Logger::logError(reportModuleTypeStr + " reporting entry not found: " + cfg.getError());
         return;
     }
 
     auto [modeId, period] = cfg.getValueConst();
 
-    Logger::logInfo(moduleType + " Config: { Period=" + std::to_string(period) +
+    Logger::logInfo(getClassNameString() + reportModuleTypeStr + " Config: { Period=" + std::to_string(period) +
         ", Current minute=" + std::to_string(currentMinute) +
         ", Last report minute=" + std::to_string(lastMinute) + " }");
 
     if (mustReport(currentMinute, period, lastMinute)){
         const auto it = reportRoutines.find(acousea_ReportBody_statusPayload_tag);
         if (it == reportRoutines.end() || it->second == nullptr){
-            Logger::logError("Report routine with tag " + std::to_string(modeId) +
+            Logger::logError(getClassNameString() + "Report routine with tag " + std::to_string(modeId) +
                 " not found. Skipping report...");
             return;
         }
@@ -146,7 +143,7 @@ void NodeOperationRunner::checkIfMustTransition(){
             return;
         }
         cache.currentOperationMode = nextOpModeResult.getValueConst();
-        Logger::logInfo("Transitioned to next mode..." +
+        Logger::logInfo(getClassNameString() + "Transitioned to next mode..." +
             std::to_string(cache.currentOperationMode.id) + "=" + " (" + std::string(cache.currentOperationMode.name) +
             ")"
         );
@@ -189,7 +186,7 @@ void NodeOperationRunner::processIncomingPackets(const uint8_t& localAddress){
         for (auto& packet : packets){
             std::optional<acousea_CommunicationPacket> processingResult = processPacket(portType, packet);
             if (!processingResult.has_value()){
-                Logger::logInfo("No response packet generated for received packet with ID " +
+                Logger::logInfo(getClassNameString() + "No response packet generated for received packet with ID " +
                     std::to_string(packet.packetId) + ". Continuing...");
                 continue;
             }
@@ -210,15 +207,15 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::processPacket(IP
         return std::nullopt;
     }
 
-    Logger::logInfo("Received Packet from " + std::to_string(packet.routing.sender) +
+    Logger::logInfo(getClassNameString() + "Received Packet from " + std::to_string(packet.routing.sender) +
         " with BODY = " + bodyTagToString(packet.which_body) +
-        " and PAYLOAD = : " + commandPayloadTagToString(packet.body.command.which_command));
+        " and PAYLOAD = " + commandPayloadTagToString(packet.body.command.which_command));
 
     switch (packet.which_body){
     case acousea_CommunicationPacket_command_tag: {
         const auto it = commandRoutines.find(packet.body.command.which_command);
         if (it == commandRoutines.end() || it->second == nullptr){
-            Logger::logError("Routine with tag " + std::to_string(packet.body.command.which_command) +
+            Logger::logError(getClassNameString() + "Routine with tag " + std::to_string(packet.body.command.which_command) +
                 " not found. Building error packet...");
             return buildErrorPacket("Routine not found.", packet.routing.sender);
         }
@@ -232,7 +229,8 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::processPacket(IP
     case acousea_CommunicationPacket_response_tag: {
         const auto it = responseRoutines.find(packet.body.response.which_response);
         if (it == responseRoutines.end() || it->second == nullptr){
-            Logger::logError("Routine with tag " + std::to_string(packet.body.response.which_response) +
+            Logger::logError(getClassNameString() + "Routine with tag " +
+                std::to_string(packet.body.response.which_response) +
                 " not found. Building error packet...");
             return buildErrorPacket("Routine not found.", packet.routing.sender);
         }
@@ -242,11 +240,11 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::processPacket(IP
     }
 
     case acousea_CommunicationPacket_report_tag:
-        Logger::logInfo("Report packet received, but reports are not processed by nodes. Dropping packet...");
+        Logger::logInfo(getClassNameString() + "Report packet received, but reports are not processed by nodes. Dropping packet...");
         return std::nullopt;
 
     case acousea_CommunicationPacket_error_tag:
-        Logger::logError("Received Error Packet from " + std::to_string(packet.routing.sender) +
+        Logger::logError(getClassNameString() + "Received Error Packet from " + std::to_string(packet.routing.sender) +
             " with error: " + std::string(packet.body.error.errorMessage));
         return std::nullopt;
 

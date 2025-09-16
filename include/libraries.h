@@ -1,38 +1,20 @@
 #ifndef libraries_h
 #define libraries_h
 
-// ------------------ ARDUINO LIBRARIES ------------------
-//#include <Arduino.h>
-//#include "wiring_private.h"
-//#include <SPI.h>
-//#include <Wire.h>
-//#include <SD.h>
-//#include <LoRa.h>
-//#include <Adafruit_GFX.h>
-//#include <Adafruit_SSD1306.h>
-//#include <Adafruit_LC709203F.h>
-//#include <Arduino_MKRGPS.h>
-//#include <Arduino_PMIC.h>
-//#include <RTCZero.h>
-//#include <IridiumSBD.h>
-//#include <ArduinoJson.h>
-//#include <SparkFun_u-blox_GNSS_Arduino_Library.h> //http://librarymanager/All#SparkFun_u-blox_GNSS
-//#include <ArduinoLowPower.h>
-//#include <Adafruit_SleepyDog.h>
 
-// ================== Common ==================
-#include <Router.h>
-#include <StorageManager/StorageManager.hpp>
+// ------------------------- PROTOBUF -------------------------
 #include <bindings/nodeDevice.pb.h>
 
 // ------------------------- SHARED LIBRARIES -------------------------
 #include <Result/Result.h>
 #include <CRC/CRCUtils.h>
-#include <StorageManager/StorageManager.hpp>
 #include "Logger/Logger.h"
 #include <ErrorHandler/ErrorHandler.h>
 #include <ClassName.h>
+#include "time/getMillis.hpp"
 
+// ------------------ ROUTER ------------------
+#include <Router.h>
 // ------------------ DISPLAY ------------------
 #include <IDisplay.h>
 
@@ -88,11 +70,13 @@
 #include <Ports/Serial/MockSerialPort.h>
 #include <Ports/LoRa/MockLoRaPort.h>
 #include <Ports/Iridium/MockIridiumPort.h>
+#include <Ports/Serial/MockSerialPort.h>
 
 
 // ------------------ CONTROLLERS ------------------
 #include <MosfetController/MosfetController.hpp>
 #include <RockPiPowerController/RockPiPowerController.hpp>
+#include <SolarXBatteryController/SolarXBatteryController.h>
 
 #else // NATIVE
 
@@ -122,6 +106,24 @@
 
 #endif
 
+// ------------------ ARDUINO LIBRARIES ------------------
+//#include <Arduino.h>
+//#include "wiring_private.h"
+//#include <SPI.h>
+//#include <Wire.h>
+//#include <SD.h>
+//#include <LoRa.h>
+//#include <Adafruit_GFX.h>
+//#include <Adafruit_SSD1306.h>
+//#include <Adafruit_LC709203F.h>
+//#include <Arduino_MKRGPS.h>
+//#include <Arduino_PMIC.h>
+//#include <RTCZero.h>
+//#include <IridiumSBD.h>
+//#include <ArduinoJson.h>
+//#include <SparkFun_u-blox_GNSS_Arduino_Library.h> //http://librarymanager/All#SparkFun_u-blox_GNSS
+//#include <ArduinoLowPower.h>
+//#include <Adafruit_SleepyDog.h>
 
 
 #endif

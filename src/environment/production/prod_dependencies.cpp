@@ -1,4 +1,4 @@
-#include "dependencies.h"
+#include "prod_dependencies.h"
 
 #include "Ports/Serial/MockSerialPort.h"
 #include "SolarXBatteryController/SolarXBatteryController.h"
@@ -61,7 +61,7 @@ RockPiPowerController rockPiPowerController(mosfetController);
 
 // --------- Batería ----------
 MockBatteryController mockBatteryController;
-IBatteryController* battery = &mockBatteryController;
+IBatteryController* batteryController = &mockBatteryController;
 
 // --------- Display ----------
 ConsoleDisplay consoleDisplay;
@@ -72,7 +72,7 @@ MockSerialPort mockSerialPort;
 NativeSerialPort nativeSerialPort("/tmp/ttyV0", 9600);
 MockLoRaPort mockLoraPort;
 MockIridiumPort mockIridiumPort;
-HttpPort httpPort("http://10.22.146.50:8000", "123456789012345");
+HttpPort httpPort("http://127.0.0.1:8000", "123456789012345");
 
 IPort* serialPort = &nativeSerialPort;
 IPort* loraPort = &mockLoraPort;

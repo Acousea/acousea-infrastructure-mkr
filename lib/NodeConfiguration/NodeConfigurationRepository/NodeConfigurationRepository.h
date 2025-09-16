@@ -11,9 +11,14 @@
 #include <pb_encode.h>
 #include <pb_decode.h>
 
+#include "ClassName.h"
 
-class NodeConfigurationRepository{
+
+class NodeConfigurationRepository
+{
 public:
+    CLASS_NAME(NodeConfigurationRepository)
+
     explicit NodeConfigurationRepository(StorageManager& sdManager);
 
     void init();
