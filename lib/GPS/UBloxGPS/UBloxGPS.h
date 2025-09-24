@@ -7,9 +7,14 @@
 #include "SparkFun_u-blox_GNSS_Arduino_Library.h"
 #include <Logger/Logger.h>
 
+#include "ClassName.h"
 
-class UBloxGNSS : public IGPS {
+
+class UBloxGNSS : public IGPS{
+    CLASS_NAME(UBloxGNSS)
+
 public:
+    bool config();
     bool init() override;
 
     GPSLocation read() override;
@@ -18,13 +23,13 @@ public:
 
     void wakeup() override;
 
-    void calculateTrajectory(float targetLat, float targetLon, float &distance, float &bearing) override;
+    void calculateTrajectory(float targetLat, float targetLon, float& distance, float& bearing) override;
 
 private:
     SFE_UBLOX_GNSS myGNSS;
     const int GNSS_WAKEUP_PIN = 4;
     float latitude = 0, longitude = 0;
-    const unsigned long GNSS_MAX_FIX_TIME_MS = 900000, GNSS_WAIT_TIME_MS = 120000; // 15 minutes, 2 minutes
+    const unsigned long GNSS_MAX_FIX_TIME_MS = 900000, GNSS_WAIT_TIME_MS = 120000, GNSS_MAX_TIMESTAMP_WAIT_TIME_MS = 10000; // 15 minutes, 2 minutes
 };
 
 

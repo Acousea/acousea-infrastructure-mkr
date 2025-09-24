@@ -2,6 +2,11 @@
 #define DEPENDENCIES_H
 
 #include <libraries.h>
+#if __has_include("environment/credentials.hpp")
+  #include "environment/credentials.hpp"
+#else
+  #error "No credentials file found! Please provide environment/credentials.hpp. Find an example at environment/credentials.example.hpp"
+#endif
 
 
 // =======================================================
@@ -16,8 +21,12 @@ extern IDisplay* display;
 
 // --- Puertos -----
 extern IPort* serialPort;
-extern IPort* loraPort;
 extern IPort* iridiumPort;
+
+#if defined(PLATFORM_HAS_LORA) || defined(PLATFORM_HAS_GSM)
+extern IPort* loraOrGsmPort;
+#endif
+
 
 // ---- GPS ----
 extern IGPS* gps;
@@ -50,12 +59,23 @@ extern NodeOperationRunner nodeOperationRunner;
 //       ARDUINO BUILD
 // =======================================================
 #ifdef ARDUINO
+extern Uart softwareSerialSercom1;
+extern Uart softwareSerialSercom0;
 
 // USB Display
-extern SerialUSBDisplay serialUSBDisplay;
+#define ConsoleSerial SerialUSB
+// #define ConsoleSerial softwareSerialSercom0
+// #define ConsoleSerial softwareSerialSercom1
+extern SerialArduinoDisplay serialUSBDisplay;
 
+#ifdef PLATFORM_HAS_GSM
+extern GsmMQTTPort gsmPort;
+#endif
 // RealLoraPort
+#ifdef PLATFORM_HAS_LORA
 extern LoraPort realLoraPort;
+#endif
+
 
 // Power
 extern MosfetController mosfetController;
@@ -70,5 +90,3 @@ extern RockPiPowerController rockPiPowerController;
 #endif // ARDUINO vs NATIVE
 
 #endif // DEPENDENCIES_H
-
-

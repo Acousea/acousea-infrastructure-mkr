@@ -1,7 +1,6 @@
 #include "dev_main.h"
 
-void  dev_saveLocalizerConfig()
-{
+void dev_saveLocalizerConfig(){
     acousea_NodeConfiguration localizerConfig = acousea_NodeConfiguration_init_default;
 
     localizerConfig.localAddress = 2;
@@ -25,7 +24,6 @@ void  dev_saveLocalizerConfig()
     localizerConfig.operationModesModule.modes[0].transition.targetModeId = 0; // Loop to itself
 
 
-
     localizerConfig.has_reportTypesModule = true;
     localizerConfig.reportTypesModule = acousea_ReportTypesModule_init_default;
     localizerConfig.reportTypesModule.reportTypes_count = 1;
@@ -43,8 +41,7 @@ void  dev_saveLocalizerConfig()
     nodeConfigurationRepository.saveConfiguration(localizerConfig);
 }
 
-void  dev_saveDrifterConfig()
-{
+void dev_saveDrifterConfig(){
     acousea_NodeConfiguration drifterConfig = acousea_NodeConfiguration_init_default;
     drifterConfig.localAddress = 1;
 
@@ -105,8 +102,7 @@ void  dev_saveDrifterConfig()
 }
 
 
-void  dev_setup()
-{
+void dev_setup(){
 #if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
     std::printf("[native] Setup: starting...\n");
 #endif
@@ -116,7 +112,7 @@ void  dev_setup()
     ENSURE(rtcController, "rtcController");
     ENSURE(batteryController, "battery");
     ENSURE(serialPort, "serialPort");
-    ENSURE(loraPort, "loraPort");
+    // ENSURE(loraOrGsmPort, "loraPort");
     ENSURE(iridiumPort, "iridiumPort");
 
 #if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
@@ -125,21 +121,24 @@ void  dev_setup()
 
 #ifdef ARDUINO
     // Inicializa la comunicación serial a 9600 baudios
-    serialUSBDisplay.init(9600);
+    ConsoleSerial.begin(9600);
+    // softwareSerialSercom0.begin(9600);
+    // softwareSerialSercom1.begin(9600);
     delay(2000); // Espera a que el monitor serie esté listo
-#endif
 
-    // Test the mock library
-    // MockLibrary::print_with_callback([](const char *message) {
-    //     Serial.println(message);
-    // });
+    pinPeripheral(PIN_A5, PIO_SERCOM_ALT); // TX
+    pinPeripheral(PIN_A6, PIO_SERCOM_ALT); // RX
+    pinPeripheral(PIN_SPI_MOSI, PIO_SERCOM); // TX
+    pinPeripheral(PIN_SPI_SCK, PIO_SERCOM); // RX
+
 
     // Inicializa la pantalla Adafruit
     //    adafruitDisplay.init();
 
+#endif
+
     // Inicializa el administrador de la tarjeta SD
-    if (!storageManager->begin())
-    {
+    if (!storageManager->begin()){
         ErrorHandler::handleError("Failed to initialize SD card.");
     }
 
@@ -157,17 +156,17 @@ void  dev_setup()
     Logger::logInfo("================ Setting up Node =================");
 
 
-    // Inicializa el comunicador Serial
-    serialPort->init();
-
     // Inicializa el administrador de energía
-    batteryController->init();
+    // batteryController->init();
+
+    // Inicializa el comunicador Serial
+    // serialPort->init();
 
     // Inicializa el comunicador LoRa
-    loraPort->init();
+    // loraPort->init();
 
     // Inicializa el comunicador Iridium
-    iridiumPort->init();
+    // iridiumPort->init();
 
     // Initialize the iclistenServicePtr
 #if MODE == DRIFTER_MODE
@@ -175,8 +174,8 @@ void  dev_setup()
 #endif
 
     // Inicializa el GPS
-    gps->init();
-    Logger::setCurrentTime(gps->getTimestamp());
+    // gps->init();
+    // Logger::setCurrentTime(gps->getTimestamp());
 
     // Inicializa el controlador de tiempo real
     rtcController->init();
@@ -205,37 +204,43 @@ void  dev_setup()
 #endif
 }
 
-void  dev_loop()
-{
+void dev_loop(){
     static unsigned long lastTime = 0;
     // Operate every 30 seconds
-    if (getMillis() - lastTime >= 15000 || lastTime == 0)
-    {
+    if (getMillis() - lastTime >= 15000 || lastTime == 0){
         nodeOperationRunner.init();
         nodeOperationRunner.run();
-        const auto percentage = batteryController->percentage();
-        const auto status = batteryController->status();
-        Logger::logInfo(
-            "Battery: " + std::to_string(percentage) + "%, Status: " + std::to_string(static_cast<int>(status))
-            );
+        // const auto percentage = batteryController->percentage();
+        // const auto status = batteryController->status();
+        // Logger::logInfo("Battery: " + std::to_string(percentage) + "%, Status: " + std::to_string(static_cast<int>(status)));
         lastTime = getMillis();
     }
 }
 
 #ifdef ARDUINO
 
-void  dev_onReceiveWrapper(int packetSize){
+#if defined(PLATFORM_HAS_LORA)
+void dev_onReceiveWrapper(int packetSize){
     SerialUSB.println("OnReceiveWrapper Callback");
     realLoraPort.onReceive(packetSize);
 }
+#endif
+
+void dev_SERCOM0_Handler(){
+    // SerialUSB.println("INTERRUPT SERCOM0");
+    softwareSerialSercom0.IrqHandler();
+}
+
+void dev_SERCOM1_Handler(){
+    // SerialUSB.println("INTERRUPT SERCOM0");
+    softwareSerialSercom1.IrqHandler();
+}
+
 
 // Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)
-void  dev_SERCOM3_Handler(){
+void dev_SERCOM3_Handler(){
     mySerial3.IrqHandler();
 }
 
+
 #endif
-
-
-
-

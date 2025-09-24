@@ -17,6 +17,7 @@ void ConsoleDisplay::print(const uint8_t* data, size_t length)
     // Aplicar color si no es el por defecto
     std::printf("%s", ColorUtils::getAnsiCode(activeColor));
     print_hex_line(data, length);
+    std::printf("%s", ColorUtils::getAnsiCode(Color::DEFAULT));
     std::fflush(stdout);
 }
 
@@ -31,6 +32,7 @@ void ConsoleDisplay::print(const char* message)
     if (!message) return;
     std::printf("%s", ColorUtils::getAnsiCode(activeColor));
     std::printf("%s\n", message);
+    std::printf("%s", ColorUtils::getAnsiCode(Color::DEFAULT));
     std::fflush(stdout);
 }
 
@@ -38,14 +40,13 @@ void ConsoleDisplay::print(const std::string& message)
 {
     if (message.empty()) return;
     print(message.c_str());
-    std::fflush(stdout);
 }
 
 void ConsoleDisplay::clear()
 {
     // ANSI clear screen + move cursor home
     std::printf("\x1b[2J\x1b[H");
-    std::printf("%s", ColorUtils::getAnsiReset());
+    std::printf("%s", ColorUtils::getAnsiCode(Color::DEFAULT));
 
     std::fflush(stdout);
 }

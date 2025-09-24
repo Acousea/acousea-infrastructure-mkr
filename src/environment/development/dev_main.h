@@ -19,8 +19,13 @@ void dev_loop();
 
 #ifdef ARDUINO
 
+#if defined(PLATFORM_HAS_LORA)
 void dev_onReceiveWrapper(int packetSize);
+#endif
+
 // Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)
+void dev_SERCOM0_Handler();
+void dev_SERCOM1_Handler();
 void dev_SERCOM3_Handler();
 
 #endif

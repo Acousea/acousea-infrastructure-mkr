@@ -6,11 +6,14 @@
 #include <Wire.h>
 #include <ctime> // Or <time.h> depending on the environment
 #include <Arduino_MKRGPS.h>
+
+#include "ClassName.h"
 #include "IGPS.h"
 #include "Logger/Logger.h"
 
 class MKRGPS : public IGPS
 {
+    CLASS_NAME(MKRGPS)
 public:
     bool init() override;
     GPSLocation read() override;

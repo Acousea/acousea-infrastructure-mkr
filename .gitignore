@@ -3,3 +3,6 @@
 .idea
 
 lib/NodeDevice
+
+src/environment/credentials.hpp
+mkr-certs

@@ -26,8 +26,8 @@ IridiumPort::IridiumPort() : IPort(PortType::SBDPort) {
 
 void IridiumPort::init() {
     // Set the pins to use mySerial3
-    pinPeripheral(0, PIO_SERCOM); // Assign TX function to pin 0
-    pinPeripheral(1, PIO_SERCOM); // Assign RX function to pin 1
+    // pinPeripheral(0, PIO_SERCOM); // Assign TX function to pin 0
+    // pinPeripheral(1, PIO_SERCOM); // Assign RX function to pin 1
 
     /** Uncomment this block to manually set the pins (wakeup modem again). Pins managed by the library by default
      * // Ring Indicator signal (active low)
@@ -41,7 +41,8 @@ void IridiumPort::init() {
 
     // According to the documentation this should go before calling begin()
     sbd_modem.enableRingAlerts(true);
-
+    // WARNING: FIXME: Must check if its really necessary to call pinPeripheral, and if so, if this call should
+    // be done before or after sbd_modem.begin(), most likely after, due to the internal Uart.begin() implementation
     IridiumSerial.begin(SBD_MODEM_BAUDS);
     Logger::logInfo("IridiumPort::init() -> Initializing Iridium modem...");
     if (const int err = sbd_modem.begin(); err != ISBD_SUCCESS) {

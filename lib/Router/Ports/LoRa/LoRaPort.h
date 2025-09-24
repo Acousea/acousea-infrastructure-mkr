@@ -1,6 +1,7 @@
 #ifndef LORA_PORT_H
 #define LORA_PORT_H
-#ifdef ARDUINO
+
+#if defined(ARDUINO)&& defined(PLATFORM_HAS_LORA)
 
 #include <deque>
 #include "LoRa.h"

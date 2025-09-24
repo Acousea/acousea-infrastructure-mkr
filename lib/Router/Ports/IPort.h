@@ -12,6 +12,7 @@ class IPort {
 public:
     enum class PortType {
         LocalhostPort,
+        GsmPort,
         LoraPort,
         SBDPort,
         SerialPort,

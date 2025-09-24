@@ -4,8 +4,8 @@
 
 #if ENVIRONMENT == ENV_PROD
 #include "environment/production/prod_main.h"
-void setup() { return prod_setup(); }
-void loop() { return prod_loop(); }
+void setup(){ return prod_setup(); }
+void loop(){ return prod_loop(); }
 
 #elif ENVIRONMENT == ENV_DEV
 #include "environment/development/dev_main.h"
@@ -25,6 +25,7 @@ void loop() { return test_loop(); }
 
 #ifdef ARDUINO
 
+#if defined(PLATFORM_HAS_LORA)
 void onReceiveWrapper(int packetSize)
 {
 #if ENVIRONMENT == ENV_PROD
@@ -35,10 +36,33 @@ void onReceiveWrapper(int packetSize)
     test_onReceiveWrapper(packetSize);
 #endif
 }
+#endif
 
-// Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)
-void SERCOM3_Handler()
-{
+
+void SERCOM0_Handler(){
+#if ENVIRONMENT == ENV_PROD
+    prod_SERCOM0_Handler();
+#elif ENVIRONMENT == ENV_DEV
+    dev_SERCOM0_Handler();
+#elif ENVIRONMENT == ENV_TEST
+    test_SERCOM0_Handler();
+#endif
+}
+
+
+void SERCOM1_Handler(){
+#if ENVIRONMENT == ENV_PROD
+    prod_SERCOM0_Handler();
+#elif ENVIRONMENT == ENV_DEV
+    dev_SERCOM0_Handler();
+#elif ENVIRONMENT == ENV_TEST
+    test_SERCOM1_Handler();
+#endif
+}
+
+
+// Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the IridiumPort "mySerial3" to work)
+void SERCOM3_Handler(){
 #if ENVIRONMENT == ENV_PROD
     prod_SERCOM3_Handler();
 #elif ENVIRONMENT == ENV_DEV
@@ -47,5 +71,4 @@ void SERCOM3_Handler()
     test_SERCOM3_Handler();
 #endif
 }
-
 #endif

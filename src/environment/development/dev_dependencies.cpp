@@ -1,34 +1,80 @@
 #include "dev_dependencies.h"
 
-#include "Ports/Serial/MockSerialPort.h"
-#include "SolarXBatteryController/SolarXBatteryController.h"
+#include "environment/credentials.hpp"
 
 
 // =======================================================
 //       ARDUINO BUILD
 // =======================================================
 #ifdef ARDUINO
+Uart softwareSerialSercom0(&sercom0,
+                           PIN_A6, // RX
+                           PIN_A5, // TX
+                           SERCOM_RX_PAD_3,
+                           UART_TX_PAD_2
+);
+
+Uart softwareSerialSercom1(&sercom1,
+                           PIN_SPI_SCK, // RX
+                           PIN_SPI_MOSI, // TX
+                           SERCOM_RX_PAD_1,
+                           UART_TX_PAD_0
+);
+
+
 // --------- Batería ----------
 PMICBatteryController pmicBatteryController;
 AdafruitLCBatteryController adafruitLCBatteryController;
 MockBatteryController mockBatteryController;
-SolarXBatteryController solarXBatteryController(std::vector<uint8_t>{0x40, 0x41});
+SolarXBatteryController solarXBatteryController(
+    INA219_ADDRESS + 1, //  0x41 // Address of the battery sensor
+    INA219_ADDRESS // 0x40 // Address of the solar panel sensor
+    // INA219_ADDRESS + 4, // 0x44
+    // INA219_ADDRESS + 5 // 0x45
+);
 IBatteryController* batteryController = &solarXBatteryController; // o PMIC según HW
 
 // --------- Display ----------
 AdafruitDisplay adafruitDisplay;
-SerialUSBDisplay serialUSBDisplay;
+SerialArduinoDisplay serialUSBDisplay(&ConsoleSerial);
 IDisplay* display = &serialUSBDisplay;
 
 // --------- Puertos ----------
 SerialPort realSerialPort(&Serial1, 4800);
+
+#ifdef PLATFORM_HAS_LORA
 MockLoRaPort mockLoraPort;
+LoraPort realLoraPort;
+#endif
+
 MockIridiumPort mockIridiumPort;
-// LoraPort realLoraPort;
-// IridiumPort realIridiumPort;
+IridiumPort realIridiumPort;
+
+// #ifdef PLATFORM_HAS_GSM
+// // Configuración GSM
+// GsmConfig gsmCfg = {
+//     .pin = SECRET_PINNUMBER, // Tu SIM no tiene PIN
+//     .apn = SECRET_GPRS_APN, // APN del operador (ejemplo: Hologram)
+//     .user = SECRET_GPRS_LOGIN, // Usuario del APN
+//     .pass = SECRET_GPRS_PASSWORD, // Password del APN
+//     .clientId = AWS_MQTT_CLIENT_ID,
+//     .broker = AWS_MQTT_BROKER, // Host del servidor destino
+//     .port = 8883, // Puerto destino (8883 para MQTT sobre SSL)
+//     .certificate = CLIENT_CERTIFICATE
+// };
+//
+// GsmMQTTPort gsmPort(gsmCfg);
+// #endif
+
 
 IPort* serialPort = &realSerialPort;
-IPort* loraPort = &mockLoraPort;
+
+#ifdef PLATFORM_HAS_LORA
+IPort* loraOrGsmPort = &mockLoraPort;
+#elif defined(PLATFORM_HAS_GSM)
+// IPort* loraOrGsmPort = &gsmPort;
+#endif
+
 IPort* iridiumPort = &mockIridiumPort;
 
 // --------- GPS ----------
@@ -47,7 +93,13 @@ SDStorageManager sdStorageManager;
 StorageManager* storageManager = &sdStorageManager; // o hddStorageManager según build
 
 // --------- Router ----------
-Router router({serialPort, loraPort, iridiumPort});
+Router router({
+    serialPort,
+    // loraOrGsmPort,
+    iridiumPort
+});
+
+
 
 // --------- Power ----------
 MosfetController mosfetController;

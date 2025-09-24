@@ -8,20 +8,25 @@
 #include <Wire.h>
 #include <vector>
 #include "Adafruit_INA219.h"
+#include "ClassName.h"
 #include "IBatteryController.h"
 #include "Curves.h"
+#include "Logger/Logger.h"
 
+class SolarXBatteryController : public IBatteryController{
+    CLASS_NAME(SolarXBatteryController)
 
-class SolarXBatteryController : public IBatteryController
-{
-    struct VoltageRange
-    {
+    struct VoltageRange{
         float min;
         float max;
     };
 
 private:
-    std::vector<Adafruit_INA219> sensors;
+    uint8_t batteryAddress = INA219_ADDRESS + 1; // Dirección I2C del sensor de batería
+    uint8_t panelAddress = INA219_ADDRESS; // Dirección I2C del sensor del panel solar
+    Adafruit_INA219 batterySensor{batteryAddress}; // Sensor principal (dirección por defecto)
+    Adafruit_INA219 panelSensor{panelAddress}; // Sensor del panel solar
+    bool _initialized = false;
 
 private:
     static constexpr float PEUKERT_EXPONENT = 1.1f; // Exponente de Peukert típico para baterías de plomo-ácido
@@ -40,8 +45,7 @@ private:
      * @param Cnom Capacidad nominal (Ah)
      * @param k Exponente de Peukert (típicamente entre 1.1 y 1.3)
      */
-    float peukertCapacity(const float I, const float Iref, const float Cnom, const float k = PEUKERT_EXPONENT)
-    {
+    float peukertCapacity(const float I, const float Iref, const float Cnom, const float k = PEUKERT_EXPONENT){
         if (I <= 0.0) return Cnom; // Sin descarga -> nominal
         return Cnom * pow(Iref / I, k - 1);
     }
@@ -52,20 +56,18 @@ private:
      * @param H Tiempo de descarga a Iref (horas)
      * @param k Exponente de Peukert (típicamente entre 1.1 y 1.3)
      */
-    float peukertTime(const float I, const float Iref, const float H, const float k = PEUKERT_EXPONENT)
-    {
+    float peukertTime(const float I, const float Iref, const float H, const float k = PEUKERT_EXPONENT){
         if (I <= 0.0) return INFINITY; // No hay descarga
         return H * pow(Iref / I, k);
     }
 
     static float remainingBatteryTime(const float stateOfChargePercentage,
-                                      const float estimatedTimeForGivenCurrentAtFullCharge)
-    {
+                                      const float estimatedTimeForGivenCurrentAtFullCharge){
         return stateOfChargePercentage * estimatedTimeForGivenCurrentAtFullCharge;
     }
 
 public:
-    SolarXBatteryController(const std::vector<uint8_t>& addresses);
+    SolarXBatteryController(uint8_t batteryAddr, uint8_t panelAddr);
     // Inicializar el sensor INA219
     bool init() override;
 
@@ -76,10 +78,10 @@ public:
     uint8_t status() override;
 
     // Obtener el voltaje actual de la batería
-    float getVoltage();
+    float readInternalVoltage();
 
     // Obtener la corriente actual de la batería
-    float getCurrent();
+    float readInternalCurrent();
 };
 
 

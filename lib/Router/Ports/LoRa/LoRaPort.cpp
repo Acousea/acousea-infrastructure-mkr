@@ -1,4 +1,4 @@
-#ifdef ARDUINO
+#if defined(ARDUINO) && defined(PLATFORM_HAS_LORA)
 #include "LoRaPort.h"
 
 #include <ErrorHandler/ErrorHandler.h>

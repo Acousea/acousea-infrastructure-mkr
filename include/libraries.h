@@ -41,7 +41,7 @@
 // ================== DEPEDNING ON PLATFORM ==================
 #ifdef ARDUINO
 #include <Arduino.h>
-
+#include "wiring_private.h"
 // ------------------ STORAGE ------------------
 #include <StorageManager/SDStorageManager/SDStorageManager.h>
 
@@ -61,7 +61,7 @@
 
 // ------------------ DISPLAY ------------------
 #include <AdafruitDisplay/AdafruitDisplay.h>
-#include <SerialUSBDisplay/SerialUSBDisplay.h>
+#include <SerialArduinoDisplay/SerialArduinoDisplay.h>
 
 // ------------------ PORTS ------------------
 #include <Ports/Serial/SerialPort.h>
@@ -71,6 +71,7 @@
 #include <Ports/LoRa/MockLoRaPort.h>
 #include <Ports/Iridium/MockIridiumPort.h>
 #include <Ports/Serial/MockSerialPort.h>
+#include <Ports/GSM/GsmMQTTPort.hpp>
 
 
 // ------------------ CONTROLLERS ------------------

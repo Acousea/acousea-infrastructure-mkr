@@ -1,5 +1,7 @@
 #include "ErrorHandler.h"
 
+
+
 #ifdef ARDUINO
   #include <Arduino.h>
 #else
@@ -16,8 +18,8 @@ namespace {
     inline void rawPrintLine(const std::string& s) {
 #ifdef ARDUINO
         // Imprime por Serial (en SAMD, suele mapear a USB CDC o UART según core)
-        Serial.println(s.c_str());
-        Serial.flush();
+        SerialUSB.println(s.c_str());
+        SerialUSB.flush();
 #else
         std::fprintf(stderr, "%s\n", s.c_str());
         std::fflush(stderr);
@@ -31,7 +33,9 @@ void ErrorHandler::setHandler(ErrorHandlerCallback handler) {
 
 void ErrorHandler::handleError(const std::string &errorMessage) {
     // Log the error using Logger
-    rawPrintLine("ERROR: " + errorMessage);
+    // rawPrintLine("ERROR: " + errorMessage);
+    Logger::logError("ERROR_HANDLER -> HANDLING ERROR: " + errorMessage + " - Performing hardware reset.");
+
 
     // Execute the custom handler if available
     if (customHandler) {
@@ -43,7 +47,7 @@ void ErrorHandler::handleError(const std::string &errorMessage) {
 
 void ErrorHandler::defaultHandler(const std::string &errorMessage) {
     // Print the error to Serial (if Logger is in SerialOnly mode, this is redundant)
-    rawPrintLine("ERROR_HANDLER -> HANDLING ERROR: " + errorMessage + " - Performing hardware reset.");
+    // rawPrintLine("ERROR_HANDLER -> HANDLING ERROR: " + errorMessage + " - Performing hardware reset.");
     performHardwareReset();
 }
 

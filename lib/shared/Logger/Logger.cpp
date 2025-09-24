@@ -27,12 +27,7 @@ void Logger::logInfo(const std::string& infoMessage){
 void Logger::log(const std::string& logType, const std::string& message){
     switch (mode){
     case Mode::SDCard:
-        if (storageManager){
-            logToSDCard(logType, message);
-        }
-        else{
-            logToSerial(logType, message);
-        }
+        logToSDCard(logType, message);
         break;
     case Mode::SerialOnly:
         logToSerial(logType, message);

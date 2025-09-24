@@ -3,14 +3,14 @@
 #include "MKRGPS.h"
 
 bool MKRGPS::init() {
-    Logger::logInfo("Initializing GNSS ...");
+    Logger::logInfo(getClassNameString() + "Initializing GNSS ...");
 
     if (!GPS.begin()) {
-        Logger::logInfo("GNSS initialization failed!");
+        Logger::logInfo(getClassNameString() + "GNSS initialization failed!");
         return false;
     }
 
-    Logger::logInfo("Awaiting first GNSS fix ...");
+    Logger::logInfo(getClassNameString() + "Awaiting first GNSS fix ...");
 
     unsigned long startMillis = millis();
     while (!GPS.available() && ((millis() - startMillis) < GNSS_MAX_FIX_TIME_MS)) {
@@ -21,11 +21,11 @@ bool MKRGPS::init() {
     char buffer[50];
     if (endMillis - startMillis >= GNSS_MAX_FIX_TIME_MS) {
         snprintf(buffer, sizeof(buffer), "ERROR: NO GNSS fix after %lu sec\n", (endMillis - startMillis) / 1000);
-        Logger::logInfo(buffer);
+        Logger::logError(getClassNameString() + buffer);
         return false;
     }
     snprintf(buffer, sizeof(buffer), "Fix: %lu sec\n", (endMillis - startMillis) / 1000);
-    Logger::logInfo(buffer);
+    Logger::logInfo(getClassNameString() + buffer);
     return true;
 
 }
@@ -42,7 +42,7 @@ GPSLocation MKRGPS::read() {
         longitude = GPS.longitude();
         return {latitude, longitude};
     } else {
-        Logger::logInfo("No GNSS data available");
+        Logger::logInfo(getClassNameString() + "No GNSS data available");
         // Create a GPSLocation with invalid data (-1)
         return {-1, -1};
     }
