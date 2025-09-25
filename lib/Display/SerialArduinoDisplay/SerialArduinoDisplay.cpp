@@ -15,40 +15,47 @@ SerialArduinoDisplay::SerialArduinoDisplay(Stream* serial)
 
 
 void SerialArduinoDisplay::print(const uint8_t *data, size_t length) {
-    serialPrintAnsiPrefix(serialPort, activeColor);
+    // serialPrintAnsiPrefix(serialPort, activeColor);
     for (size_t i = 0; i < length; i++) {
         serialPort->print(data[i], HEX);
         serialPort->print(" ");
     }
-    serialPrintAnsiPrefix(serialPort, Color::DEFAULT);
+    // serialPrintAnsiPrefix(serialPort, Color::RESET);
     serialPort->println();
+    serialPort->flush();
 }
 
 void SerialArduinoDisplay::print(const std::string &message) {
-    serialPrintAnsiPrefix(serialPort, activeColor);
-    serialPort->println(message.c_str());
-    serialPrintAnsiPrefix(serialPort, Color::DEFAULT);
+    // serialPrintAnsiPrefix(serialPort, activeColor);
+    serialPort->print(message.c_str());
+    // serialPrintAnsiPrefix(serialPort, Color::RESET);
+    serialPort->println();
+    serialPort->flush();
 }
 
 void SerialArduinoDisplay::print(const std::vector<uint8_t> &data) {
-    serialPrintAnsiPrefix(serialPort, activeColor);
+    // serialPrintAnsiPrefix(serialPort, activeColor);
     for (size_t i = 0; i < data.size(); i++) {
         serialPort->print(data[i], HEX);
         serialPort->print(" ");
     }
-    serialPrintAnsiPrefix(serialPort, Color::DEFAULT);
+    // serialPrintAnsiPrefix(serialPort, Color::RESET);
     serialPort->println();
+    serialPort->flush();
 }
 
 void SerialArduinoDisplay::print(const char *message) {
-    serialPrintAnsiPrefix(serialPort, activeColor);
-    serialPort->println(message);
-    serialPrintAnsiPrefix(serialPort, Color::DEFAULT);
+    // serialPrintAnsiPrefix(serialPort, activeColor);
+    serialPort->print(message);
+    // serialPrintAnsiPrefix(serialPort, Color::RESET);
+    serialPort->println();
+    serialPort->flush();
 }
 
 void SerialArduinoDisplay::clear() {
-    serialPrintAnsiPrefix(serialPort, Color::DEFAULT);
+    // serialPrintAnsiPrefix(serialPort, Color::RESET);
     serialPort->println("SerialGenericDisplay cleared");
+    serialPort->flush();
 }
 
 #endif // ARDUINO

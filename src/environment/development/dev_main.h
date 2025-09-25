@@ -1,9 +1,7 @@
 #include "dev_dependencies.h"
+#include "../ensure.hpp"
 
 // #include "../lib/MockLib/include/library.h"
-
-#define ENSURE(ptr, name) do{ if(!(ptr)){ std::fprintf(stderr,"[native] %s is NULL\n", name); return; } }while(0)
-
 
 #define DRIFTER_MODE 0
 #define LOCALIZER_MODE 1

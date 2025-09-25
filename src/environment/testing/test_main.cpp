@@ -1,9 +1,21 @@
 #include "test_main.h"
 #include "wiring_private.h"
-#include "WVariant.h"
+// #include "WVariant.h"
 
 
 void test_setup(){
+#ifdef ARDUINO
+    ConsoleSerial.begin(9600);
+    delay(1000);
+    while (!ConsoleSerial){
+        digitalWrite(LED_BUILTIN, HIGH);
+        delay(100);
+        digitalWrite(LED_BUILTIN, LOW);
+        delay(100);
+    }
+    ConsoleSerial.println("[arduino] Setup: starting...");
+#endif
+
 #if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
     std::printf("[native] Setup: starting...\n");
 #endif
@@ -13,8 +25,17 @@ void test_setup(){
     // ENSURE(rtcController, "rtcController");
     ENSURE(batteryController, "battery");
     // ENSURE(serialPort, "serialPort");
-    // ENSURE(loraPort, "loraPort");
+#ifdef PLATFORM_HAS_GSM
+    // ENSURE(&gsmPort, "gsmPort");
+#endif
+#ifdef PLATFORM_HAS_LORA
+    ENSURE(loraPort, "loraPort");
+#endif
     // ENSURE(iridiumPort, "iridiumPort");
+
+#ifdef ARDUINO
+    ConsoleSerial.println("[arduino] Setup: Ensured pointers");
+#endif
 
 #if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
     std::printf("[native] Setup: Ensured pointers\n");
@@ -30,22 +51,18 @@ void test_setup(){
     // sercom0.initPads(UART_TX_PAD_0, SERCOM_RX_PAD_1);
     // sercom0.enableUART();
 
-    ConsoleSerial.begin(9600);
-
-    delay(3000);
-    ConsoleSerial.println("Initialized ConsoleSerial at 9600 baud");
 
     // softwareSerialSercom0.begin(9600);
     // delay(3000);
     //
     // /// PinPeripheral after begin()
-    pinPeripheral(PIN_A5, PIO_SERCOM_ALT); // TX
-    pinPeripheral(PIN_A6, PIO_SERCOM_ALT); // RX
-    pinPeripheral(PIN_SPI_MOSI, PIO_SERCOM); // TX
-    pinPeripheral(PIN_SPI_SCK, PIO_SERCOM); // RX
+    // pinPeripheral(PIN_A5, PIO_SERCOM_ALT); // TX
+    // pinPeripheral(PIN_A6, PIO_SERCOM_ALT); // RX
+    // pinPeripheral(PIN_SPI_MOSI, PIO_SERCOM); // TX
+    // pinPeripheral(PIN_SPI_SCK, PIO_SERCOM); // RX
     //
     // softwareSerialSercom0.println("Initialized serialSercom0 at 9600 baud");
-    ConsoleSerial.println("Initialized serialSercom0 at 9600 baud");
+    // ConsoleSerial.println("Initialized serialSercom0 at 9600 baud");
 
 #endif
 
@@ -67,24 +84,24 @@ void test_setup(){
 #ifdef PLATFORM_HAS_GSM
     // ------------------------ Test GSM Connection ------------------------
     gsmPort.init();
-
+    Logger::logFreeMemory("[MAIN] After GSM init");
     ConsoleSerial.println("Preparing to send packet using GSM...");
     // MyGSMSSLClient myGsmSslClient;
     // myGsmSslClient.updateCerts(GSM_ROOT_CERTS, std::size(GSM_ROOT_CERTS));
     // myGsmSslClient.listCertificates(CertType::All);
 
     // Enviar usando tu GsmPort
-    // const std::vector<uint8_t> payload = {
-    //     0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04,
-    //     0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C
-    // };
+    const std::vector<uint8_t> payload = {
+        0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04,
+        0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C
+    };
     // gsmPort.send(payload);
     // GsmPort::testConnection("example.com", 80, "/", false);
 
     // gsmPort.testConnection("www.google.com", 443, "/", true);
     // gsmPort.testConnection("antapagon.com", 443, "/", true);
-    gsmPort.testConnection("test432091-framework22.antapagon.com", 443, "/", true);
-    gsmPort.testConnection("www.antapagon.com", 443, "/", true);
+    // gsmPort.testConnection("test432091-framework22.antapagon.com", 443, "/", true);
+    // gsmPort.testConnection("www.antapagon.com", 443, "/", true);
 
 
     ConsoleSerial.println("Sent packet using GSM");
@@ -108,10 +125,36 @@ void test_setup(){
 // }
 //
 
+void printPacketBytes(const std::vector<uint8_t>& packet){
+    ConsoleSerial.print("Packet (size ");
+    ConsoleSerial.print(packet.size());
+    ConsoleSerial.print("): ");
+    for (const auto byte : packet){
+        if (byte < 0x10){
+            ConsoleSerial.print('0');
+        }
+        ConsoleSerial.print(byte, HEX);
+        ConsoleSerial.print(' ');
+    }
+    ConsoleSerial.println();
+}
+
 void test_loop(){
     static unsigned long lastTime = 0;
-    if (getMillis() - lastTime >= 150000 || lastTime == 0){
+    if (getMillis() - lastTime >= 15000 || lastTime == 0){
         // Try to send a packet
+
+        // const auto packets = gsmPort.read();
+        // if (packets.empty()){
+        //     ConsoleSerial.println("No packets received.");
+        // }
+        // else{
+        //     ConsoleSerial.println("Received packets:");
+        //     for (const auto& packet : packets){
+        //         printPacketBytes(packet);
+        //     }
+        // }
+        //
         // ConsoleSerial.println("Sending packet...");
         // const std::vector<uint8_t> data = {0x01, 0x02, 0x03, 0x04, 0x05};
         // gsmPort.send(data);

@@ -23,9 +23,9 @@ Uart softwareSerialSercom1(&sercom1,
 
 
 // --------- Batería ----------
-PMICBatteryController pmicBatteryController;
-AdafruitLCBatteryController adafruitLCBatteryController;
-MockBatteryController mockBatteryController;
+// PMICBatteryController pmicBatteryController;
+// AdafruitLCBatteryController adafruitLCBatteryController;
+// MockBatteryController mockBatteryController;
 SolarXBatteryController solarXBatteryController(
     INA219_ADDRESS + 1, //  0x41 // Address of the battery sensor
     INA219_ADDRESS // 0x40 // Address of the solar panel sensor
@@ -35,7 +35,7 @@ SolarXBatteryController solarXBatteryController(
 IBatteryController* batteryController = &solarXBatteryController; // o PMIC según HW
 
 // --------- Display ----------
-AdafruitDisplay adafruitDisplay;
+// AdafruitDisplay adafruitDisplay;
 SerialArduinoDisplay serialUSBDisplay(&ConsoleSerial);
 IDisplay* display = &serialUSBDisplay;
 
@@ -78,15 +78,15 @@ IPort* loraOrGsmPort = &gsmPort;
 IPort* iridiumPort = &mockIridiumPort;
 
 // --------- GPS ----------
-MockGPS mockGPS(0.0, 0.0, 1.0);
-MKRGPS mkrGPS;
+// MockGPS mockGPS(0.0, 0.0, 1.0);
+// MKRGPS mkrGPS;
 UBloxGNSS uBloxGPS;
-IGPS* gps = &mockGPS;
+IGPS* gps = &uBloxGPS;
 
 // --------- RTC ----------
 ZeroRTCController zeroRTCController;
-MockRTCController mockRTCController;
-RTCController* rtcController = &mockRTCController;
+// MockRTCController mockRTCController;
+RTCController* rtcController = &zeroRTCController;
 
 // --------- Storage ----------
 SDStorageManager sdStorageManager;

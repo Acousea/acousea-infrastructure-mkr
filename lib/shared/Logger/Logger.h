@@ -4,9 +4,10 @@
 #include <string>
 #include <ctime>
 #include <vector>
-
+#include <cstdarg>   // para va_list, va_start, va_end
 #include "StorageManager/StorageManager.hpp"
 #include "IDisplay.h"
+
 
 class Logger
 {
@@ -25,7 +26,11 @@ public:
         const char* logFilePath,
         Mode mode = Mode::SerialOnly);
 
+    static void logFreeMemory(const std::string& prefix);
     static void logInfo(const std::string& infoMessage);
+    static void  logfError(const char* fmt, ...);
+    static void  logfWarning(const char* fmt, ...);
+    static void  logfInfo(const char* fmt, ...);
     static void logError(const std::string& errorMessage);
     static void logWarning(const std::string& warningMessage);
 

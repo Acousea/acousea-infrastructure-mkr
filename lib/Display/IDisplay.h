@@ -18,7 +18,8 @@ public:
     enum class Color{
         DEFAULT, // Color por defecto del display
         RED, // Rojo
-        ORANGE // Amarillo anaranjado
+        ORANGE, // Amarillo anaranjado
+        RESET
     };
 
     // Configuración de color
@@ -38,6 +39,7 @@ public:
             case Color::DEFAULT: return "\x1b[39m"; // Color por defecto
             case Color::RED: return "\x1b[31m"; // Rojo
             case Color::ORANGE: return "\x1b[33m"; // Amarillo (más parecido a naranja en terminal)
+            case Color::RESET: return "\x1b[0m";
             default: return "\x1b[39m"; // Color por defecto
             }
         }
@@ -48,6 +50,7 @@ public:
             case Color::DEFAULT: return 0xFFFF; // Blanco
             case Color::RED: return 0xF800; // Rojo
             case Color::ORANGE: return 0xFD20; // Naranja
+            case Color::RESET: return 0xFFFF;
             default: return 0xFFFF; // Blanco
             }
         }
@@ -57,7 +60,6 @@ public:
         // static const char* getAnsiReset(){
         //     return "\x1b[0m";
         // }
-
     };
 
 protected:

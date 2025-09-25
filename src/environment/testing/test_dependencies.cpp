@@ -52,8 +52,6 @@ SDStorageManager sdStorageManager;
 StorageManager* storageManager = &sdStorageManager; // o hddStorageManager según build
 
 // ---------- Puertos ----------
-std::string TEST_HOST = "https://red-monkeys-repair.loca.lt"; // Cambia al host de tu servidor de pruebas
-
 #ifdef PLATFORM_HAS_GSM
 // Configuración GSM
 GsmConfig gsmCfg = {

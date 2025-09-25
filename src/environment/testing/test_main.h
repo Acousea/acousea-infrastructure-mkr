@@ -1,14 +1,15 @@
 #pragma once
 
 #include "test_dependencies.h"
+#include "../ensure.hpp"
 // #include "../lib/MockLib/include/library.h"
-
-#define ENSURE(ptr, name) do{ if(!(ptr)){ std::fprintf(stderr,"[native] %s is NULL\n", name); return; } }while(0)
 
 void test_setup();
 void test_loop();
 
 #ifdef ARDUINO
+#include <Arduino.h>
+
 #if defined(PLATFORM_HAS_LORA)
 void test_onReceiveWrapper(int packetSize);
 #endif

@@ -3,18 +3,21 @@
 
 #if defined(ARDUINO) && defined(PLATFORM_HAS_GSM)
 
-#include <MKRGSM.h>
-#include <ArduinoECCX08.h>
-#include <ArduinoBearSSL.h>
-#include <ArduinoMqttClient.h>
-
-
-#include <Logger/Logger.h>
-#include <ErrorHandler/ErrorHandler.h>
 #include <deque>
 #include <string>
+
+#include <MKRGSM.h>
+
+#include <ArduinoMqttClient.h>
+#include <Logger/Logger.h>
+#include <ErrorHandler/ErrorHandler.h>
+
+#include "UBlox201/UBlox201_GSMSSLClient.hpp"
 #include "Ports/IPort.h"
 #include "ClassName.h"
+
+#include "../../private_keys/cert.h"
+#include "../../private_keys/key.h"
 
 struct GsmConfig{
     const char* pin; // PIN de la SIM ("" si no tiene)
@@ -30,12 +33,12 @@ struct GsmConfig{
     static constexpr auto baseTopic = "acousea/nodes"; // prefijo común fijo
 
     // Devuelve el topic de entrada
-    std::string getInputTopic() const{
+    [[nodiscard]] std::string getInputTopic() const{
         return std::string(baseTopic) + "/" + clientId + "/in";
     }
 
     // Devuelve el topic de salida
-    std::string getOutputTopic() const{
+    [[nodiscard]] std::string getOutputTopic() const{
         return std::string(baseTopic) + "/" + clientId + "/out";
     }
 };
@@ -46,6 +49,7 @@ class GsmMQTTPort final : public IPort{
 
 public:
     explicit GsmMQTTPort(const GsmConfig& cfg);
+    static void printCertificates(const std::vector<StoredCert>& currentCerts);
 
     void init() override;
     void send(const std::vector<uint8_t>& data) override;
@@ -56,13 +60,9 @@ public:
     void subscribeToTopic(const char* topic);
     void publishToTopic(const char* topic, const char* message);
     void mqttLoop();
-
-    void testConnection(const char* host, int port, const char* path, bool useSSL);
+    void testConnection(const char* host, int port, const char* path);
 
 private:
-    void connectGSM();
-    void connectMQTT();
-
     static unsigned long getTime();
     static void mqttMessageHandler(int messageSize);
 
@@ -72,15 +72,13 @@ private:
     GSM gsmAccess;
     GPRS gprs;
 
-    GSMClient gsmClient; // Socket TCP sobre GSM con TLS
-    BearSSLClient sslClient; // Capa BearSSL que integra con ECCX08
+    UBlox201_GSMSSLClient ublox_gsmSslClient;
     MqttClient mqttClient; // Cliente MQTT moderno (ArduinoMqttClient)
 
 private:
     static constexpr char HEXMAP[] = "0123456789ABCDEF";
     static GsmMQTTPort* instance; // puntero a la instancia activa
 };
-
 
 
 #endif // ARDUINO && PLATFORM_HAS_GSM

@@ -9,6 +9,8 @@
 #error "No credentials file found! Please provide environment/credentials.hpp. Find an example at environment/credentials.example.hpp"
 #endif
 
+
+
 #ifdef ARDUINO
 extern Uart softwareSerialSercom1;
 extern Uart softwareSerialSercom0;
@@ -31,8 +33,6 @@ extern IGPS* gps;
 extern IDisplay* display;
 
 // ---- Ports -----
-extern std::string TEST_HOST;
-
 #ifdef PLATFORM_HAS_GSM
 extern GsmMQTTPort gsmPort;
 #endif
