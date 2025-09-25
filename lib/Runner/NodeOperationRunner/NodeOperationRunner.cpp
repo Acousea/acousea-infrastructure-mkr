@@ -1,5 +1,7 @@
 #include "NodeOperationRunner.h"
 
+#include <climits> // for  ULONG_MAX
+
 inline std::string bodyTagToString(const uint8_t tag){
     switch (tag){
     case acousea_CommunicationPacket_command_tag: return "Command";
@@ -58,7 +60,7 @@ NodeOperationRunner::NodeOperationRunner(Router& router,
 void NodeOperationRunner::init(){
     Logger::logInfo(getClassNameString() +
         std::string("<Init> Operation Cycle for Operation Mode ") +
-         std::to_string(cache.currentOperationMode.id) + "=" + std::string(cache.currentOperationMode.name) +
+        std::to_string(cache.currentOperationMode.id) + "=" + std::string(cache.currentOperationMode.name) +
         " with configuration: "
     );
 
@@ -91,40 +93,6 @@ void NodeOperationRunner::run(){
 }
 
 
-void NodeOperationRunner::tryReport(const std::string& reportModuleTypeStr,
-                                    const acousea_ReportingPeriodEntry* entries,
-                                    const size_t entryCount,
-                                    IPort::PortType port,
-                                    unsigned long& lastMinute,
-                                    unsigned long currentMinute){
-    const auto cfg = searchForReportingEntry(cache.currentOperationMode.id, entries, entryCount);
-    if (cfg.isError()){
-        Logger::logError(reportModuleTypeStr + " reporting entry not found: " + cfg.getError());
-        return;
-    }
-
-    auto [modeId, period] = cfg.getValueConst();
-
-    Logger::logInfo(getClassNameString() + reportModuleTypeStr + " Config: { Period=" + std::to_string(period) +
-        ", Current minute=" + std::to_string(currentMinute) +
-        ", Last report minute=" + std::to_string(lastMinute) + " }");
-
-    if (mustReport(currentMinute, period, lastMinute)){
-        const auto it = reportRoutines.find(acousea_ReportBody_statusPayload_tag);
-        if (it == reportRoutines.end() || it->second == nullptr){
-            Logger::logError(getClassNameString() + "Report routine with tag " + std::to_string(modeId) +
-                " not found. Skipping report...");
-            return;
-        }
-        auto result = executeRoutine(it->second, std::nullopt, port, false);
-        if (result.has_value()){
-            sendResponsePacket(port, currentNodeConfiguration->localAddress, *result);
-        }
-        lastMinute = currentMinute;
-    }
-}
-
-
 void NodeOperationRunner::checkIfMustTransition(){
     if (!cache.currentOperationMode.has_transition){
         ErrorHandler::handleError(
@@ -150,6 +118,47 @@ void NodeOperationRunner::checkIfMustTransition(){
     }
 }
 
+void NodeOperationRunner::tryReport(const IPort::PortType portType,
+                                    unsigned long& lastMinute,
+                                    const unsigned long currentMinute){
+    const auto cfg = getReportingEntryForCurrentOperationMode(
+        cache.currentOperationMode.id, portType
+    );
+
+    if (cfg.isError()){
+        Logger::logError(cfg.getError());
+        return;
+    }
+
+    auto [modeId, period] = cfg.getValueConst();
+
+    Logger::logInfo(
+        getClassNameString() + IPort::portTypeToString(portType) + " Config: { Period=" + std::to_string(period) +
+        ", Current minute=" + std::to_string(currentMinute) +
+        ", Last report minute=" + std::to_string(lastMinute) + " }");
+
+    if (!mustReport(currentMinute, period, lastMinute)){
+        Logger::logInfo(
+            getClassNameString() + IPort::portTypeToString(portType) + " Not time to report yet. Skipping report...");
+        return;
+    }
+
+    const auto it = reportRoutines.find(acousea_ReportBody_statusPayload_tag);
+    if (it == reportRoutines.end() || it->second == nullptr){
+        Logger::logError(getClassNameString() + "Report routine with tag " + std::to_string(modeId) +
+            " not found. Skipping report...");
+        return;
+    }
+
+    auto result = executeRoutine(it->second, std::nullopt, portType, false);
+    if (result.has_value()){
+        sendResponsePacket(portType, currentNodeConfiguration->localAddress, *result);
+    }
+
+    lastMinute = currentMinute;
+}
+
+
 void NodeOperationRunner::processReportingRoutines(){
     const auto currentMinute = getMillis() / 60000;
 
@@ -157,27 +166,17 @@ void NodeOperationRunner::processReportingRoutines(){
         ErrorHandler::handleError(getClassNameString() + ": Node configuration not loaded.");
         return;
     }
-    if (currentNodeConfiguration->has_loraModule){
-        tryReport(
-            "Lora",
-            currentNodeConfiguration->loraModule.entries,
-            currentNodeConfiguration->loraModule.entries_count,
-            IPort::PortType::LoraPort,
-            cache.lastReportMinute.lora, currentMinute
-        );
-    }
-    else
-        Logger::logInfo(getClassNameString() + "LoRa module not present, skipping LoRa report.");
+    currentNodeConfiguration->has_loraModule
+        ? tryReport(IPort::PortType::LoraPort, cache.lastReportMinute.lora, currentMinute)
+        : Logger::logInfo(getClassNameString() + "LoRa module not present, skipping LoRa report.");
 
     currentNodeConfiguration->has_iridiumModule
-        ? tryReport(
-            "Iridium",
-            currentNodeConfiguration->iridiumModule.entries,
-            currentNodeConfiguration->iridiumModule.entries_count,
-            IPort::PortType::SBDPort,
-            cache.lastReportMinute.sbd, currentMinute
-        )
+        ? tryReport(IPort::PortType::SBDPort, cache.lastReportMinute.sbd, currentMinute)
         : Logger::logInfo(getClassNameString() + "Iridium module not present, skipping Iridium report.");
+
+    currentNodeConfiguration->has_gsmMqttModule
+        ? tryReport(IPort::PortType::GsmMqttPort, cache.lastReportMinute.gsmMqtt, currentMinute)
+        : Logger::logInfo(getClassNameString() + "GSM-MQTT module not present, skipping GSM-MQTT report.");
 }
 
 void NodeOperationRunner::processIncomingPackets(const uint8_t& localAddress){
@@ -215,7 +214,8 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::processPacket(IP
     case acousea_CommunicationPacket_command_tag: {
         const auto it = commandRoutines.find(packet.body.command.which_command);
         if (it == commandRoutines.end() || it->second == nullptr){
-            Logger::logError(getClassNameString() + "Routine with tag " + std::to_string(packet.body.command.which_command) +
+            Logger::logError(
+                getClassNameString() + "Routine with tag " + std::to_string(packet.body.command.which_command) +
                 " not found. Building error packet...");
             return buildErrorPacket("Routine not found.", packet.routing.sender);
         }
@@ -229,18 +229,22 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::processPacket(IP
     case acousea_CommunicationPacket_response_tag: {
         const auto it = responseRoutines.find(packet.body.response.which_response);
         if (it == responseRoutines.end() || it->second == nullptr){
-            Logger::logError(getClassNameString() + "Routine with tag " +
-                std::to_string(packet.body.response.which_response) +
-                " not found. Building error packet...");
+            Logger::logError(getClassNameString() +
+                "Routine with tag " + std::to_string(packet.body.response.which_response) + " not found."
+                " Building error packet..."
+            );
             return buildErrorPacket("Routine not found.", packet.routing.sender);
         }
         std::optional<acousea_CommunicationPacket> optResponsePacket = executeRoutine(
-            it->second, packet, portType, /*shouldRespond*/ true);
+            it->second, packet, portType, /*shouldRespond*/ true
+        );
         return optResponsePacket;
     }
 
     case acousea_CommunicationPacket_report_tag:
-        Logger::logInfo(getClassNameString() + "Report packet received, but reports are not processed by nodes. Dropping packet...");
+        Logger::logInfo(
+            getClassNameString() +
+            "Report packet received, but reports are not processed by nodes. Dropping packet...");
         return std::nullopt;
 
     case acousea_CommunicationPacket_error_tag:
@@ -383,13 +387,48 @@ Result<acousea_OperationMode> NodeOperationRunner::searchForOperationMode(const 
     );
 }
 
-Result<acousea_ReportingPeriodEntry> NodeOperationRunner::searchForReportingEntry(
-    const uint8_t modeId, const acousea_ReportingPeriodEntry* entries, const size_t entryCount){
+Result<acousea_ReportingPeriodEntry> NodeOperationRunner::getReportingEntryForCurrentOperationMode(
+    const uint8_t modeId, const IPort::PortType portType){
+    if (!currentNodeConfiguration.has_value()){
+        return Result<acousea_ReportingPeriodEntry>::failure("Node configuration not loaded.");
+    }
+    acousea_ReportingPeriodEntry* entries = nullptr;
+    size_t entryCount = 0;
+    switch (portType){
+    case IPort::PortType::LoraPort: {
+        if (!currentNodeConfiguration->has_loraModule || currentNodeConfiguration->loraModule.entries_count == 0){
+            return Result<acousea_ReportingPeriodEntry>::failure("No LoRa reporting entries defined in configuration.");
+        }
+        entries = currentNodeConfiguration->loraModule.entries;
+        entryCount = currentNodeConfiguration->loraModule.entries_count;
+        break;
+    }
+    case IPort::PortType::SBDPort: {
+        if (!currentNodeConfiguration->has_iridiumModule || currentNodeConfiguration->iridiumModule.entries_count == 0){
+            return Result<acousea_ReportingPeriodEntry>::failure(
+                "No Iridium reporting entries defined in configuration.");
+        }
+        entries = currentNodeConfiguration->iridiumModule.entries;
+        entryCount = currentNodeConfiguration->iridiumModule.entries_count;
+        break;
+    }
+    case IPort::PortType::GsmMqttPort: {
+        if (!currentNodeConfiguration->has_gsmMqttModule || currentNodeConfiguration->gsmMqttModule.entries_count == 0){
+            return Result<acousea_ReportingPeriodEntry>::failure(
+                "No GSM-MQTT reporting entries defined in configuration.");
+        }
+        entries = currentNodeConfiguration->gsmMqttModule.entries;
+        entryCount = currentNodeConfiguration->gsmMqttModule.entries_count;
+        break;
+    }
+    default:
+        return Result<acousea_ReportingPeriodEntry>::failure("Unsupported port type for reporting entry.");
+    }
+
     for (size_t i = 0; i < entryCount; ++i){
         if (entries[i].modeId == modeId) return Result<acousea_ReportingPeriodEntry>::success(entries[i]);
     }
-    Logger::logError("Reporting entry for mode " + std::to_string(modeId) + " not found. Returning default entry.");
-    return Result<acousea_ReportingPeriodEntry>::failure(
-        "Reporting entry for mode " + std::to_string(modeId) + " not found."
-    );
+    return Result<acousea_ReportingPeriodEntry>::failure(getClassNameString() +
+        "::getReportingEntryForCurrentOperationMode() Reporting entry for mode " + std::to_string(modeId) +
+        " not found.");
 }

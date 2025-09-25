@@ -171,6 +171,24 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
             updatedConfiguration.modules_count++;
             break;
         }
+        case acousea_ModuleCode_GSM_MQTT_REPORTING_MODULE: {
+            acousea_UpdatedNodeConfigurationPayload_ModulesEntry gsmMqttEntry =
+                acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
+
+            gsmMqttEntry.has_value = true;
+            gsmMqttEntry.key = acousea_ModuleCode_GSM_MQTT_REPORTING_MODULE;
+            gsmMqttEntry.value.which_module = acousea_ModuleWrapper_gsmMqttReporting_tag;
+            if (!nodeConfig.has_gsmMqttModule){
+                Logger::logError(
+                    getClassNameString() + "Node configuration does not have GSM-MQTT module configured");
+                break;
+            }
+            acousea_GsmMqttReportingModule mqttModule = nodeConfig.gsmMqttModule;
+            gsmMqttEntry.value.module.gsmMqttReporting = mqttModule;
+            updatedConfiguration.modules[updatedConfiguration.modules_count] = gsmMqttEntry;
+            updatedConfiguration.modules_count++;
+            break;
+        }
         case acousea_ModuleCode_RTC_MODULE: {
             acousea_UpdatedNodeConfigurationPayload_ModulesEntry rtcEntry =
                 acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;

@@ -53,7 +53,8 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
             break;
         }
         case acousea_ModuleCode::acousea_ModuleCode_IRIDIUM_REPORTING_MODULE:
-        case acousea_ModuleCode::acousea_ModuleCode_LORA_REPORTING_MODULE: {
+        case acousea_ModuleCode::acousea_ModuleCode_LORA_REPORTING_MODULE:
+        case acousea_ModuleCode::acousea_ModuleCode_GSM_MQTT_REPORTING_MODULE: {
             if (const auto result = setReportingPeriods(nodeConfig, module); result.isError()){
                 return Result<acousea_CommunicationPacket>::failure(result.getError());
             }
@@ -140,6 +141,11 @@ Result<void> SetNodeConfigurationRoutine::setReportingPeriods(
     case acousea_ModuleWrapper_iridiumReporting_tag: {
         const auto reportingModule = moduleEntry.value.module.iridiumReporting;
         nodeConfig.iridiumModule = reportingModule;
+        break;
+    }
+    case acousea_ModuleWrapper_gsmMqttReporting_tag: {
+        const auto reportingModule = moduleEntry.value.module.gsmMqttReporting;
+        nodeConfig.gsmMqttModule = reportingModule;
         break;
     }
     default: {

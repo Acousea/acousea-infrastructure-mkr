@@ -7,56 +7,52 @@
 #include "routines/CompleteStatusReportRoutine/CompleteStatusReportRoutine.h"
 #include "Result/Result.h"
 #include "time/getMillis.hpp"
-#include <climits> // para ULONG_MAX
+
 
 #include <deque>
 #include <optional>
 
 template <size_t MAX_ROUTINES, size_t MAX_ATTEMPTS>
-struct PendingRoutines
-{
+struct PendingRoutines{
     using Packet = acousea_CommunicationPacket;
     using Routine = IRoutine<Packet>;
 
-    struct Entry
-    {
-        Routine* routine; // rutina en ejecución
+    struct Entry{
+        Routine* routine = nullptr; // rutina en ejecución
         std::optional<Packet> input{};
         uint8_t attempts = 0;
         IPort::PortType portResponseTo;
     };
 
-    // FIFO
-    std::deque<Entry> buffer;
-
-    void add(Entry e)
-    {
-        if (buffer.size() >= MAX_ROUTINES)
-        {
+public:
+    void add(Entry e){
+        if (buffer.size() >= MAX_ROUTINES){
             buffer.pop_front();
         }
         buffer.push_back(e);
     }
 
     // sacar la más antigua
-    std::optional<Entry> next()
-    {
+    std::optional<Entry> next(){
         if (buffer.empty()) return std::nullopt;
         Entry e = buffer.front();
         buffer.pop_front();
         return e;
     }
 
-    [[nodiscard]] bool empty() const { return buffer.empty(); }
-    [[nodiscard]] size_t size() const { return buffer.size(); }
+    [[nodiscard]] bool empty() const{ return buffer.empty(); }
+    [[nodiscard]] size_t size() const{ return buffer.size(); }
+
+private:
+    // FIFO
+    std::deque<Entry> buffer;
 };
 
 
 /**
  * @brief Class that runs the operation modes of the node
  */
-class NodeOperationRunner final: public IRunnable
-{
+class NodeOperationRunner final : public IRunnable{
 private:
     Router& router;
     std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> commandRoutines;
@@ -73,15 +69,14 @@ private:
 
 private:
     // Struct to store the current currentOperationMode and cycle count
-    struct Cache
-    {
+    struct Cache{
         acousea_OperationMode currentOperationMode;
         uint8_t cycleCount;
 
-        struct
-        {
+        struct{
             unsigned long sbd;
             unsigned long lora;
+            unsigned long gsmMqtt;
         } lastReportMinute;
     } cache;
 
@@ -101,13 +96,13 @@ public:
     void run() override;
 
 private:
-    void tryReport(const std::string& reportModuleTypeStr, const acousea_ReportingPeriodEntry* entries, size_t entryCount,
-                   IPort::PortType port, unsigned long& lastMinute, unsigned long currentMinute);
+    void tryReport(IPort::PortType port, unsigned long& lastMinute, unsigned long currentMinute);
 
-    std::optional<acousea_CommunicationPacket> executeRoutine(IRoutine<_acousea_CommunicationPacket>*& routine,
-                                                              const std::optional<acousea_CommunicationPacket>& optPacket,
-                                                              const IPort::PortType portType,
-                                                              bool requeueAllowed
+    std::optional<acousea_CommunicationPacket> executeRoutine(
+        IRoutine<_acousea_CommunicationPacket>*& routine,
+        const std::optional<acousea_CommunicationPacket>& optPacket,
+        const IPort::PortType portType,
+        bool requeueAllowed
     );
 
     void processReportingRoutines();
@@ -115,7 +110,8 @@ private:
     void runPendingRoutines();
 
 
-    std::optional<acousea_CommunicationPacket> processPacket(IPort::PortType portType, const acousea_CommunicationPacket& packet);
+    std::optional<acousea_CommunicationPacket> processPacket(IPort::PortType portType,
+                                                             const acousea_CommunicationPacket& packet);
 
     void sendResponsePacket(IPort::PortType portType, const uint8_t& localAddress,
                             acousea_CommunicationPacket& responsePacket) const;
@@ -127,10 +123,8 @@ private:
     static bool mustReport(unsigned long currentMinute, unsigned long reportingPeriod, unsigned long lastReportMinute);
 
     [[nodiscard]] Result<acousea_OperationMode> searchForOperationMode(uint8_t modeId) const;
-    static Result<acousea_ReportingPeriodEntry> searchForReportingEntry(uint8_t modeId,
-                                                                        const acousea_ReportingPeriodEntry* entries,
-                                                                        size_t entryCount);
-
+    Result<acousea_ReportingPeriodEntry> getReportingEntryForCurrentOperationMode(
+        uint8_t modeId, IPort::PortType portType);
 };
 
 #endif // OPERATION_MODE_RUNNER_H

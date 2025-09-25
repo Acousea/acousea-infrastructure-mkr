@@ -27,7 +27,7 @@ void GsmMQTTPort::mqttMessageHandler(int messageSize){
 
 GsmMQTTPort::GsmMQTTPort(const GsmConfig& cfg)
 // : IPort(PortType::GsmPort), config(cfg), sslClient(gsmClient), mqttClient(sslClient){
-    : IPort(PortType::GsmPort), config(cfg), mqttClient(ublox_gsmSslClient){
+    : IPort(PortType::GsmMqttPort), config(cfg), mqttClient(ublox_gsmSslClient){
 }
 
 void GsmMQTTPort::printCertificates(const std::vector<StoredCert>& currentCerts){
