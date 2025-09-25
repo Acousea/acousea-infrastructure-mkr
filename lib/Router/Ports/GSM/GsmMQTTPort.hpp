@@ -49,6 +49,8 @@ class GsmMQTTPort final : public IPort{
 
 public:
     explicit GsmMQTTPort(const GsmConfig& cfg);
+
+    void testConnection(const char* host, int port, const char* path);
     static void printCertificates(const std::vector<StoredCert>& currentCerts);
 
     void init() override;
@@ -57,10 +59,9 @@ public:
     std::vector<std::vector<uint8_t>> read() override;
 
     // Métodos MQTT
-    void subscribeToTopic(const char* topic);
-    void publishToTopic(const char* topic, const char* message);
     void mqttLoop();
-    void testConnection(const char* host, int port, const char* path);
+    void mqttSubscribeToTopic(const char* topic);
+    bool mqttPublishToTopic(const std::vector<uint8_t>& data, std::string topic);
 
 private:
     static unsigned long getTime();

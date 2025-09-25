@@ -95,7 +95,7 @@ void test_setup(){
         0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04,
         0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C
     };
-    // gsmPort.send(payload);
+    gsmPort.send(payload);
     // GsmPort::testConnection("example.com", 80, "/", false);
 
     // gsmPort.testConnection("www.google.com", 443, "/", true);
@@ -144,20 +144,20 @@ void test_loop(){
     if (getMillis() - lastTime >= 15000 || lastTime == 0){
         // Try to send a packet
 
-        // const auto packets = gsmPort.read();
-        // if (packets.empty()){
-        //     ConsoleSerial.println("No packets received.");
-        // }
-        // else{
-        //     ConsoleSerial.println("Received packets:");
-        //     for (const auto& packet : packets){
-        //         printPacketBytes(packet);
-        //     }
-        // }
-        //
-        // ConsoleSerial.println("Sending packet...");
-        // const std::vector<uint8_t> data = {0x01, 0x02, 0x03, 0x04, 0x05};
-        // gsmPort.send(data);
+        const auto packets = gsmPort.read();
+        if (packets.empty()){
+            ConsoleSerial.println("No packets received.");
+        }
+        else{
+            ConsoleSerial.println("Received packets:");
+            for (const auto& packet : packets){
+                printPacketBytes(packet);
+            }
+        }
+
+        ConsoleSerial.println("Sending packet...");
+        const std::vector<uint8_t> data = {0x01, 0x02, 0x03, 0x04, 0x05};
+        gsmPort.send(data);
 
         ConsoleSerial.println("Looping...");
         lastTime = getMillis();

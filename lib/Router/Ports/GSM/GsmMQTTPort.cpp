@@ -120,20 +120,34 @@ void GsmMQTTPort::init(){
     Logger::logInfo(getClassNameString() + " -> Successfully connected to MQTT broker");
 
     // Automatically subscribe to input topic
-    subscribeToTopic(config.getInputTopic().c_str());
+    mqttSubscribeToTopic(config.getInputTopic().c_str());
 
-    Logger::logInfo(getClassNameString() + " -> Successfully subscribed to input topic: " +
-        config.getInputTopic());
+    Logger::logInfo(getClassNameString() + " -> Finished initialization.");
 }
 
 
 void GsmMQTTPort::send(const std::vector<uint8_t>& data){
     const std::string topic = config.getOutputTopic();
+    mqttPublishToTopic(data, topic);
+}
+
+bool GsmMQTTPort::available(){
+    return !receivedRawPackets.empty();
+}
+
+std::vector<std::vector<uint8_t>> GsmMQTTPort::read(){
+    mqttLoop();
+    std::vector<std::vector<uint8_t>> packets(receivedRawPackets.begin(), receivedRawPackets.end());
+    receivedRawPackets.clear();
+    return packets;
+}
+
+bool GsmMQTTPort::mqttPublishToTopic(const std::vector<uint8_t>& data, const std::string topic){
     const std::string prefix = getClassNameString() + " -> ";
 
     if (!mqttClient.beginMessage(topic.c_str())){
         Logger::logError(prefix + "Failed to begin MQTT message on topic " + topic);
-        return;
+        return true;
     }
 
     const size_t written = mqttClient.write(data.data(), data.size());
@@ -147,35 +161,43 @@ void GsmMQTTPort::send(const std::vector<uint8_t>& data){
         Logger::logError(prefix + "Failed to finalize MQTT message to " + topic +
             " (only wrote " + std::to_string(written) + " bytes from " +
             std::to_string(data.size()) + ")");
-        return;
+        return true;
     }
 
     Logger::logInfo(prefix + "Published " + std::to_string(written) +
         " bytes to topic " + topic);
-}
-
-bool GsmMQTTPort::available(){
-    return !receivedRawPackets.empty();
-}
-
-std::vector<std::vector<uint8_t>> GsmMQTTPort::read(){
-    std::vector<std::vector<uint8_t>> packets(receivedRawPackets.begin(), receivedRawPackets.end());
-    receivedRawPackets.clear();
-    return packets;
+    return false;
 }
 
 
-void GsmMQTTPort::subscribeToTopic(const char* topic){
-    mqttClient.subscribe(topic);
-    Logger::logInfo(getClassNameString() + " -> Subscribed to topic: " + std::string(topic));
+void GsmMQTTPort::mqttSubscribeToTopic(const char* topic){
+    const std::string prefix = getClassNameString() + " -> ";
+    const int result = mqttClient.subscribe(topic);
+
+    switch (result){
+    case 0:
+        Logger::logError(prefix + "Failed to subscribe to topic: " + std::string(topic));
+        break;
+
+    case 1:
+        Logger::logInfo(prefix + "Successfully subscribed to topic " + std::string(topic) + " with QoS 0");
+        break;
+
+    case 2:
+        Logger::logInfo(prefix + "Successfully subscribed to topic " + std::string(topic) + " with QoS 1");
+        break;
+
+    case 3:
+        Logger::logInfo(prefix + "Successfully subscribed to topic " + std::string(topic) + " with QoS 2");
+        break;
+
+    default:
+        Logger::logWarning(prefix + "Unexpected subscribe return code (" +
+            std::to_string(result) + ") for topic " + std::string(topic));
+        break;
+    }
 }
 
-void GsmMQTTPort::publishToTopic(const char* topic, const char* message){
-    mqttClient.beginMessage(topic);
-    mqttClient.print(message);
-    mqttClient.endMessage();
-    Logger::logInfo(getClassNameString() + " -> Message published to topic " + std::string(topic));
-}
 
 void GsmMQTTPort::mqttLoop(){
     mqttClient.poll();
