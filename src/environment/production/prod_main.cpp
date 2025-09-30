@@ -3,7 +3,7 @@
 void prod_saveLocalizerConfig(){
     acousea_NodeConfiguration localizerConfig = acousea_NodeConfiguration_init_default;
 
-    localizerConfig.localAddress = 2;
+    localizerConfig.localAddress = 202;
     localizerConfig.has_loraModule = false;
     localizerConfig.has_iridiumModule = false;
 
@@ -43,7 +43,7 @@ void prod_saveLocalizerConfig(){
 
 void prod_saveDrifterConfig(){
     acousea_NodeConfiguration drifterConfig = acousea_NodeConfiguration_init_default;
-    drifterConfig.localAddress = 1;
+    drifterConfig.localAddress = 101;
 
     drifterConfig.has_operationModesModule = true;
     drifterConfig.operationModesModule = acousea_OperationModesModule_init_default;

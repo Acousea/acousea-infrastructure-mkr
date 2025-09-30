@@ -34,12 +34,12 @@ struct GsmConfig{
 
     // Devuelve el topic de entrada
     [[nodiscard]] std::string getInputTopic() const{
-        return std::string(baseTopic) + "/" + clientId + "/in";
+        return std::string(baseTopic) + "/mt/" + clientId; // "mt" = Mobile Terminated (incoming)
     }
 
     // Devuelve el topic de salida
     [[nodiscard]] std::string getOutputTopic() const{
-        return std::string(baseTopic) + "/" + clientId + "/out";
+        return std::string(baseTopic) + "/mo/" + clientId; // "mo" = Mobile Originated (outgoing)
     }
 };
 
