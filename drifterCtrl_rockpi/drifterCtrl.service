@@ -1,0 +1,22 @@
+# drifterCtl.service
+#
+# This service controls GPIO pins for RockPi power management.
+# It is hooked into basic.target so it runs very early in boot,
+# right after sysinit.target and before multi-user.target.
+# ExecStop ensures pins are forced LOW on any controlled shutdown
+# (poweroff, halt, reboot). RemainAfterExit keeps the unit "active"
+# so systemd will always call ExecStop on shutdown.
+
+[Unit]
+Description=Drifter Control Daemon
+After=sysinit.target
+Before=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/home/user/drifterCtl/drifterCtlDaemon.sh run
+ExecStop=/home/user/drifterCtl/drifterCtlDaemon.sh stop
+Restart=always
+
+[Install]
+WantedBy=basic.target poweroff.target halt.target reboot.target

@@ -83,7 +83,7 @@ void test_setup(){
 
 #ifdef PLATFORM_HAS_GSM
     // ------------------------ Test GSM Connection ------------------------
-    gsmPort.init();
+    // gsmPort.init();
     Logger::logFreeMemory("[MAIN] After GSM init");
     ConsoleSerial.println("Preparing to send packet using GSM...");
     // MyGSMSSLClient myGsmSslClient;
@@ -96,7 +96,8 @@ void test_setup(){
     //     0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C
     // };
 
-    const std::vector<uint8_t> payload = { // Error payload example
+    const std::vector<uint8_t> payload = {
+        // Error payload example
         0x08, 0x63, 0x12, 0x04, 0x08, 0x65, 0x18, 0x07,
         0x32, 0x1D, 0x0A, 0x1B, 0x54, 0x68, 0x69, 0x73,
         0x20, 0x69, 0x73, 0x20, 0x61, 0x20, 0x74, 0x65,
@@ -104,7 +105,7 @@ void test_setup(){
         0x20, 0x70, 0x61, 0x63, 0x6B, 0x65, 0x74
     };
 
-    gsmPort.send(payload);
+    // gsmPort.send(payload);
     // GsmPort::testConnection("example.com", 80, "/", false);
 
     // gsmPort.testConnection("www.google.com", 443, "/", true);
@@ -118,21 +119,49 @@ void test_setup(){
 #endif
 }
 
-// void test_loop(){
-//     static unsigned long lastTime = 0;
-//     // Operate every 30 seconds
-//     if (getMillis() - lastTime >= 15000 || lastTime == 0){
-//         // nodeOperationRunner.init();
-//         // nodeOperationRunner.run();
-//         const auto percentage = batteryController->percentage();
-//         const auto status = batteryController->status();
-//         Logger::logInfo(
-//             "Battery: " + std::to_string(percentage) + "%, Status: " + std::to_string(static_cast<int>(status))
-//         );
-//         lastTime = getMillis();
-//     }
-// }
-//
+void base_loop(){
+    executeEvery(
+        15000,
+        [&]{
+            // nodeOperationRunner.init();
+            // nodeOperationRunner.run();
+            const auto percentage = batteryController->percentage();
+            const auto status = batteryController->status();
+            Logger::logInfo(
+                "Battery: " + std::to_string(percentage) + "%, Status: " + std::to_string(
+                    static_cast<int>(status))
+            );
+        }
+    );
+}
+
+void test_rockpi_power_controller(){
+    ConsoleSerial.println("[Rockpi Power Controller Test]");
+    bool is_rockpi_up = rockpiPowerController.isRockPiUp();
+    ConsoleSerial.print("[BEGIN] Rockpi is up? ");
+    ConsoleSerial.println(is_rockpi_up ? "true" : "false");
+
+
+    if (is_rockpi_up){
+        ConsoleSerial.println("[UP]: Rockpi is Up -> Shutting down");
+        rockpiPowerController.commandShutdown();
+    }
+    else{
+        ConsoleSerial.println("[DOWN]: Rockpi is Down -> Starting up");
+        rockpiPowerController.commandStartup();
+    }
+    is_rockpi_up = rockpiPowerController.isRockPiUp();
+    ConsoleSerial.print("[END] Rockpi is up? ");
+    ConsoleSerial.println(is_rockpi_up ? "true" : "false");
+}
+
+
+void test_loop(){
+    executeEvery(
+        15000,
+        test_rockpi_power_controller
+    );
+}
 
 void printPacketBytes(const std::vector<uint8_t>& packet){
     ConsoleSerial.print("Packet (size ");
@@ -148,7 +177,8 @@ void printPacketBytes(const std::vector<uint8_t>& packet){
     ConsoleSerial.println();
 }
 
-void test_loop(){
+
+void loop_gsm_sending_packets(){
     static unsigned long lastTime = 0;
     if (getMillis() - lastTime >= 15000 || lastTime == 0){
         // Try to send a packet

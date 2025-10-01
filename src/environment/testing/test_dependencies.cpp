@@ -65,6 +65,9 @@ GsmConfig gsmCfg = {
     .certificate = CLIENT_CERTIFICATE
 };
 GsmMQTTPort gsmPort(gsmCfg);
+
+RockPiPowerController rockpiPowerController;
+
 #endif
 
 // =======================================================

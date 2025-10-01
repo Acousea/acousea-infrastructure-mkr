@@ -6,26 +6,48 @@
 #include "../MosfetController/MosfetController.hpp"
 #include "Logger/Logger.h"
 #include "ArduinoLowPower.h"
+#include "ClassName.h"
 #include "../PiPowerControlPins.hpp"
 
-class RockPiPowerController {
+/**
+ * @class RockPiPowerController
+ * @brief Manages power control and startup/shutdown sequence of the Rock Pi.
+ *
+ * Uses a MOSFET to control main power and a dedicated shutdown pin to request
+ * a graceful shutdown. The monitor pin indicates Rock Pi power state.
+ * Provides methods to:
+ *  - Send shutdown signal and cut MOSFET after a grace period.
+ *  - Power cycle MOSFET to start the Rock Pi.
+ *  - Query current power status.
+ */
+
+class RockPiPowerController{
 public:
-    RockPiPowerController(
-            MosfetController &mosfetController,
-            int rockPiShutdownPin = ROCK_PI_SHUTDOWN_PIN,
-            int rockPiMonitorPin = ROCK_PI_MONITOR_PIN
+    CLASS_NAME(RockPiPowerController)
+    explicit RockPiPowerController(
+        int mosfetControlPin = MOSFET_CONTROL_PIN,
+        int rockPiShutdownPin = ROCK_PI_SHUTDOWN_PIN,
+        int rockPiMonitorPin = ROCK_PI_MONITOR_PIN
     );
 
-    void commandShutdown();
+    void commandShutdown() const;
 
-    void commandStartup();
+    void commandStartup() const;
+    void forceRestart() const;
 
-    bool isRockPiUp();
+    [[nodiscard]] bool isRockPiUp() const;
 
 private:
     const int rockPiShutdownPin;
     const int rockPiMonitorPin;
-    MosfetController &mosfetController;
+    MosfetController mosfetController;
+    enum : unsigned long {
+        RECEIVE_SHUTDOWN_SIGNAL_PERIOD = 30000,
+        STARTUP_TIMEOUT = 60000,
+        POLL_INTERVAL = 500,
+        FULL_SHUTDOWN_GRACE_PERIOD = 60000
+    };
+
 };
 
 #endif // ARDUINO

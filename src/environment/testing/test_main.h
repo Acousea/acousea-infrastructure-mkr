@@ -1,7 +1,7 @@
 #pragma once
 
 #include "test_dependencies.h"
-#include "../ensure.hpp"
+#include "../shared_utils.hpp"
 // #include "../lib/MockLib/include/library.h"
 
 void test_setup();
