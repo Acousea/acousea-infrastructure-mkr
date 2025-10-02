@@ -20,7 +20,7 @@ system::update() {
 
 system::install_base() {
   log "Installing base development tools..."
-  sudo apt install -y build-essential cmake git pkg-config
+  sudo apt install -y build-essential cmake git pkg-config autoconf automake libtool wget curl unzip
 }
 
 # -------------------------
@@ -135,7 +135,7 @@ overlays::install() {
     done
   else
     warn "armbian-add-overlay not found, using manual fallback"
-
+    sudo apt install -y device-tree-compiler
     sudo mkdir -p "$target_dir"
     local overlays=()
     for dts in "$overlay_dir"/*.dts; do
@@ -252,6 +252,8 @@ daemon::install() {
     endscript
 }
 EOF
+  # Probar configuración de logrotate
+  sudo logrotate -d /etc/logrotate.d/drifterCtrl
 
   # Recargar systemd y habilitar
   sudo systemctl daemon-reload
@@ -261,6 +263,97 @@ EOF
   log "Service enabled: drifterCtrl.service"
   log "Start with: sudo systemctl start drifterCtrl"
 }
+
+
+# -------------------------
+# Namespace: test
+# -------------------------
+test::deps() {
+  log "Testing installed dependencies with CMake..."
+
+  local tmp_dir="/tmp/test_deps"
+  rm -rf "$tmp_dir"
+  mkdir -p "$tmp_dir"
+  cat > "$tmp_dir/CMakeLists.txt" <<'EOF'
+cmake_minimum_required(VERSION 3.18)
+project(test_deps)
+
+# ---- ASIO ----
+find_path(ASIO_INCLUDE_DIR NAMES asio.hpp PATHS /usr/include /usr/local/include)
+if(ASIO_INCLUDE_DIR)
+    message(STATUS "[ASIO] Found in: ${ASIO_INCLUDE_DIR}")
+    add_library(asio::asio INTERFACE IMPORTED)
+    set_target_properties(asio::asio PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${ASIO_INCLUDE_DIR}")
+    find_file(ASIO_VERSION_HPP "asio/version.hpp" PATHS ${ASIO_INCLUDE_DIR}/asio)
+    if (ASIO_VERSION_HPP)
+        file(READ ${ASIO_VERSION_HPP} ASIO_VERSION_CONTENT)
+        string(REGEX MATCH "#define ASIO_VERSION ([0-9]+)" _ ${ASIO_VERSION_CONTENT})
+        if (CMAKE_MATCH_1)
+            math(EXPR ASIO_VERSION_MAJOR "${CMAKE_MATCH_1} / 100000")
+            math(EXPR ASIO_VERSION_MINOR "(${CMAKE_MATCH_1} / 1000) % 100")
+            math(EXPR ASIO_VERSION_PATCH "${CMAKE_MATCH_1} % 1000")
+            set(ASIO_VERSION_STRING "${ASIO_VERSION_MAJOR}.${ASIO_VERSION_MINOR}.${ASIO_VERSION_PATCH}")
+            message(STATUS "[ASIO] Detected version: ${ASIO_VERSION_STRING}")
+        endif()
+    endif()
+else()
+    message(WARNING "[ASIO] Not found on system")
+endif()
+
+# ---- CROW ----
+find_package(Crow QUIET)
+if (Crow_FOUND)
+    message(STATUS "[CROW] Found: ${Crow_VERSION}")
+else ()
+    message(WARNING "[CROW] Not found")
+endif ()
+
+# ---- SQLITE3 ----
+find_package(SQLite3 QUIET)
+if (SQLite3_FOUND)
+    message(STATUS "[SQLITE3] Found: v${SQLite3_VERSION}")
+else ()
+    message(WARNING "[SQLITE3] Not found")
+endif ()
+
+# ---- SNDFILE ----
+find_package(SndFile QUIET)
+if (SndFile_FOUND)
+    message(STATUS "[SNDFILE] Found: ${SndFile_VERSION}")
+else ()
+    message(WARNING "[SNDFILE] Not found")
+endif ()
+
+# ---- PROTOBUF ----
+find_package(Protobuf QUIET)
+if (Protobuf_FOUND)
+    message(STATUS "[PROTOBUF] Found: v${Protobuf_VERSION} Executable: ${Protobuf_PROTOC_EXECUTABLE}")
+else ()
+    message(WARNING "[PROTOBUF] Not found")
+endif ()
+
+# ---- GTEST ----
+find_package(GTest QUIET)
+if (GTest_FOUND)
+    message(STATUS "[GTEST] Found include dirs: ${GTEST_INCLUDE_DIRS}")
+else ()
+    message(WARNING "[GTEST] Not found")
+endif ()
+
+# ---- ICLISTEN ----
+set(iclisten_DIR "/usr/local/lib/cmake/iclisten")
+find_package(iclisten QUIET)
+if (iclisten_FOUND)
+    message(STATUS "[ICLISTEN] Found")
+else ()
+    message(WARNING "[ICLISTEN] Not found (manual install required)")
+endif ()
+EOF
+
+  # Run cmake in test mode
+  cmake -S "$tmp_dir" -B "$tmp_dir/build"
+}
+
 
 
 # -------------------------
@@ -280,6 +373,7 @@ all::install() {
   pps::configure
   daemon::install
   iclisten::info
+  test::deps
   log "All dependencies installed."
 }
 
@@ -299,5 +393,6 @@ case "${1:-}" in
   pps)        pps::install; pps::configure ;;
   daemon)     daemon::install ;;
   iclisten)   iclisten::info ;;
-  *)          echo "Usage: $0 {all|sqlite|protobuf|gtest|asio|sndfile|crow|iclisten}" ;;
+  test)       test::deps ;;
+  *)          echo "Usage: $0 {all|sqlite|protobuf|gtest|asio|sndfile|crow|overlays|pps|daemon|iclisten|test}" ;;
 esac
