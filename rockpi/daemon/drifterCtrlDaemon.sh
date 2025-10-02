@@ -2,7 +2,6 @@
 
 # Cargar utilidades
 cur_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-TIME_UNKNOWN=2
 
 . "$cur_dir/utilities.sh"
 
@@ -52,6 +51,21 @@ monitor_shutdown_signal() {
     sleep 1
   done
 }
+
+shutdown_iclisten() {
+  log "Initiating icListen shutdown sequence..."
+
+  # 1. Mandar comando seguro al icListen para que se apague por software
+  ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null \
+      icListen@192.168.10.150 "sync && poweroff" || \
+      log "WARNING: SSH poweroff command to icListen failed."
+
+  # 2. Cortar la alimentación del TRACO tras un pequeño retardo
+  sleep 5
+  gpioset $TRACO_POWER_ON_OFF_PIN=0
+  log "Power to icListen cut off via TRACO."
+}
+
 # Define shutdown signal pin
 SHUTDOWN_SIGNAL_PIN="gpiochip0 16"
 TRACO_POWER_ON_OFF_PIN="gpiochip0 17"

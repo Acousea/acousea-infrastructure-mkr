@@ -14,8 +14,8 @@ Before=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/home/user/drifterCtl/drifterCtlDaemon.sh run
-ExecStop=/home/user/drifterCtl/drifterCtlDaemon.sh stop
+ExecStart=/usr/local/drifterCtrl/drifterCtrlDaemon.sh run
+ExecStop=/usr/local/drifterCtrl/drifterCtrlDaemon.sh stop
 Restart=always
 
 [Install]
