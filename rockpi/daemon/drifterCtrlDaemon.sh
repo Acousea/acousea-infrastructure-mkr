@@ -51,18 +51,27 @@ monitor_shutdown_signal() {
     sleep 1
   done
 }
-
+# --------------------------------------------------
+# > SSH Connection: ssh -oKexAlgorithms=diffie-hellman-group14-sha1 -oHostKeyAlgorithms=ssh-rsa -oMACs=hmac-sha1 -c aes256-cbc icListen@192.168.10.150
+# > SCP Connection: scp -r -oKexAlgorithms=diffie-hellman-group14-sha1 -oHostKeyAlgorithms=ssh-rsa -c aes256-cbc icListen@192.168.10.150:/home/icListen/ ./iclisten_backup
+#   Password: (empty)
+# --------------------------------------------------
 shutdown_iclisten() {
   log "Initiating icListen shutdown sequence..."
 
-  # 1. Mandar comando seguro al icListen para que se apague por software
-  ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null \
-      icListen@192.168.10.150 "sync && poweroff" || \
-      log "WARNING: SSH poweroff command to icListen failed."
-
-  # 2. Cortar la alimentación del TRACO tras un pequeño retardo
-  sleep 5
+  # 1. Cortar la alimentación del TRACO tras un pequeño retardo
   gpioset $TRACO_POWER_ON_OFF_PIN=0
+
+  # 1. Mandar comando seguro al icListen para que se apague por software
+  sshpass -p '' ssh \
+    -oKexAlgorithms=+diffie-hellman-group14-sha1 \
+    -oHostKeyAlgorithms=+ssh-rsa \
+    -oCiphers=aes128-cbc,aes256-cbc,3des-cbc \
+    -oUserKnownHostsFile=/dev/null \
+    -oStrictHostKeyChecking=no \
+    icListen@192.168.10.150 'busybox sync && busybox poweroff' || \
+    log "WARNING: SSH poweroff command to icListen failed."
+
   log "Power to icListen cut off via TRACO."
 }
 
@@ -86,6 +95,7 @@ case "$mode" in
 
     gpioset $TRACO_POWER_ON_OFF_PIN=0 # Turn off the tracopower device (ICListen)
     log "Shutdown signal received..."
+    shutdown_iclisten
     shutdown -h now
     ;;
   stop)

@@ -20,7 +20,7 @@ system::update() {
 
 system::install_base() {
   log "Installing base development tools..."
-  sudo apt install -y build-essential cmake git pkg-config autoconf automake libtool wget curl unzip
+  sudo apt install -y build-essential cmake git pkg-config autoconf automake libtool wget curl unzip sshpass gpiod
 }
 
 # -------------------------
