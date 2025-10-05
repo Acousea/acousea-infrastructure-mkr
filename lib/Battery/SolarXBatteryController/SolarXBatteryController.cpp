@@ -21,6 +21,8 @@ SolarXBatteryController::SolarXBatteryController(const uint8_t batteryAddr, cons
 }
 
 bool SolarXBatteryController::init() {
+    Wire.setTimeout(1500); // 1500 ms de timeout
+
     if (!batterySensor.begin()) {
         Logger::logError(getClassNameString() +
                          "Error initializing battery INA219 at 0x" + toHexString(batteryAddress));

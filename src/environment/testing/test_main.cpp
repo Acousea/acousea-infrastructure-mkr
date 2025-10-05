@@ -72,7 +72,7 @@ void test_setup() {
 
     rtcController->init();
 
-    rtcController->setEpoch(1759681045); // 2nd Oct 2025, 20:00:29 GMT
+    rtcController->setEpoch(1759708408);
 
     // Logger initialization and configuration
     Logger::initialize(
@@ -112,6 +112,7 @@ void test_solar_x_battery_controller() {
         std::to_string(accuratePercentage) + "," +
         std::to_string(static_cast<int>(batteryStatus))
     );
+    Logger::logFreeMemory("[FREEMEM]");
 }
 
 

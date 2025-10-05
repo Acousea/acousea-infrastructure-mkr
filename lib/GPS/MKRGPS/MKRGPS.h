@@ -3,7 +3,7 @@
 
 #ifdef ARDUINO
 
-#include <Wire.h>
+
 #include <ctime> // Or <time.h> depending on the environment
 #include <Arduino_MKRGPS.h>
 
