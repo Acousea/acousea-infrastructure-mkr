@@ -113,80 +113,77 @@ crow::install() {
 # -------------------------
 iclisten::configure_network_eth_route() {
   local target_ip="192.168.10.150"
+  local static_ip="192.168.10.10/32"
+  local static_conn_name="ICListen-Fallback"
+  local dhcp_conn_name="Ethernet-DHCP"
 
-  log "Configuring static route for ICListen ($target_ip)..."
+  log "Configuring clean dual-profile setup for ICListen ($target_ip)..."
 
-  # Detectar interfaz Ethernet activa (prioriza end0, eth0, enx*)
-  local eth_iface
-  eth_iface=$(ip -o link show | awk -F': ' '{print $2}' | grep -E '^(end0|eth0|enx)' | head -n1)
-
-  if [ -z "$eth_iface" ]; then
-    error "No Ethernet interface found (end0/eth0/enx*). Aborting route configuration."
+  # Detectar todas las interfaces Ethernet reales
+  local eth_ifaces
+  eth_ifaces=$(ip -o link show | awk -F': ' '{print $2}' | grep -E '^(end|eth|enx)' | tr '\n' ' ')
+  if [ -z "$eth_ifaces" ]; then
+    error "No Ethernet interfaces found. Aborting."
     return 1
   fi
-  log "Detected Ethernet interface: $eth_iface"
 
-  # Buscar la conexión NM asociada (funciona incluso con DHCP)
-  local nm_conn=""
-  local oldIFS="$IFS"; IFS=$'\n'
-  for c in $(nmcli -t -f NAME connection show); do
-    local iface
-    iface=$(nmcli -g connection.interface-name connection show "$c" 2>/dev/null)
-    if [ "$iface" = "$eth_iface" ]; then
-      nm_conn="$c"
-      break
+  # Detectar todos los perfiles NM de tipo ethernet
+  local eth_profiles
+  eth_profiles=$(nmcli -g NAME,TYPE connection show | grep "ethernet" | cut -d: -f1)
+
+  for eth_iface in $eth_ifaces; do
+    log "Processing Ethernet interface: $eth_iface"
+    # Eliminar todas las conexiones NM tipo ethernet asociadas
+    for conn in $eth_profiles; do
+      local conn_iface
+      conn_iface=$(nmcli -g connection.interface-name connection show "$conn" 2>/dev/null)
+      if [ "$conn_iface" = "$eth_iface" ]; then
+        log "Deleting old NetworkManager ethernet connection '$conn' for $eth_iface..."
+        nmcli connection delete "$conn" >/dev/null 2>&1 || true
+      fi
+    done
+
+    # Crear conexión DHCP principal
+    log "Creating DHCP connection '$dhcp_conn_name' on $eth_iface..."
+    nmcli connection add type ethernet ifname "$eth_iface" con-name "$dhcp_conn_name" \
+      ipv4.method auto \
+      ipv4.may-fail yes \
+      ipv6.method ignore \
+      connection.autoconnect yes \
+      connection.autoconnect-retries -1 \
+      connection.wait-device-timeout 0
+
+    # Crear conexión estática secundaria
+    log "Creating static fallback connection '$static_conn_name' on $eth_iface..."
+    nmcli connection add type ethernet ifname "$eth_iface" con-name "$static_conn_name" \
+      ipv4.method manual \
+      ipv4.addresses "$static_ip" \
+      ipv4.routes "$target_ip/32" \
+      ipv6.method ignore \
+      connection.autoconnect yes \
+      connection.autoconnect-retries -1 \
+      connection.wait-device-timeout 0
+
+    # Asegurar que NM no desactive la interfaz aunque no haya carrier
+    log "Ensuring NetworkManager keeps $eth_iface active..."
+    nmcli device set "$eth_iface" managed yes
+    nmcli device set "$eth_iface" autoconnect yes
+
+    # Activar ambas conexiones
+    log "Bringing up DHCP and fallback connections for $eth_iface..."
+    nmcli connection up "$dhcp_conn_name" || warn "DHCP may not be active yet on $eth_iface."
+    nmcli connection up "$static_conn_name" || warn "Static fallback may not be active yet on $eth_iface."
+
+    # Verificar la ruta
+    if ip route get "$target_ip" 2>/dev/null | grep -q "$eth_iface"; then
+      log "Verified: $target_ip is routed via $eth_iface ✅"
+    else
+      warn "Route to $target_ip not yet visible. NetworkManager may still be settling."
     fi
   done
-  IFS="$oldIFS"
-
-  if [ -z "$nm_conn" ]; then
-    err "No NetworkManager connection found for $eth_iface. Cannot add route."
-    return 1
-  fi
-  log "Using NM connection: $nm_conn"
-
-  # Configurar modo híbrido DHCP + fallback manual
-  log "Ensuring hybrid DHCP + static fallback mode for $nm_conn..."
-  nmcli connection modify "$nm_conn" \
-    ipv4.method auto \
-    ipv4.may-fail no \
-    ipv4.addresses "192.168.10.10/32" \
-    ipv4.ignore-auto-routes no \
-    ipv4.ignore-auto-dns no \
-    ipv6.method ignore
-
-  # --- NUEVO BLOQUE: evitar que NM apague la interfaz sin carrier ---
-  log "Configuring NetworkManager to keep $eth_iface active even without link..."
-  nmcli connection modify "$nm_conn" connection.autoconnect yes
-  nmcli connection modify "$nm_conn" connection.autoconnect-retries -1
-  nmcli connection modify "$nm_conn" connection.wait-device-timeout 0
-  nmcli connection modify "$nm_conn" connection.metered no
-
-  # -------------------------------------------------------------------
-
-  # Comprobar si la ruta ya existe
-  if nmcli -g ipv4.routes connection show "$nm_conn" 2>/dev/null | grep -q "$target_ip"; then
-    log "Route to $target_ip already present in $nm_conn. Skipping."
-  else
-    log "Adding static route to $target_ip via $eth_iface (persistent)..."
-    nmcli connection modify "$nm_conn" +ipv4.routes "$target_ip/32"
-    log "Route added successfully."
-  fi
-
-  # Levantar la conexión (aunque no haya carrier físico)
-  log "Bringing up Ethernet connection (ignoring carrier state)..."
-  nmcli device set "$eth_iface" managed yes
-  nmcli device set "$eth_iface" autoconnect yes
-  nmcli connection up "$nm_conn" || warn "Could not fully activate $eth_iface yet."
-
-  # Verificar que la ruta está activa
-  if ip route get "$target_ip" 2>/dev/null | grep -q "$eth_iface"; then
-    log "Verified: $target_ip is routed via $eth_iface ✅"
-  else
-    warn "Route to $target_ip not active yet. Check NetworkManager status."
-    nmcli connection show "$nm_conn" | cat
-  fi
 }
+
+
 
 
 iclisten::api() {
