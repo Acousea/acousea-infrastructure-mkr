@@ -1,0 +1,15 @@
+[Unit]
+Description=ICListen API Service
+After=network.target
+
+[Service]
+ExecStart=/usr/local/iclisten-api/api
+WorkingDirectory=/usr/local/iclisten-api
+Restart=always
+RestartSec=5
+User=root
+StandardOutput=append:/usr/local/iclisten-api/logs/api.log
+StandardError=append:/usr/local/iclisten-api/logs/api.log
+
+[Install]
+WantedBy=multi-user.target

@@ -111,6 +111,132 @@ crow::install() {
 # -------------------------
 # Namespace: iclisten
 # -------------------------
+iclisten::configure_network_eth_route() {
+  local target_ip="192.168.10.150"
+
+  log "Configuring static route for ICListen ($target_ip)..."
+
+  # Detectar interfaz Ethernet activa (prioriza end0, eth0, enx*)
+  local eth_iface
+  eth_iface=$(ip -o link show | awk -F': ' '{print $2}' | grep -E '^(end0|eth0|enx)' | head -n1)
+
+  if [ -z "$eth_iface" ]; then
+    error "No Ethernet interface found (end0/eth0/enx*). Aborting route configuration."
+    return 1
+  fi
+  log "Detected Ethernet interface: $eth_iface"
+
+  # Buscar la conexión NM asociada (funciona incluso con DHCP)
+  local nm_conn=""
+  local oldIFS="$IFS"; IFS=$'\n'
+  for c in $(nmcli -t -f NAME connection show); do
+    local iface
+    iface=$(nmcli -g connection.interface-name connection show "$c" 2>/dev/null)
+    if [ "$iface" = "$eth_iface" ]; then
+      nm_conn="$c"
+      break
+    fi
+  done
+  IFS="$oldIFS"
+
+  if [ -z "$nm_conn" ]; then
+    err "No NetworkManager connection found for $eth_iface. Cannot add route."
+    return 1
+  fi
+  log "Using NM connection: $nm_conn"
+
+  # Configurar modo híbrido DHCP + fallback manual
+  log "Ensuring hybrid DHCP + static fallback mode for $nm_conn..."
+  nmcli connection modify "$nm_conn" \
+    ipv4.method auto \
+    ipv4.may-fail no \
+    ipv4.addresses "192.168.10.10/32" \
+    ipv4.ignore-auto-routes no \
+    ipv4.ignore-auto-dns no \
+    ipv6.method ignore
+
+  # --- NUEVO BLOQUE: evitar que NM apague la interfaz sin carrier ---
+  log "Configuring NetworkManager to keep $eth_iface active even without link..."
+  nmcli connection modify "$nm_conn" connection.autoconnect yes
+  nmcli connection modify "$nm_conn" connection.autoconnect-retries -1
+  nmcli connection modify "$nm_conn" connection.wait-device-timeout 0
+  nmcli connection modify "$nm_conn" connection.metered no
+
+  # -------------------------------------------------------------------
+
+  # Comprobar si la ruta ya existe
+  if nmcli -g ipv4.routes connection show "$nm_conn" 2>/dev/null | grep -q "$target_ip"; then
+    log "Route to $target_ip already present in $nm_conn. Skipping."
+  else
+    log "Adding static route to $target_ip via $eth_iface (persistent)..."
+    nmcli connection modify "$nm_conn" +ipv4.routes "$target_ip/32"
+    log "Route added successfully."
+  fi
+
+  # Levantar la conexión (aunque no haya carrier físico)
+  log "Bringing up Ethernet connection (ignoring carrier state)..."
+  nmcli device set "$eth_iface" managed yes
+  nmcli device set "$eth_iface" autoconnect yes
+  nmcli connection up "$nm_conn" || warn "Could not fully activate $eth_iface yet."
+
+  # Verificar que la ruta está activa
+  if ip route get "$target_ip" 2>/dev/null | grep -q "$eth_iface"; then
+    log "Verified: $target_ip is routed via $eth_iface ✅"
+  else
+    warn "Route to $target_ip not active yet. Check NetworkManager status."
+    nmcli connection show "$nm_conn" | cat
+  fi
+}
+
+
+iclisten::api() {
+  dirname=$(dirname "$0")
+  local src_dir="$dirname/iclisten-api"
+  local target_dir="/usr/local/iclisten-api"
+  local service_file="/etc/systemd/system/iclisten-api.service"
+  local logrotate_file="/etc/logrotate.d/iclisten-api"
+
+  log "Installing ICListen API Service..."
+
+  # Crear estructura de directorios
+  sudo mkdir -p "$target_dir/logs"
+
+  # Copiar binario y base de datos
+  sudo cp "$src_dir/api" "$target_dir/"
+  sudo cp "$src_dir/iclisten.db" "$target_dir/"
+  sudo chmod +x "$target_dir/api"
+
+  # Instalar unit de systemd
+  sudo cp "$src_dir/iclisten-api.service" "$service_file"
+
+  # Configurar logrotate
+  log "Configuring logrotate for iclisten-api logs..."
+  sudo tee "$logrotate_file" > /dev/null <<'EOF'
+/usr/local/iclisten-api/logs/api.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0644 root root
+    postrotate
+        systemctl kill -s HUP iclisten-api.service >/dev/null 2>&1 || true
+    endscript
+}
+EOF
+
+  # Validar logrotate y habilitar servicio
+  sudo logrotate -d /etc/logrotate.d/iclisten-api
+  sudo systemctl daemon-reload
+  sudo systemctl enable iclisten-api.service
+
+  log "ICListen API installed to $target_dir"
+  log "Service enabled: iclisten-api.service"
+  log "Start with: sudo systemctl start iclisten-api"
+}
+
+
 iclisten::info() {
   warn "ICListen SDK must be installed manually from vendor."
   warn "Ensure it provides /usr/local/lib/cmake/iclisten/iclistenConfig.cmake"
@@ -373,6 +499,8 @@ all::install() {
   pps::configure
   daemon::install
   iclisten::info
+  iclisten::api
+  iclisten::configure_network_eth_route
   test::deps
   log "All dependencies installed."
 }
@@ -392,7 +520,7 @@ case "${1:-}" in
   overlays)   overlays::install ;;
   pps)        pps::install; pps::configure ;;
   daemon)     daemon::install ;;
-  iclisten)   iclisten::info ;;
+  iclisten)   iclisten::info; iclisten::api; iclisten::configure_network_eth_route ;;
   test)       test::deps ;;
   *)          echo "Usage: $0 {all|sqlite|protobuf|gtest|asio|sndfile|crow|overlays|pps|daemon|iclisten|test}" ;;
 esac
