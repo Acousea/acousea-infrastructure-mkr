@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <cstdlib> // std::abort
+#include "time/getMillis.hpp"
 
 #ifdef ARDUINO
 #include <Arduino.h>
@@ -33,6 +34,8 @@ inline void ENSURE(T* ptr, const char* name){
 #endif
 }
 
+
+
 template <typename Func>
 void executeEvery(const unsigned long interval, Func&& callback){
     static unsigned long lastTime = 0;
@@ -42,6 +45,25 @@ void executeEvery(const unsigned long interval, Func&& callback){
         lastTime = now;
     }
 }
+
+#ifdef ARDUINO
+#include <Arduino.h>
+#endif
+
+template <typename Func>
+void withLedIndicator(Func&& innerFunc) {
+#ifdef ARDUINO
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, HIGH);  // LED ON mientras se ejecuta
+#endif
+
+    innerFunc();  // Ejecuta la función interna
+
+#ifdef ARDUINO
+    digitalWrite(LED_BUILTIN, LOW);   // LED OFF al terminar
+#endif
+}
+
 
 
 #endif //ENSURE_HPP

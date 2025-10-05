@@ -3,27 +3,28 @@
 // #include "WVariant.h"
 
 
-void test_setup(){
+void test_setup() {
 #ifdef ARDUINO
     ConsoleSerial.begin(9600);
     delay(1000);
-    while (!ConsoleSerial){
-        digitalWrite(LED_BUILTIN, HIGH);
-        delay(100);
-        digitalWrite(LED_BUILTIN, LOW);
-        delay(100);
-    }
+    // while (!ConsoleSerial) {
+    //     digitalWrite(LED_BUILTIN, HIGH);
+    //     delay(100);
+    //     digitalWrite(LED_BUILTIN, LOW);
+    //     delay(100);
+    // }
     ConsoleSerial.println("[arduino] Setup: starting...");
 #endif
 
 #if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
     std::printf("[native] Setup: starting...\n");
 #endif
-    // ENSURE(storageManager, "storageManager");
+    ENSURE(storageManager, "storageManager");
     ENSURE(display, "display");
-    ENSURE(gps, "gps");
+    // ENSURE(gps, "gps");
     // ENSURE(rtcController, "rtcController");
     ENSURE(batteryController, "battery");
+    ENSURE(&solarXBatteryController, "solarXBatteryController");
     // ENSURE(serialPort, "serialPort");
 #ifdef PLATFORM_HAS_GSM
     // ENSURE(&gsmPort, "gsmPort");
@@ -66,21 +67,55 @@ void test_setup(){
 
 #endif
 
+    // Inicializa el administrador de la tarjeta SD
+    storageManager->begin();
+
+    rtcController->init();
+
+    rtcController->setEpoch(1759681045); // 2nd Oct 2025, 20:00:29 GMT
+
     // Logger initialization and configuration
     Logger::initialize(
         display,
-        nullptr,
-        "log", // MAX 8 chars for 8.3 filenames
-        Logger::Mode::SerialOnly
+        storageManager,
+        rtcController,
+        "log.csv", // MAX 8 chars for 8.3 filenames
+        Logger::Mode::Both
     );
     Logger::logInfo("================ Setting up Node =================");
 
     // batteryController->init();
+    solarXBatteryController.init();
 
     // Initialize the gps
     // gps->init();
+}
+
+void test_solar_x_battery_controller() {
+    const auto accuratePercentage = solarXBatteryController.accuratePercentage();
+
+    const auto batteryVoltageVolts = solarXBatteryController.batteryVolts();
+    const auto panelVoltageVolts = solarXBatteryController.panelVolts();
+
+    const auto batteryCurrentAmps = solarXBatteryController.batteryCurrentAmp();
+    const auto panelCurrentAmps = solarXBatteryController.panelCurrentAmp();
+
+    const auto systemCurrentConsumption = solarXBatteryController.netPowerConsumptionWatts();
+
+    const auto batteryStatus = solarXBatteryController.status();
+
+    // CSV format: [TAG],timestamp,voltage,current,percentage,status
+    Logger::logInfo(
+        "[TEST_SOLARX_BATTERY_CONTROLLER]," +
+        std::to_string(batteryVoltageVolts) + "," +
+        std::to_string(batteryCurrentAmps) + "," +
+        std::to_string(accuratePercentage) + "," +
+        std::to_string(static_cast<int>(batteryStatus))
+    );
+}
 
 
+void test_gsm_initialization() {
 #ifdef PLATFORM_HAS_GSM
     // ------------------------ Test GSM Connection ------------------------
     // gsmPort.init();
@@ -119,34 +154,28 @@ void test_setup(){
 #endif
 }
 
-void base_loop(){
-    executeEvery(
-        15000,
-        [&]{
-            // nodeOperationRunner.init();
-            // nodeOperationRunner.run();
-            const auto percentage = batteryController->percentage();
-            const auto status = batteryController->status();
-            Logger::logInfo(
-                "Battery: " + std::to_string(percentage) + "%, Status: " + std::to_string(
-                    static_cast<int>(status))
-            );
-        }
+void test_battery_usage() {
+    // nodeOperationRunner.init();
+    // nodeOperationRunner.run();
+    const auto percentage = batteryController->percentage();
+    const auto status = batteryController->status();
+    Logger::logInfo(
+        "Battery: " + std::to_string(percentage) + "%, Status: " + std::to_string(
+            static_cast<int>(status))
     );
 }
 
-void test_rockpi_power_controller(){
+void test_rockpi_power_controller() {
     ConsoleSerial.println("[Rockpi Power Controller Test]");
     bool is_rockpi_up = rockpiPowerController.isRockPiUp();
     ConsoleSerial.print("[BEGIN] Rockpi is up? ");
     ConsoleSerial.println(is_rockpi_up ? "true" : "false");
 
 
-    if (is_rockpi_up){
+    if (is_rockpi_up) {
         ConsoleSerial.println("[UP]: Rockpi is Up -> Shutting down");
         rockpiPowerController.commandShutdown();
-    }
-    else{
+    } else {
         ConsoleSerial.println("[DOWN]: Rockpi is Down -> Starting up");
         rockpiPowerController.commandStartup();
     }
@@ -156,19 +185,12 @@ void test_rockpi_power_controller(){
 }
 
 
-void test_loop(){
-    executeEvery(
-        15000,
-        test_rockpi_power_controller
-    );
-}
-
-void printPacketBytes(const std::vector<uint8_t>& packet){
+void printPacketBytes(const std::vector<uint8_t> &packet) {
     ConsoleSerial.print("Packet (size ");
     ConsoleSerial.print(packet.size());
     ConsoleSerial.print("): ");
-    for (const auto byte : packet){
-        if (byte < 0x10){
+    for (const auto byte: packet) {
+        if (byte < 0x10) {
             ConsoleSerial.print('0');
         }
         ConsoleSerial.print(byte, HEX);
@@ -178,51 +200,72 @@ void printPacketBytes(const std::vector<uint8_t>& packet){
 }
 
 
-void loop_gsm_sending_packets(){
-    static unsigned long lastTime = 0;
-    if (getMillis() - lastTime >= 15000 || lastTime == 0){
-        // Try to send a packet
-
-        const auto packets = gsmPort.read();
-        if (packets.empty()){
-            ConsoleSerial.println("No packets received.");
+void test_gsm_sending_packets() {
+    // Try to send a packet
+    const auto packets = gsmPort.read();
+    if (packets.empty()) {
+        ConsoleSerial.println("No packets received.");
+    } else {
+        ConsoleSerial.println("Received packets:");
+        for (const auto &packet: packets) {
+            printPacketBytes(packet);
         }
-        else{
-            ConsoleSerial.println("Received packets:");
-            for (const auto& packet : packets){
-                printPacketBytes(packet);
-            }
-        }
-
-        ConsoleSerial.println("Sending packet...");
-        const std::vector<uint8_t> data = {0x01, 0x02, 0x03, 0x04, 0x05};
-        gsmPort.send(data);
-
-        ConsoleSerial.println("Looping...");
-        lastTime = getMillis();
     }
+
+    ConsoleSerial.println("Sending packet...");
+    const std::vector<uint8_t> data = {0x01, 0x02, 0x03, 0x04, 0x05};
+    gsmPort.send(data);
+
+    ConsoleSerial.println("Looping...");
+}
+
+
+void test_loop() {
+    // executeEvery(
+    //     15000,
+    //     test_rockpi_power_controller
+    // );
+
+    // executeEvery(
+    //     15000,
+    //     test_solar_x_battery_controller
+    // );
+
+    executeEvery(15000, [] {
+        withLedIndicator([] {
+            test_solar_x_battery_controller();
+        });
+    });
+
+
+    // executeEvery(
+    //     15000,
+    //     [&]{
+    //         Logger::logInfo("Lambda every 15 seconds");
+    //     }
+    // );
 }
 
 #ifdef ARDUINO
 
 #if defined(PLATFORM_HAS_LORA)
-void test_onReceiveWrapper(int packetSize){
+void test_onReceiveWrapper(int packetSize) {
     SerialUSB.println("OnReceiveWrapper Callback");
     realLoraPort.onReceive(packetSize);
 }
 #endif
 
 // Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)
-void test_SERCOM3_Handler(){
+void test_SERCOM3_Handler() {
     // mySerial3.IrqHandler();
 }
 
-void test_SERCOM1_Handler(){
+void test_SERCOM1_Handler() {
     // SerialUSB.println("INTERRUPT SERCOM0");
     softwareSerialSercom1.IrqHandler();
 }
 
-void test_SERCOM0_Handler(){
+void test_SERCOM0_Handler() {
     // SerialUSB.println("INTERRUPT SERCOM0");
     softwareSerialSercom0.IrqHandler();
 }

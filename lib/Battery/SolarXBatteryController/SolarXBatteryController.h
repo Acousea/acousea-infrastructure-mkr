@@ -13,7 +13,7 @@
 #include "Curves.h"
 #include "Logger/Logger.h"
 
-class SolarXBatteryController : public IBatteryController{
+class SolarXBatteryController final : public IBatteryController{
     CLASS_NAME(SolarXBatteryController)
 
     struct VoltageRange{
@@ -70,18 +70,26 @@ public:
     SolarXBatteryController(uint8_t batteryAddr, uint8_t panelAddr);
     // Inicializar el sensor INA219
     bool init() override;
+    double accuratePercentage();
 
     // Obtener el porcentaje estimado de batería
     uint8_t percentage() override;
 
     // Obtener el estado de la batería (0 = Desconocido, 1 = Cargando, 2 = Desconectada)
-    uint8_t status() override;
+    acousea_BatteryStatus status() override;
 
-    // Obtener el voltaje actual de la batería
-    float readInternalVoltage();
+    // Obtener el voltaje actual de la batería, panel y balance en voltios
+    float batteryVolts();
+    float panelVolts();
+    float balanceVolts();
 
-    // Obtener la corriente actual de la batería
-    float readInternalCurrent();
+    // Obtener la corriente actual de la batería, panel y balance en amperios
+    float batteryCurrentAmp();
+    float panelCurrentAmp();
+    float netCurrentConsumption();
+    float panelPowerWatts();
+    float batteryPowerWatts();
+    float netPowerConsumptionWatts();
 };
 
 

@@ -2,16 +2,16 @@
 #define ADAFRUITLC_MANAGER_H
 #ifdef ARDUINO
 
-#include "Adafruit_LC709203F.h"
 #include "IBatteryController.h"
+#include "Adafruit_LC709203F.h"
 
-class AdafruitLCBatteryController : public IBatteryController {
+class AdafruitLCBatteryController final : public IBatteryController {
 public:
     bool init() override;
 
     uint8_t percentage() override;
 
-    uint8_t status() override;
+    acousea_BatteryStatus  status() override;
 
     float voltage();
 

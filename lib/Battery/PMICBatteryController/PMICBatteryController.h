@@ -8,13 +8,13 @@
 #include <ErrorHandler/ErrorHandler.h>
 #include <Logger/Logger.h>
 
-class PMICBatteryController : public IBatteryController {
+class PMICBatteryController final : public IBatteryController {
 public:
     bool init() override;
 
     uint8_t percentage() override;
 
-    uint8_t status() override;
+    acousea_BatteryStatus status() override;
 
     void printStatus() const;
 

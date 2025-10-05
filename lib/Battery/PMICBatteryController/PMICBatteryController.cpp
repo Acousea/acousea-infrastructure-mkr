@@ -26,9 +26,17 @@ uint8_t PMICBatteryController::percentage() {
     return 0;
 }
 
-uint8_t PMICBatteryController::status() {
-    return PMIC.chargeStatus();
+
+acousea_BatteryStatus PMICBatteryController::status() {
+    switch (PMIC.chargeStatus()) {
+    case NOT_CHARGING: return acousea_BatteryStatus_BATTERY_STATUS_DISCHARGING;
+    case PRE_CHARGING: return acousea_BatteryStatus_BATTERY_STATUS_CHARGING;
+    case FAST_CHARGING: return acousea_BatteryStatus_BATTERY_STATUS_CHARGING;
+    case CHARGE_TERMINATION_DONE: return acousea_BatteryStatus_BATTERY_STATUS_FULL;
+    default: return acousea_BatteryStatus_BATTERY_STATUS_ERROR;
+    }
 }
+
 
 void PMICBatteryController::printStatus() const {
     Logger::logInfo("Charge status: " + std::string(getChargeStatusMessage(PMIC.chargeStatus())));

@@ -27,9 +27,10 @@ void Logger::logFreeMemory(const std::string& prefix) {
 // }
 
 void Logger::initialize(
-    IDisplay* display, StorageManager* sdManager, const char* logFilePath, Mode mode){
+    IDisplay* display, StorageManager* sdManager, RTCController* rtc, const char* logFilePath, Mode mode){
     Logger::display = display;
     Logger::storageManager = sdManager;
+    Logger::rtc = rtc;
     Logger::logFilePath = logFilePath;
     Logger::mode = mode;
 }
@@ -135,11 +136,13 @@ std::string Logger::vectorToHexString(const std::vector<unsigned char>& data){
     return result;
 }
 
-void Logger::setCurrentTime(time_t time){
-    Logger::currentTime = time;
-}
-
 std::string Logger::getTimestampString(){
+    if (rtc){
+        currentTime = rtc->getEpoch();
+    }
+    else{
+        currentTime = time(nullptr);
+    }
     char buffer[20];
     strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", localtime(&currentTime));
     return std::string(buffer);
@@ -154,8 +157,8 @@ void Logger::logToSDCard(const std::string& logType, const std::string& message)
         display->print("Logger::logToSDCard() -> StorageManager not initialized.");
         return;
     }
-    std::string entry = getTimestampString() + "," + logType + "," + message + "\n";
-    if (!storageManager->appendToFile(logFilePath, entry.c_str())){
+    const std::string entry = getTimestampString() + "," + logType + "," + message + "\n";
+    if (!storageManager->appendToFile(logFilePath, entry)){
         display->print("Logger::logToSDCard() -> Failed to append to log file.");
     }
 }

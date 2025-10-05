@@ -1,19 +1,24 @@
 #include "MockRTCController.h"
 
-MockRTCController::MockRTCController() : simulatedEpoch(0) {}
+MockRTCController::MockRTCController()
+    : baseEpoch(0), baseMillis(getMillis()) {}
 
 void MockRTCController::init() {
-    // Mock initialization - No actual hardware involved
+    baseEpoch = 0;
+    baseMillis = getMillis();
 }
 
 void MockRTCController::syncTime(unsigned long gpsTime) {
-    simulatedEpoch = gpsTime;
+    baseEpoch = gpsTime;
+    baseMillis = getMillis();
 }
 
 uint32_t MockRTCController::getEpoch() {
-    return simulatedEpoch;
+    const unsigned long elapsedMs = getMillis() - baseMillis;
+    return baseEpoch + (elapsedMs / 1000);
 }
 
 void MockRTCController::setEpoch(unsigned long epoch) {
-    simulatedEpoch = epoch;
+    baseEpoch = epoch;
+    baseMillis = getMillis();
 }

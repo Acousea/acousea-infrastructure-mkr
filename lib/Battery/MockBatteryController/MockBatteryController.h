@@ -6,35 +6,35 @@
 #include "Logger/Logger.h"
 #include <string>
 
-class MockBatteryController : public IBatteryController {
+class MockBatteryController final : public IBatteryController{
 private:
     uint8_t mockPercentage;
-    uint8_t mockStatus;
+    acousea_BatteryStatus mockStatus;
 
 public:
-    MockBatteryController(uint8_t initialPercentage = 100, uint8_t initialStatus = 0)
-        : mockPercentage(initialPercentage), mockStatus(initialStatus) {
+    explicit MockBatteryController(const uint8_t initialPercentage = 100, const acousea_BatteryStatus initialStatus = acousea_BatteryStatus_BATTERY_STATUS_FULL)
+        : mockPercentage(initialPercentage), mockStatus(initialStatus){
     }
 
-    bool init() override {
+    bool init() override{
         Logger::logInfo("MockBatteryController: Initializing battery controller...");
         return true; // Always returns true in the mock implementation
     }
 
-    uint8_t percentage() override {
+    uint8_t percentage() override{
         return mockPercentage;
     }
 
-    uint8_t status() override {
+    acousea_BatteryStatus status() override{
         return mockStatus;
     }
 
     // Setters for mock data
-    void setMockPercentage(uint8_t percentage) {
+    void setMockPercentage(const uint8_t percentage){
         mockPercentage = percentage;
     }
 
-    void setMockStatus(uint8_t status) {
+    void setMockStatus(const acousea_BatteryStatus status){
         mockStatus = status;
     }
 };

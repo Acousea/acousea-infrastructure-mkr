@@ -6,15 +6,14 @@
 #include <vector>
 #include <cstdarg>   // para va_list, va_start, va_end
 #include "StorageManager/StorageManager.hpp"
+#include "RTCController.hpp"
 #include "IDisplay.h"
 
 
-class Logger
-{
+class Logger{
 public:
     // Configuración del Logger: modo de operación
-    enum class Mode
-    {
+    enum class Mode{
         SDCard,
         SerialOnly,
         Both
@@ -23,19 +22,19 @@ public:
     static void initialize(
         IDisplay* display,
         StorageManager* sdManager,
+        RTCController* rtc,
         const char* logFilePath,
         Mode mode = Mode::SerialOnly);
 
     static void logFreeMemory(const std::string& prefix);
     static void logInfo(const std::string& infoMessage);
-    static void  logfError(const char* fmt, ...);
-    static void  logfWarning(const char* fmt, ...);
-    static void  logfInfo(const char* fmt, ...);
+    static void logfError(const char* fmt, ...);
+    static void logfWarning(const char* fmt, ...);
+    static void logfInfo(const char* fmt, ...);
     static void logError(const std::string& errorMessage);
     static void logWarning(const std::string& warningMessage);
 
     static void printLog();
-
     static bool clearLog();
 
     static std::string vectorToHexString(const std::vector<unsigned char>& data);
@@ -45,14 +44,12 @@ private:
     static inline StorageManager* storageManager = nullptr;
     static inline const char* logFilePath = nullptr;
     static inline Mode mode = Mode::SerialOnly;
-    static inline std::time_t currentTime = 0;
+    static inline RTCController* rtc = nullptr;
+    static inline time_t currentTime = 0; // tiempo actual en epoch
+
 
     static std::string getTimestampString();
 
-public:
-    static void setCurrentTime(time_t time);
-
-private:
     static void logToSerial(const std::string& logType, const std::string& message);
 
     static void logToSDCard(const std::string& logType, const std::string& message);

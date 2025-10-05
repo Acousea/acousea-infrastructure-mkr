@@ -10,7 +10,6 @@
 #endif
 
 
-
 #ifdef ARDUINO
 extern Uart softwareSerialSercom1;
 extern Uart softwareSerialSercom0;
@@ -25,6 +24,7 @@ extern Uart softwareSerialSercom0;
 // =======================================================
 // ---- Batería ----
 extern MockBatteryController mockBatteryController;
+extern SolarXBatteryController solarXBatteryController;
 extern IBatteryController* batteryController;
 
 // ---- GPS ----
@@ -50,6 +50,10 @@ extern LoraPort realLoraPort;
 extern SerialArduinoDisplay serialUartDisplay;
 
 extern RockPiPowerController rockpiPowerController;
+
+extern StorageManager* storageManager;
+
+extern RTCController* rtcController;
 
 // =======================================================
 //       NATIVE BUILD
