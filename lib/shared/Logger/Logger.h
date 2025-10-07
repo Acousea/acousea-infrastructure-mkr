@@ -1,5 +1,5 @@
-#ifndef ACOUSEA_MKR1310_NODES_LOGGER_H
-#define ACOUSEA_MKR1310_NODES_LOGGER_H
+#ifndef ACOUSEA_LOGGER_H
+#define ACOUSEA_LOGGER_H
 
 #include <string>
 #include <ctime>
@@ -57,4 +57,4 @@ private:
     static void log(const std::string& logType, const std::string& message);
 };
 
-#endif // ACOUSEA_MKR1310_NODES_LOGGER_H
+#endif // ACOUSEA_LOGGER_H

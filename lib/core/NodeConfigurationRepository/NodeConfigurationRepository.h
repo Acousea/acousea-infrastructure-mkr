@@ -7,7 +7,7 @@
 #include "ErrorHandler/ErrorHandler.h"
 #include "StorageManager/StorageManager.hpp"
 #include "Logger/Logger.h"
-#include "Result/Result.h"
+#include "Result.h"
 #include <pb_encode.h>
 #include <pb_decode.h>
 

@@ -1,12 +1,12 @@
-#ifndef RTC_CONTROLLER_H
-#define RTC_CONTROLLER_H
+#ifndef ACOUSEA_ZERO_RTC_CONTROLLER_H
+#define ACOUSEA_ZERO_RTC_CONTROLLER_H
 
 #ifdef ARDUINO
 
 #include "RTCZero.h"
 #include "RTCController.hpp"
 
-class ZeroRTCController : public RTCController {
+class ZeroRTCController final : public RTCController {
 public:
     ZeroRTCController();
 

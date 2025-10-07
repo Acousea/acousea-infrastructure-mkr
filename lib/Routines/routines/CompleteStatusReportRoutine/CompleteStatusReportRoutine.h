@@ -6,9 +6,9 @@
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
 #include "IBatteryController.h"
 #include "IGPS.h"
+#include "RTCController.hpp"
 #include <ICListenService/ICListenService.h>
 
-#include "RTCController.hpp"
 
 /**
  * @brief This routine is used to receive a packet with a summary and upload it to the summary service

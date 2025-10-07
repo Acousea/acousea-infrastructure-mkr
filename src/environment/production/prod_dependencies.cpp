@@ -79,7 +79,9 @@ IPort* iridiumPort = &mockIridiumPort;
 
 // --------- GPS ----------
 // MockGPS mockGPS(0.0, 0.0, 1.0);
+// IGPS* gps = &mockGPS;
 // MKRGPS mkrGPS;
+// IGPS* gps = &mkrGPS;
 UBloxGNSS uBloxGPS;
 IGPS* gps = &uBloxGPS;
 
@@ -95,11 +97,10 @@ StorageManager* storageManager = &sdStorageManager; // o hddStorageManager segú
 // --------- Router ----------
 Router router({serialPort, loraOrGsmPort, iridiumPort});
 
-
-
 // --------- Power ----------
 MosfetController mosfetController;
-RockPiPowerController rockPiPowerController(mosfetController);
+RockPiPowerController rockPiPowerController;
+SystemMonitor systemMonitor(batteryController, &rockPiPowerController);
 
 
 // =======================================================

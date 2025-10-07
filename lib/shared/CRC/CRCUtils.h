@@ -1,5 +1,5 @@
-#ifndef ACOUSEA_MKR1310_NODES_CRCUTILS_H
-#define ACOUSEA_MKR1310_NODES_CRCUTILS_H
+#ifndef ACOUSEA_CRCUTILS_H
+#define ACOUSEA_CRCUTILS_H
 
 #include <vector>
 #include <cstdint>
@@ -17,4 +17,4 @@ public:
     static bool verifyCRC(const std::vector<uint8_t>& buffer);
 };
 
-#endif //ACOUSEA_MKR1310_NODES_CRCUTILS_H
+#endif //ACOUSEA_CRCUTILS_H

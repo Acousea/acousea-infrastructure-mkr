@@ -72,7 +72,7 @@ void test_setup() {
 
     rtcController->init();
 
-    rtcController->setEpoch(1759708408);
+    rtcController->setEpoch(1759773820);
 
     // Logger initialization and configuration
     Logger::initialize(
@@ -168,19 +168,19 @@ void test_battery_usage() {
 
 void test_rockpi_power_controller() {
     ConsoleSerial.println("[Rockpi Power Controller Test]");
-    bool is_rockpi_up = rockpiPowerController.isRockPiUp();
+    bool is_rockpi_up = piPowerController.isRockPiUp();
     ConsoleSerial.print("[BEGIN] Rockpi is up? ");
     ConsoleSerial.println(is_rockpi_up ? "true" : "false");
 
 
     if (is_rockpi_up) {
         ConsoleSerial.println("[UP]: Rockpi is Up -> Shutting down");
-        rockpiPowerController.commandShutdown();
+        piPowerController.commandShutdown();
     } else {
         ConsoleSerial.println("[DOWN]: Rockpi is Down -> Starting up");
-        rockpiPowerController.commandStartup();
+        piPowerController.commandStartup();
     }
-    is_rockpi_up = rockpiPowerController.isRockPiUp();
+    is_rockpi_up = piPowerController.isRockPiUp();
     ConsoleSerial.print("[END] Rockpi is up? ");
     ConsoleSerial.println(is_rockpi_up ? "true" : "false");
 }

@@ -1,17 +1,18 @@
-#include "WatchDogManager.h"
+#include "SystemMonitor.h"
 
 #ifdef ARDUINO
 
-void WatchdogManager::init(const uint32_t timeoutMs) {
+void SystemMonitor::init(const uint32_t timeoutMs) {
     Watchdog.enable(timeoutMs);
     logResetCause();
 }
 
-void WatchdogManager::reset() {
+void SystemMonitor::reset() {
     Watchdog.reset();
+
 }
 
-void WatchdogManager::logResetCause() {
+void SystemMonitor::logResetCause() {
     const uint8_t cause = Watchdog.resetCause();
     std::string msg = "[RESET_CAUSE] ";
 

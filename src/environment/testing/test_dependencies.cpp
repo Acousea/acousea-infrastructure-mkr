@@ -66,7 +66,10 @@ GsmConfig gsmCfg = {
 };
 GsmMQTTPort gsmPort(gsmCfg);
 
-RockPiPowerController rockpiPowerController;
+RockPiPowerController piPowerController;
+
+SystemMonitor systemMonitor(batteryController, &piPowerController);
+// SystemMonitor systemMonitor;
 
 #endif
 

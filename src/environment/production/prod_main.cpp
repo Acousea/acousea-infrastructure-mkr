@@ -150,6 +150,7 @@ void prod_setup(){
     Logger::initialize(
         display,
         storageManager,
+        rtcController,
         "log", // MAX 8 chars for 8.3 filenames
         Logger::Mode::Both
     );

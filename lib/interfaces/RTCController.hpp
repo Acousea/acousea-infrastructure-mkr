@@ -1,5 +1,5 @@
-#ifndef ACOUSEA_MKR1310_NODES_RTC_HPP
-#define ACOUSEA_MKR1310_NODES_RTC_HPP
+#ifndef ACOUSEA_RTC_HPP
+#define ACOUSEA_RTC_HPP
 
 #include <stdint.h>
 
@@ -14,4 +14,4 @@ public:
 };
 
 
-#endif //ACOUSEA_MKR1310_NODES_RTC_HPP
+#endif //ACOUSEA_RTC_HPP

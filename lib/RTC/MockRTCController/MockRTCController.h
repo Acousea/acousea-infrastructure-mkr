@@ -4,7 +4,7 @@
 #include "RTCController.hpp"
 #include "time/getMillis.hpp"
 
-class MockRTCController : public RTCController {
+class MockRTCController final : public RTCController {
 public:
     MockRTCController();
 

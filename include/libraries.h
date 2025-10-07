@@ -1,12 +1,12 @@
-#ifndef libraries_h
-#define libraries_h
+#ifndef ACOUSEA_LIBRARIES_H
+#define ACOUSEA_LIBRARIES_H
 
 
 // ------------------------- PROTOBUF -------------------------
 #include <bindings/nodeDevice.pb.h>
 
 // ------------------------- SHARED LIBRARIES -------------------------
-#include <Result/Result.h>
+#include <Result.h>
 #include <CRC/CRCUtils.h>
 #include "Logger/Logger.h"
 #include <ErrorHandler/ErrorHandler.h>
@@ -56,6 +56,7 @@
 #include <UBloxGPS/UBloxGPS.h>
 
 // ------------------ RTC ------------------
+#include "RTCController.hpp"
 #include "ZeroRTCController/ZeroRTCController.h"
 #include "MockRTCController/MockRTCController.h"
 
@@ -78,6 +79,9 @@
 #include <MosfetController/MosfetController.hpp>
 #include <RockPiPowerController/RockPiPowerController.hpp>
 #include <SolarXBatteryController/SolarXBatteryController.h>
+#include <SystemMonitor/SystemMonitor.h>
+#include <Logger/Logger.h>
+#include <Result.h>
 
 #else // NATIVE
 
@@ -127,4 +131,4 @@
 //#include <Adafruit_SleepyDog.h>
 
 
-#endif
+#endif // ACOUSEA_LIBRARIES_H

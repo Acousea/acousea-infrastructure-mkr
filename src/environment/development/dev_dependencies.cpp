@@ -72,7 +72,7 @@ IPort* serialPort = &realSerialPort;
 #ifdef PLATFORM_HAS_LORA
 IPort* loraOrGsmPort = &mockLoraPort;
 #elif defined(PLATFORM_HAS_GSM)
-// IPort* loraOrGsmPort = &gsmPort;
+// IPort* loraOrGsmPort = &mockLoraPort;
 #endif
 
 IPort* iridiumPort = &mockIridiumPort;
@@ -103,7 +103,7 @@ Router router({
 
 // --------- Power ----------
 MosfetController mosfetController;
-RockPiPowerController rockPiPowerController(mosfetController);
+RockPiPowerController rockPiPowerController;
 
 
 // =======================================================

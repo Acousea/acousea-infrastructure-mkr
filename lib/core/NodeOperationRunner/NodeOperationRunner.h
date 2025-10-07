@@ -4,8 +4,9 @@
 
 #include "IRunnable.h"
 #include "Router.h"
-#include "routines/CompleteStatusReportRoutine/CompleteStatusReportRoutine.h"
-#include "Result/Result.h"
+#include "IRoutine.h"
+#include "NodeConfigurationRepository/NodeConfigurationRepository.h"
+#include "Result.h"
 #include "time/getMillis.hpp"
 
 

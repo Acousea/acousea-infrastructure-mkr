@@ -49,7 +49,7 @@ extern LoraPort realLoraPort;
 // USB Display
 extern SerialArduinoDisplay serialUartDisplay;
 
-extern RockPiPowerController rockpiPowerController;
+extern RockPiPowerController piPowerController;
 
 extern StorageManager* storageManager;
 

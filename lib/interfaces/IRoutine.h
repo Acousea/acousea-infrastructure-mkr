@@ -4,11 +4,8 @@
 
 #include <string>
 #include <utility>
-#include "Result/Result.h"
-
+#include "Result.h"
 #include "bindings/nodeDevice.pb.h"
-#include "ClassName.h"
-
 
 template <typename In>
 class IRoutine

@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include "unity.h"
-#include "Result/Result.h"
+#include "Result.h"
 
 void test_success_case() {
     auto result = Result<int>::success(42);

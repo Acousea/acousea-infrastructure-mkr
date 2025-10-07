@@ -1,5 +1,5 @@
-#ifndef SERIAL_PORT_H
-#define SERIAL_PORT_H
+#ifndef MOCK_SERIAL_PORT_H
+#define MOCK_SERIAL_PORT_H
 
 #include "Ports/IPort.h"
 #include "Logger/Logger.h"

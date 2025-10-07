@@ -150,6 +150,7 @@ void dev_setup(){
     Logger::initialize(
         display,
         storageManager,
+        rtcController,
         "log", // MAX 8 chars for 8.3 filenames
         Logger::Mode::Both
     );
@@ -216,7 +217,6 @@ void dev_loop(){
         lastTime = getMillis();
     }
 }
-
 #ifdef ARDUINO
 
 #if defined(PLATFORM_HAS_LORA)

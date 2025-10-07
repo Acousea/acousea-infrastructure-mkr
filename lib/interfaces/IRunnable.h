@@ -2,9 +2,6 @@
 #define IOPERATIONMODE_H
 
 
-#include "Logger/Logger.h"
-
-
 class IRunnable
 {
 public:

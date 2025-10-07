@@ -1,5 +1,5 @@
-#ifndef ACOUSEA_MKR1310_NODES_CLASSNAME_H
-#define ACOUSEA_MKR1310_NODES_CLASSNAME_H
+#ifndef ACOUSEA_CLASSNAME_H
+#define ACOUSEA_CLASSNAME_H
 
 #include <string>
 
@@ -11,4 +11,4 @@ static std::string getClassNameString(bool withSuffix = true) { \
 return withSuffix ? std::string("[" #name "]: ") : std::string("[" #name "]"); \
 }
 
-#endif //ACOUSEA_MKR1310_NODES_CLASSNAME_H
+#endif //ACOUSEA_CLASSNAME_H

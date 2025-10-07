@@ -4,7 +4,7 @@
 #include <deque>
 #include <map>
 #include <Ports/IPort.h>
-#include <Result/Result.h>
+#include <../interfaces/Result.h>
 #include <Logger/Logger.h>
 
 #include "bindings/nodeDevice.pb.h"

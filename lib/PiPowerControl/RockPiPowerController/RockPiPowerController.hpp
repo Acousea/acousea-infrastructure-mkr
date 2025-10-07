@@ -1,13 +1,13 @@
-#ifndef ACOUSEA_MKR1310_NODES_ROCKPIPOWERCONTROLLER_HPP
-#define ACOUSEA_MKR1310_NODES_ROCKPIPOWERCONTROLLER_HPP
+#ifndef ACOUSEA_ROCKPIPOWERCONTROLLER_HPP
+#define ACOUSEA_ROCKPIPOWERCONTROLLER_HPP
 
 #ifdef ARDUINO
 #include <Arduino.h>
-#include "../MosfetController/MosfetController.hpp"
+#include "MosfetController/MosfetController.hpp"
 #include "Logger/Logger.h"
 #include "ArduinoLowPower.h"
 #include "ClassName.h"
-#include "../PiPowerControlPins.hpp"
+#include "PiPowerControlPins.hpp"
 
 /**
  * @class RockPiPowerController
@@ -53,4 +53,4 @@ private:
 #endif // ARDUINO
 
 
-#endif //ACOUSEA_MKR1310_NODES_ROCKPIPOWERCONTROLLER_HPP
+#endif //ACOUSEA_ROCKPIPOWERCONTROLLER_HPP
