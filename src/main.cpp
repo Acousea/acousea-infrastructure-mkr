@@ -2,7 +2,7 @@
 #define ENV_DEV  2
 #define ENV_TEST 3
 
-#include "SystemMonitor/SystemMonitor.h"
+#include "WatchDogMonitor/WatchDogMonitor.h"
 
 #if ENVIRONMENT == ENV_PROD
 #include "environment/production/prod_main.h"
@@ -26,15 +26,10 @@
 
 void setup() {
     ENV_SETUP();
-#ifdef ARDUINO
-    SystemMonitor::init(8000); // común a todos
-#endif
 }
 
 void loop() {
-#ifdef ARDUINO
-    SystemMonitor::reset(); // común a todos
-#endif
+
     ENV_LOOP();
 }
 

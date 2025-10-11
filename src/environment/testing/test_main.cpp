@@ -3,16 +3,150 @@
 // #include "WVariant.h"
 
 
+void test_solar_x_battery_controller() {
+    // Actualiza cálculos internos
+    // solarXBatteryController.sync();
+
+    const auto voltageSOCAcc = solarXBatteryController.voltageSOC_accurate();
+    const auto voltageSOCRnd = solarXBatteryController.voltageSOC_rounded();
+
+    const auto coulombSOCAcc = solarXBatteryController.coulombSOC_accurate();
+    const auto coulombSOCRnd = solarXBatteryController.coulombSOC_rounded();
+
+    const auto combinedSOCAcc = solarXBatteryController.combinedSOC_accurate();
+    const auto combinedSOCRnd = solarXBatteryController.combinedSOC_rounded();
+
+    const auto batteryVoltageVolts = solarXBatteryController.batteryVolts();
+    const auto panelVoltageVolts = solarXBatteryController.panelVolts();
+    const auto balanceVoltageVolts = solarXBatteryController.balanceVolts();
+
+    const auto batteryCurrentAmps = solarXBatteryController.batteryCurrentAmp();
+    const auto panelCurrentAmps = solarXBatteryController.panelCurrentAmp();
+    const auto netPowerWatts = solarXBatteryController.netPowerConsumptionWatts();
+
+    const auto batteryStatus = solarXBatteryController.status();
+
+    Logger::logInfo(
+        "[TEST_SOLARX_BATTERY_CONTROLLER_CC]," +
+        std::to_string(batteryVoltageVolts) + "," +
+        std::to_string(panelVoltageVolts) + "," +
+        std::to_string(balanceVoltageVolts) + "," +
+        std::to_string(batteryCurrentAmps) + "," +
+        std::to_string(panelCurrentAmps) + "," +
+        std::to_string(netPowerWatts) + "," +
+        std::to_string(voltageSOCRnd) + "," +
+        std::to_string(coulombSOCRnd) + "," +
+        std::to_string(combinedSOCRnd) + "," +
+        std::to_string(voltageSOCAcc) + "," +
+        std::to_string(coulombSOCAcc) + "," +
+        std::to_string(combinedSOCAcc) + "," +
+        std::to_string(static_cast<int>(batteryStatus))
+    );
+
+    Logger::logFreeMemory("[FREEMEM]");
+}
+
+
+void test_gsm_initialization() {
+#ifdef PLATFORM_HAS_GSM
+    // ------------------------ Test GSM Connection ------------------------
+    // gsmPort.init();
+    Logger::logFreeMemory("[MAIN] After GSM init");
+    ConsoleSerial.println("Preparing to send packet using GSM...");
+    // MyGSMSSLClient myGsmSslClient;
+    // myGsmSslClient.updateCerts(GSM_ROOT_CERTS, std::size(GSM_ROOT_CERTS));
+    // myGsmSslClient.listCertificates(CertType::All);
+
+    // Enviar usando tu GsmPort
+    // const std::vector<uint8_t> payload = {
+    //     0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04,
+    //     0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C
+    // };
+
+    const std::vector<uint8_t> payload = {
+        // Error payload example
+        0x08, 0x63, 0x12, 0x04, 0x08, 0x65, 0x18, 0x07,
+        0x32, 0x1D, 0x0A, 0x1B, 0x54, 0x68, 0x69, 0x73,
+        0x20, 0x69, 0x73, 0x20, 0x61, 0x20, 0x74, 0x65,
+        0x73, 0x74, 0x20, 0x65, 0x72, 0x72, 0x6F, 0x72,
+        0x20, 0x70, 0x61, 0x63, 0x6B, 0x65, 0x74
+    };
+
+    // gsmPort.send(payload);
+    // GsmPort::testConnection("example.com", 80, "/", false);
+
+    // gsmPort.testConnection("www.google.com", 443, "/", true);
+    // gsmPort.testConnection("antapagon.com", 443, "/", true);
+    // gsmPort.testConnection("test432091-framework22.antapagon.com", 443, "/", true);
+    // gsmPort.testConnection("www.antapagon.com", 443, "/", true);
+
+
+    ConsoleSerial.println("Sent packet using GSM");
+    // ---------------------------------------------------------------------
+#endif
+}
+
+void test_battery_usage() {
+    // nodeOperationRunner.init();
+    // nodeOperationRunner.run();
+    const auto percentage = batteryController->voltageSOC_rounded();
+    const auto status = batteryController->status();
+    Logger::logInfo(
+        "Battery: " + std::to_string(percentage) + "%, Status: " + std::to_string(
+            static_cast<int>(status))
+    );
+}
+
+void test_rockpi_power_controller() {
+    ConsoleSerial.println("[Rockpi Power Controller Test]");
+    bool is_rockpi_up = piPowerController.isRockPiUp();
+    ConsoleSerial.print("[BEGIN] Rockpi is up? ");
+    ConsoleSerial.println(is_rockpi_up ? "true" : "false");
+
+
+    if (is_rockpi_up) {
+        ConsoleSerial.println("[UP]: Rockpi is Up -> Shutting down");
+        piPowerController.commandShutdown();
+    } else {
+        ConsoleSerial.println("[DOWN]: Rockpi is Down -> Starting up");
+        piPowerController.commandStartup();
+    }
+    is_rockpi_up = piPowerController.isRockPiUp();
+    ConsoleSerial.print("[END] Rockpi is up? ");
+    ConsoleSerial.println(is_rockpi_up ? "true" : "false");
+}
+
+
+void test_gsm_sending_packets() {
+    // Try to send a packet
+    const auto packets = gsmPort.read();
+    if (packets.empty()) {
+        ConsoleSerial.println("No packets received.");
+    } else {
+        ConsoleSerial.println("Received packets:");
+        for (const auto &packet: packets) {
+            const auto hexString = Logger::vectorToHexString(packet);
+            ConsoleSerial.println(hexString.c_str());
+        }
+    }
+
+    ConsoleSerial.println("Sending packet...");
+    const std::vector<uint8_t> data = {0x01, 0x02, 0x03, 0x04, 0x05};
+    gsmPort.send(data);
+
+    ConsoleSerial.println("Looping...");
+}
+
 void test_setup() {
 #ifdef ARDUINO
     ConsoleSerial.begin(9600);
     delay(1000);
-    // while (!ConsoleSerial) {
-    //     digitalWrite(LED_BUILTIN, HIGH);
-    //     delay(100);
-    //     digitalWrite(LED_BUILTIN, LOW);
-    //     delay(100);
-    // }
+    while (!ConsoleSerial) {
+        digitalWrite(LED_BUILTIN, HIGH);
+        delay(100);
+        digitalWrite(LED_BUILTIN, LOW);
+        delay(100);
+    }
     ConsoleSerial.println("[arduino] Setup: starting...");
 #endif
 
@@ -72,7 +206,7 @@ void test_setup() {
 
     rtcController->init();
 
-    rtcController->setEpoch(1759773820);
+    rtcController->setEpoch(1760192100);
 
     // Logger initialization and configuration
     Logger::initialize(
@@ -87,141 +221,26 @@ void test_setup() {
     // batteryController->init();
     solarXBatteryController.init();
 
+    WatchDogMonitor::init(10000); // 10 segundos
+
     // Initialize the gps
     // gps->init();
-}
 
-void test_solar_x_battery_controller() {
-    const auto accuratePercentage = solarXBatteryController.accuratePercentage();
-
-    const auto batteryVoltageVolts = solarXBatteryController.batteryVolts();
-    const auto panelVoltageVolts = solarXBatteryController.panelVolts();
-
-    const auto batteryCurrentAmps = solarXBatteryController.batteryCurrentAmp();
-    const auto panelCurrentAmps = solarXBatteryController.panelCurrentAmp();
-
-    const auto systemCurrentConsumption = solarXBatteryController.netPowerConsumptionWatts();
-
-    const auto batteryStatus = solarXBatteryController.status();
-
-    // CSV format: [TAG],timestamp,voltage,current,percentage,status
-    Logger::logInfo(
-        "[TEST_SOLARX_BATTERY_CONTROLLER]," +
-        std::to_string(batteryVoltageVolts) + "," +
-        std::to_string(batteryCurrentAmps) + "," +
-        std::to_string(accuratePercentage) + "," +
-        std::to_string(static_cast<int>(batteryStatus))
+    static MethodTask<SolarXBatteryController> solarXBatterySyncTask(15000, &solarXBatteryController,
+                                                                     &SolarXBatteryController::sync);
+    static FunctionTask watchDogTask(5000, &WatchDogMonitor::reset);
+    static FunctionTask batteryTestTask(
+        30000,
+        [] { withLedIndicator(test_solar_x_battery_controller); }
     );
-    Logger::logFreeMemory("[FREEMEM]");
-}
-
-
-void test_gsm_initialization() {
-#ifdef PLATFORM_HAS_GSM
-    // ------------------------ Test GSM Connection ------------------------
-    // gsmPort.init();
-    Logger::logFreeMemory("[MAIN] After GSM init");
-    ConsoleSerial.println("Preparing to send packet using GSM...");
-    // MyGSMSSLClient myGsmSslClient;
-    // myGsmSslClient.updateCerts(GSM_ROOT_CERTS, std::size(GSM_ROOT_CERTS));
-    // myGsmSslClient.listCertificates(CertType::All);
-
-    // Enviar usando tu GsmPort
-    // const std::vector<uint8_t> payload = {
-    //     0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04,
-    //     0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C
-    // };
-
-    const std::vector<uint8_t> payload = {
-        // Error payload example
-        0x08, 0x63, 0x12, 0x04, 0x08, 0x65, 0x18, 0x07,
-        0x32, 0x1D, 0x0A, 0x1B, 0x54, 0x68, 0x69, 0x73,
-        0x20, 0x69, 0x73, 0x20, 0x61, 0x20, 0x74, 0x65,
-        0x73, 0x74, 0x20, 0x65, 0x72, 0x72, 0x6F, 0x72,
-        0x20, 0x70, 0x61, 0x63, 0x6B, 0x65, 0x74
-    };
-
-    // gsmPort.send(payload);
-    // GsmPort::testConnection("example.com", 80, "/", false);
-
-    // gsmPort.testConnection("www.google.com", 443, "/", true);
-    // gsmPort.testConnection("antapagon.com", 443, "/", true);
-    // gsmPort.testConnection("test432091-framework22.antapagon.com", 443, "/", true);
-    // gsmPort.testConnection("www.antapagon.com", 443, "/", true);
-
-
-    ConsoleSerial.println("Sent packet using GSM");
-    // ---------------------------------------------------------------------
-#endif
-}
-
-void test_battery_usage() {
-    // nodeOperationRunner.init();
-    // nodeOperationRunner.run();
-    const auto percentage = batteryController->percentage();
-    const auto status = batteryController->status();
-    Logger::logInfo(
-        "Battery: " + std::to_string(percentage) + "%, Status: " + std::to_string(
-            static_cast<int>(status))
-    );
-}
-
-void test_rockpi_power_controller() {
-    ConsoleSerial.println("[Rockpi Power Controller Test]");
-    bool is_rockpi_up = piPowerController.isRockPiUp();
-    ConsoleSerial.print("[BEGIN] Rockpi is up? ");
-    ConsoleSerial.println(is_rockpi_up ? "true" : "false");
-
-
-    if (is_rockpi_up) {
-        ConsoleSerial.println("[UP]: Rockpi is Up -> Shutting down");
-        piPowerController.commandShutdown();
-    } else {
-        ConsoleSerial.println("[DOWN]: Rockpi is Down -> Starting up");
-        piPowerController.commandStartup();
-    }
-    is_rockpi_up = piPowerController.isRockPiUp();
-    ConsoleSerial.print("[END] Rockpi is up? ");
-    ConsoleSerial.println(is_rockpi_up ? "true" : "false");
-}
-
-
-void printPacketBytes(const std::vector<uint8_t> &packet) {
-    ConsoleSerial.print("Packet (size ");
-    ConsoleSerial.print(packet.size());
-    ConsoleSerial.print("): ");
-    for (const auto byte: packet) {
-        if (byte < 0x10) {
-            ConsoleSerial.print('0');
-        }
-        ConsoleSerial.print(byte, HEX);
-        ConsoleSerial.print(' ');
-    }
-    ConsoleSerial.println();
-}
-
-
-void test_gsm_sending_packets() {
-    // Try to send a packet
-    const auto packets = gsmPort.read();
-    if (packets.empty()) {
-        ConsoleSerial.println("No packets received.");
-    } else {
-        ConsoleSerial.println("Received packets:");
-        for (const auto &packet: packets) {
-            printPacketBytes(packet);
-        }
-    }
-
-    ConsoleSerial.println("Sending packet...");
-    const std::vector<uint8_t> data = {0x01, 0x02, 0x03, 0x04, 0x05};
-    gsmPort.send(data);
-
-    ConsoleSerial.println("Looping...");
+    scheduler.addTask(&watchDogTask);
+    scheduler.addTask(&solarXBatterySyncTask);
+    scheduler.addTask(&batteryTestTask);
 }
 
 
 void test_loop() {
+    scheduler.run();
     // executeEvery(
     //     15000,
     //     test_rockpi_power_controller
@@ -232,11 +251,11 @@ void test_loop() {
     //     test_solar_x_battery_controller
     // );
 
-    executeEvery(15000, [] {
-        withLedIndicator([] {
-            test_solar_x_battery_controller();
-        });
-    });
+    // executeEvery(15000, [] {
+    //     withLedIndicator([] {
+    //         test_solar_x_battery_controller();
+    //     });
+    // });
 
 
     // executeEvery(

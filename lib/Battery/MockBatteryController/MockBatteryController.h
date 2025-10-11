@@ -21,7 +21,7 @@ public:
         return true; // Always returns true in the mock implementation
     }
 
-    uint8_t percentage() override{
+    uint8_t voltageSOC_rounded() override{
         return mockPercentage;
     }
 

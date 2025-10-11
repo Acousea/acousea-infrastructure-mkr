@@ -55,7 +55,7 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
             entry.has_value = true;
             entry.key = acousea_ModuleCode_BATTERY_MODULE;
             entry.value.which_module = acousea_ModuleWrapper_battery_tag;
-            entry.value.module.battery.batteryPercentage = battery->percentage();
+            entry.value.module.battery.batteryPercentage = battery->voltageSOC_rounded();
             entry.value.module.battery.batteryStatus = battery->status();
             status.modules[status.modules_count++] = entry;
             break;

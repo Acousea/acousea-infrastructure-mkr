@@ -76,7 +76,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
 
             acousea_BatteryModule batteryModule = acousea_BatteryModule_init_default;
             batteryModule.batteryStatus = battery->status();
-            batteryModule.batteryPercentage = battery->percentage();
+            batteryModule.batteryPercentage = battery->voltageSOC_rounded();
 
             batteryEntry.value.module.battery = batteryModule;
             updatedConfiguration.modules[updatedConfiguration.modules_count] = batteryEntry;

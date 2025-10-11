@@ -21,7 +21,7 @@ bool PMICBatteryController::init() {
     return !error;
 }
 
-uint8_t PMICBatteryController::percentage() {
+uint8_t PMICBatteryController::voltageSOC_rounded() {
     // Warning: It's not possible to get the battery percentage from the PMIC
     return 0;
 }

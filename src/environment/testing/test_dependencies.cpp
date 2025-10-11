@@ -68,8 +68,7 @@ GsmMQTTPort gsmPort(gsmCfg);
 
 RockPiPowerController piPowerController;
 
-SystemMonitor systemMonitor(batteryController, &piPowerController);
-// SystemMonitor systemMonitor;
+TaskScheduler scheduler;
 
 #endif
 

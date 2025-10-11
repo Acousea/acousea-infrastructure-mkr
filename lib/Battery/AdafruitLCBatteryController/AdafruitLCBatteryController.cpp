@@ -27,7 +27,7 @@ bool AdafruitLCBatteryController::init(){
     return true;
 }
 
-uint8_t AdafruitLCBatteryController::percentage(){
+uint8_t AdafruitLCBatteryController::voltageSOC_rounded(){
     // Convert float to uint8_t getting the integer part
     return (uint8_t)adafruitLC.cellPercent();
 }

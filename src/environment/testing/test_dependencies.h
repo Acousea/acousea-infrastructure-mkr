@@ -41,6 +41,8 @@ extern GsmMQTTPort gsmPort;
 extern LoraPort realLoraPort;
 #endif
 
+extern TaskScheduler scheduler;
+
 // =======================================================
 //       ARDUINO BUILD
 // =======================================================

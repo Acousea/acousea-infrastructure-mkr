@@ -2,6 +2,7 @@
 
 #include "SolarXBatteryController.h"
 
+
 inline std::string toHexString(const uint8_t value) {
     char buf[8];
     std::sprintf(buf, "%02X", value);
@@ -19,6 +20,7 @@ SolarXBatteryController::SolarXBatteryController(const uint8_t batteryAddr, cons
       batterySensor(batteryAddr),
       panelSensor(panelAddr) {
 }
+
 
 bool SolarXBatteryController::init() {
     Wire.setTimeout(1500); // 1500 ms de timeout
@@ -42,10 +44,89 @@ bool SolarXBatteryController::init() {
                     "Correctly initialized INA219 sensors at 0x" +
                     toHexString(batteryAddress) + " (battery) and 0x" +
                     toHexString(panelAddress) + " (panel)");
+
+    initialBatteryCalibration();
     return true;
 }
 
-double SolarXBatteryController::accuratePercentage() {
+void SolarXBatteryController::initialBatteryCalibration() {
+    const auto currentA = batteryCurrentAmp();
+    const auto voltageSOC = static_cast<float>(voltageSOC_accurate());
+
+    if (fabs(currentA) < CURRENT_IDLE_THRESHOLD) {
+        coulombCountedAh = (voltageSOC / 100.0f) * NOMINAL_CAPACITY_AH;
+        cachedCombinedSOC = voltageSOC;
+        Logger::logInfo(getClassNameString() + "Initial SOC set from voltage: " + std::to_string(voltageSOC) + "%");
+    } else {
+        coulombCountedAh = 0.5f * NOMINAL_CAPACITY_AH;
+        cachedCombinedSOC = 50.0f;
+        Logger::logWarning(getClassNameString() + "Initial SOC set to 50% (battery not idle)");
+    }
+
+    lastSyncTime = getMillis();
+}
+
+void SolarXBatteryController::sync() {
+    if (!_initialized) {
+        Logger::logError(getClassNameString() + "Sensor not initialized. Call init() first.");
+        return;
+    }
+
+    const unsigned long now = getMillis();
+    const unsigned long delta_ms = now - lastSyncTime; // seguro incluso si millis() se desborda
+    lastSyncTime = now;
+
+
+    // --- Coulomb counting --- (clamp?)
+    const double dt_h = static_cast<double>(delta_ms) / 3.6e6; // ms → h
+    const float currentA = batteryCurrentAmp(); // + carga, - descarga
+    coulombCountedAh += currentA * static_cast<float>(dt_h);
+    coulombCountedAh = std::clamp(coulombCountedAh, 0.0f, NOMINAL_CAPACITY_AH);
+
+    // --- Obtener SOCs individuales ---
+    const auto coulombSOC = static_cast<float>(coulombSOC_accurate());
+    const auto voltageSOC = static_cast<float>(voltageSOC_accurate());
+
+    // --- Dynamic and combined SOC ---
+    const float alpha = (fabs(currentA) > CURRENT_IDLE_THRESHOLD) ? ALPHA_SOC_MAX : ALPHA_SOC_MIN; // más peso al voltaje en reposo
+    const float combinedSOC = (alpha * coulombSOC) +
+                              ((1.0f - alpha) * voltageSOC);
+
+    Logger::logInfo(getClassNameString() + "sync() -> VoltageSOC=" + std::to_string(voltageSOC) +
+                    "%, CoulombSOC=" + std::to_string(coulombSOC) +
+                    "%, CombinedSOC=" + std::to_string(combinedSOC) + "%");
+
+    // Actualizar el estado interno
+    cachedCombinedSOC = combinedSOC;
+}
+
+float SolarXBatteryController::combinedSOC_accurate() const {
+    return cachedCombinedSOC;
+}
+
+uint8_t SolarXBatteryController::combinedSOC_rounded() const {
+    return static_cast<uint8_t>(cachedCombinedSOC);
+}
+
+
+double SolarXBatteryController::coulombSOC_accurate() const {
+    if (!_initialized) {
+        Logger::logError(getClassNameString() + "Sensor not initialized. Call init() first.");
+        return 0.0;
+    }
+
+    const double soc = (coulombCountedAh / NOMINAL_CAPACITY_AH) * 100.0;
+    Logger::logInfo(getClassNameString() + "Coulomb-SOC (before clamp): " + std::to_string(soc) + " %");
+
+    return std::clamp(soc, 0.0, 100.0);
+}
+
+uint8_t SolarXBatteryController::coulombSOC_rounded() const {
+    return static_cast<uint8_t>(coulombSOC_accurate());
+}
+
+
+double SolarXBatteryController::voltageSOC_accurate() {
     if (!_initialized) {
         Logger::logError(getClassNameString() + "Sensor not initialized. Call init() first.");
         return 0;
@@ -58,12 +139,12 @@ double SolarXBatteryController::accuratePercentage() {
     if (voltage < VOLTAGE_RANGE.min) voltage = VOLTAGE_RANGE.min;
 
     const double percentage = voltageToPercentageCurve.inverse(voltage);
-    Logger::logInfo(getClassNameString() + "Percentage (before clamp): " + std::to_string(percentage) + " %");
-    return (percentage < 0.0) ? 0.0 : (percentage > 100.0) ? 100.0 : percentage;
+    Logger::logInfo(getClassNameString() + "Voltage-SOC (before clamp): " + std::to_string(percentage) + " %");
+    return std::clamp(percentage, 0.0, 100.0);
 }
 
-uint8_t SolarXBatteryController::percentage() {
-    const double percentage = accuratePercentage();
+uint8_t SolarXBatteryController::voltageSOC_rounded() {
+    const double percentage = voltageSOC_accurate();
     return static_cast<uint8_t>(percentage);
 }
 

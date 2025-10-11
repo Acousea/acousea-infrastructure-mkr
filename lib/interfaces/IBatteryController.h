@@ -11,7 +11,7 @@ protected:
 
 public:
     virtual bool init() = 0;
-    virtual uint8_t percentage() = 0;
+    virtual uint8_t voltageSOC_rounded() = 0;
     virtual acousea_BatteryStatus  status() = 0;
 
 };

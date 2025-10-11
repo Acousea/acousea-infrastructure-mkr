@@ -9,7 +9,7 @@ class AdafruitLCBatteryController final : public IBatteryController {
 public:
     bool init() override;
 
-    uint8_t percentage() override;
+    uint8_t voltageSOC_rounded() override;
 
     acousea_BatteryStatus  status() override;
 
