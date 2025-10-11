@@ -14,6 +14,7 @@
 // =======================================================
 // ---- Batería ----
 extern MockBatteryController mockBatteryController;
+extern SolarXBatteryController solarXBatteryController;
 extern IBatteryController* batteryController;
 
 // ---- Display ----
@@ -54,6 +55,9 @@ extern std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> configurationRo
 
 extern NodeOperationRunner nodeOperationRunner;
 
+extern TaskScheduler scheduler;
+extern SystemMonitor systemMonitor;
+
 
 // =======================================================
 //       ARDUINO BUILD
@@ -80,6 +84,7 @@ extern LoraPort realLoraPort;
 // Power
 extern MosfetController mosfetController;
 extern RockPiPowerController rockPiPowerController;
+
 
 // =======================================================
 //       NATIVE BUILD

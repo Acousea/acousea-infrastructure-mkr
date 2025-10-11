@@ -70,6 +70,8 @@ RockPiPowerController piPowerController;
 
 TaskScheduler scheduler;
 
+SystemMonitor systemMonitor(&solarXBatteryController, &piPowerController);
+
 #endif
 
 // =======================================================

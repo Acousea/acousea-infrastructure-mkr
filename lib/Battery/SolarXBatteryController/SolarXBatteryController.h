@@ -109,8 +109,6 @@ public:
 
     [[nodiscard]] float panelVolts();
 
-    [[nodiscard]] float balanceVolts();
-
     // Obtener la corriente actual de la batería, panel y balance en amperios
     [[nodiscard]] float batteryCurrentAmp();
 

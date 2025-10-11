@@ -198,6 +198,25 @@ void prod_setup(){
 
     // Inicializa el repositorio de configuración
     nodeConfigurationRepository.init();
+
+    solarXBatteryController.init();
+
+    SystemMonitor::init(10000); // 10 segundos
+
+    // Initialize the gps
+    // gps->init();
+
+    static MethodTask<SolarXBatteryController> solarXBatterySyncTask(15000,
+                                                                     &solarXBatteryController,
+                                                                     &SolarXBatteryController::sync);
+    // static FunctionTask watchDogTask(5000, &SystemMonitor::reset);
+    static MethodTask<SystemMonitor> watchDogTask(5000,
+                                                  &systemMonitor,
+                                                  &SystemMonitor::sync);
+
+    scheduler.addTask(&watchDogTask);
+    scheduler.addTask(&solarXBatterySyncTask);
+
 #if MODE == DRIFTER_MODE
     // saveDrifterConfig();
 #elif MODE == LOCALIZER_MODE

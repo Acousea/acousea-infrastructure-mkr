@@ -186,18 +186,6 @@ float SolarXBatteryController::panelVolts() {
     return panelVoltage;
 }
 
-float SolarXBatteryController::balanceVolts() {
-    if (!_initialized) {
-        Logger::logError(getClassNameString() + "Sensor not initialized. Call init() first.");
-        return 0;
-    }
-    const float batt = batteryVolts();
-    const float panel = panelVolts();
-    const float balance = panel - batt;
-    Logger::logInfo(getClassNameString() + "Voltage balance (panel - battery): " + std::to_string(balance) + " V");
-    return balance;
-}
-
 
 float SolarXBatteryController::batteryCurrentAmp() {
     if (!_initialized) {

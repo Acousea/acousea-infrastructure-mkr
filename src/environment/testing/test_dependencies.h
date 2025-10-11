@@ -43,6 +43,8 @@ extern LoraPort realLoraPort;
 
 extern TaskScheduler scheduler;
 
+extern SystemMonitor systemMonitor;
+
 // =======================================================
 //       ARDUINO BUILD
 // =======================================================

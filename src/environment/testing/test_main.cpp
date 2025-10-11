@@ -18,7 +18,6 @@ void test_solar_x_battery_controller() {
 
     const auto batteryVoltageVolts = solarXBatteryController.batteryVolts();
     const auto panelVoltageVolts = solarXBatteryController.panelVolts();
-    const auto balanceVoltageVolts = solarXBatteryController.balanceVolts();
 
     const auto batteryCurrentAmps = solarXBatteryController.batteryCurrentAmp();
     const auto panelCurrentAmps = solarXBatteryController.panelCurrentAmp();
@@ -30,7 +29,6 @@ void test_solar_x_battery_controller() {
         "[TEST_SOLARX_BATTERY_CONTROLLER_CC]," +
         std::to_string(batteryVoltageVolts) + "," +
         std::to_string(panelVoltageVolts) + "," +
-        std::to_string(balanceVoltageVolts) + "," +
         std::to_string(batteryCurrentAmps) + "," +
         std::to_string(panelCurrentAmps) + "," +
         std::to_string(netPowerWatts) + "," +
@@ -221,14 +219,18 @@ void test_setup() {
     // batteryController->init();
     solarXBatteryController.init();
 
-    WatchDogMonitor::init(10000); // 10 segundos
+    SystemMonitor::init(10000); // 10 segundos
 
     // Initialize the gps
     // gps->init();
 
-    static MethodTask<SolarXBatteryController> solarXBatterySyncTask(15000, &solarXBatteryController,
+    static MethodTask<SolarXBatteryController> solarXBatterySyncTask(15000,
+                                                                     &solarXBatteryController,
                                                                      &SolarXBatteryController::sync);
-    static FunctionTask watchDogTask(5000, &WatchDogMonitor::reset);
+    // static FunctionTask watchDogTask(5000, &SystemMonitor::reset);
+    static MethodTask<SystemMonitor> watchDogTask(5000,
+                                                  &systemMonitor,
+                                                  &SystemMonitor::sync);
     static FunctionTask batteryTestTask(
         30000,
         [] { withLedIndicator(test_solar_x_battery_controller); }

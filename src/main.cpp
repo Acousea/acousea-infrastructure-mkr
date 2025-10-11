@@ -2,7 +2,7 @@
 #define ENV_DEV  2
 #define ENV_TEST 3
 
-#include "WatchDogMonitor/WatchDogMonitor.h"
+#include "SystemMonitor/SystemMonitor.h"
 
 #if ENVIRONMENT == ENV_PROD
 #include "environment/production/prod_main.h"

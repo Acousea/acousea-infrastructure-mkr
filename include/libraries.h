@@ -79,7 +79,7 @@
 #include <MosfetController/MosfetController.hpp>
 #include <RockPiPowerController/RockPiPowerController.hpp>
 #include <SolarXBatteryController/SolarXBatteryController.h>
-#include <WatchDogMonitor/WatchDogMonitor.h>
+#include <SystemMonitor/SystemMonitor.h>
 #include <Logger/Logger.h>
 #include <Result.h>
 #include <TaskScheduler/TaskScheduler.h>

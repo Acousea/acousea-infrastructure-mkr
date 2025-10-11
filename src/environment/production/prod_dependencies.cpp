@@ -98,9 +98,11 @@ StorageManager* storageManager = &sdStorageManager; // o hddStorageManager segú
 Router router({serialPort, loraOrGsmPort, iridiumPort});
 
 // --------- Power ----------
+TaskScheduler scheduler;
 MosfetController mosfetController;
 RockPiPowerController rockPiPowerController;
 SystemMonitor systemMonitor(batteryController, &rockPiPowerController);
+
 
 
 // =======================================================
@@ -212,3 +214,5 @@ NodeOperationRunner nodeOperationRunner(
     nodeConfigurationRepository,
     commandRoutines, responseRoutines, reportRoutines
 );
+
+
