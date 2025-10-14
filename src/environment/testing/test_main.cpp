@@ -135,16 +135,22 @@ void test_gsm_sending_packets() {
     ConsoleSerial.println("Looping...");
 }
 
+void test_sleep_and_wake() {
+    ConsoleSerial.println("Sleeping for 10 seconds...");
+    // systemMonitor.sleepFor(10000);
+    ConsoleSerial.println("Woke up!");
+}
+
 void test_setup() {
 #ifdef ARDUINO
     ConsoleSerial.begin(9600);
     delay(1000);
-    while (!ConsoleSerial) {
-        digitalWrite(LED_BUILTIN, HIGH);
-        delay(100);
-        digitalWrite(LED_BUILTIN, LOW);
-        delay(100);
-    }
+    // while (!ConsoleSerial) {
+    //     digitalWrite(LED_BUILTIN, HIGH);
+    //     delay(100);
+    //     digitalWrite(LED_BUILTIN, LOW);
+    //     delay(100);
+    // }
     ConsoleSerial.println("[arduino] Setup: starting...");
 #endif
 
@@ -204,7 +210,7 @@ void test_setup() {
 
     rtcController->init();
 
-    rtcController->setEpoch(1760192100);
+    rtcController->setEpoch(1760441400);
 
     // Logger initialization and configuration
     Logger::initialize(
@@ -219,7 +225,7 @@ void test_setup() {
     // batteryController->init();
     solarXBatteryController.init();
 
-    SystemMonitor::init(10000); // 10 segundos
+    systemMonitor.init(15000); // 15 seconds
 
     // Initialize the gps
     // gps->init();
@@ -227,22 +233,33 @@ void test_setup() {
     static MethodTask<SolarXBatteryController> solarXBatterySyncTask(15000,
                                                                      &solarXBatteryController,
                                                                      &SolarXBatteryController::sync);
-    // static FunctionTask watchDogTask(5000, &SystemMonitor::reset);
-    static MethodTask<SystemMonitor> watchDogTask(5000,
+
+    static FunctionTask watchDogTask(5000, &SystemMonitor::reset);
+
+    static MethodTask<SystemMonitor> systemMonitorTask(10000, // This must be less than watchdog timeout (10s)
                                                   &systemMonitor,
-                                                  &SystemMonitor::sync);
+                                                  &SystemMonitor::protectBattery);
     static FunctionTask batteryTestTask(
         30000,
         [] { withLedIndicator(test_solar_x_battery_controller); }
     );
     scheduler.addTask(&watchDogTask);
+    scheduler.addTask(&systemMonitorTask);
     scheduler.addTask(&solarXBatterySyncTask);
     scheduler.addTask(&batteryTestTask);
+
 }
 
 
 void test_loop() {
     scheduler.run();
+
+    // executeEvery(15000, [] {
+        // withLedIndicator([] {
+            // test_sleep_and_wake();
+        // });
+    // });
+
     // executeEvery(
     //     15000,
     //     test_rockpi_power_controller

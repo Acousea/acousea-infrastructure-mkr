@@ -1,6 +1,12 @@
 #include "Logger.h"
 
 #include <malloc.h>   // mallinfo
+#include <string.h>
+
+#ifdef ARDUINO
+#include <Arduino.h>
+#endif
+
 extern "C" char* sbrk(int incr);
 
 int freeMemoryStackVsHeap() {
@@ -27,12 +33,28 @@ void Logger::logFreeMemory(const std::string& prefix) {
 // }
 
 void Logger::initialize(
-    IDisplay* display, StorageManager* sdManager, RTCController* rtc, const char* logFilePath, Mode mode){
+    IDisplay* display, StorageManager* sdManager, RTCController* rtc, const char* logFilePath, Mode mode) {
     Logger::display = display;
     Logger::storageManager = sdManager;
     Logger::rtc = rtc;
     Logger::logFilePath = logFilePath;
     Logger::mode = mode;
+
+    const bool validPath = (logFilePath && strlen(logFilePath) <= 8);
+
+    const std::string msg = validPath
+        ? ("[Logger] Log file path set to: " + std::string(logFilePath))
+        : "[Logger] Invalid log file path (must follow 8.3 format).";
+
+    if (display) {
+        display->print(msg.c_str());
+    } else {
+#if defined(ARDUINO)
+        Serial.println(msg.c_str());
+#else
+        printf("%s\n", msg.c_str());
+#endif
+    }
 }
 
 void Logger::logError(const std::string& errorMessage){

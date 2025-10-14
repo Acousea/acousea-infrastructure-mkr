@@ -17,6 +17,7 @@ Type=simple
 ExecStart=/usr/local/drifterCtrl/drifterCtrlDaemon.sh run
 ExecStop=/usr/local/drifterCtrl/drifterCtrlDaemon.sh stop
 Restart=always
+RestartSec=10s
 
 [Install]
 WantedBy=basic.target poweroff.target halt.target reboot.target

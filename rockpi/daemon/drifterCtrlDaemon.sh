@@ -59,9 +59,6 @@ monitor_shutdown_signal() {
 shutdown_iclisten() {
   log "Initiating icListen shutdown sequence..."
 
-  # 1. Cortar la alimentación del TRACO tras un pequeño retardo
-  gpioset $TRACO_POWER_ON_OFF_PIN=0
-
   # 1. Mandar comando seguro al icListen para que se apague por software
   sshpass -p '' ssh \
     -oKexAlgorithms=+diffie-hellman-group14-sha1 \
@@ -72,6 +69,10 @@ shutdown_iclisten() {
     icListen@192.168.10.150 'busybox sync && busybox poweroff' || \
     log "WARNING: SSH poweroff command to icListen failed."
 
+  log "SSH poweroff command sent to icListen."
+
+  # 2. Cortar la alimentación del TRACO tras un pequeño retardo
+  gpioset $TRACO_POWER_ON_OFF_PIN=0
   log "Power to icListen cut off via TRACO."
 }
 
@@ -93,14 +94,14 @@ case "$mode" in
 
     monitor_shutdown_signal "$SHUTDOWN_SIGNAL_PIN"
 
-    gpioset $TRACO_POWER_ON_OFF_PIN=0 # Turn off the tracopower device (ICListen)
-    log "Shutdown signal received..."
     shutdown_iclisten
+    log "System will shutdown now."
+
     shutdown -h now
     ;;
   stop)
     log "System is shutting down, forcing TRACO power off..."
-    gpioset $TRACO_POWER_ON_OFF_PIN=0
+    shutdown_iclisten
     ;;
   *)
     echo "Error=> Usage: $0 {run|stop}"

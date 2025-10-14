@@ -44,8 +44,10 @@ MockGPS mockGPS(0.0, 0.0, 1.0);
 IGPS* gps = &ubloxGNSS;
 
 // --------- RTC ----------
-MockRTCController mockRTCController;
-RTCController* rtcController = &mockRTCController;
+// MockRTCController mockRTCController;
+// RTCController* rtcController = &mockRTCController;
+ZeroRTCController zeroRTCController;
+RTCController* rtcController = &zeroRTCController;
 
 // --------- Storage ----------
 SDStorageManager sdStorageManager;

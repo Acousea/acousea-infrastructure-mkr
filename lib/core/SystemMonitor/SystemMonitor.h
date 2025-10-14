@@ -18,17 +18,19 @@ public:
         : batteryController(batteryCtrl), rockpiController(rockpiCtrl) {
     }
 
-    void sync() const;
+    void init(int timeoutMs);
 
-    static void init(int timeoutMs);
+    static void reset();
 
+    void protectBattery() const;
 
 private:
     static void logResetCause();
 
-    void checkBatteryProtection() const;
+    void sleepFor(uint32_t ms) const;
 
 private:
+    int watchDogTimeoutMs = 5000; // Default 5 seconds
     IBatteryController *batteryController;
     RockPiPowerController *rockpiController;
 };

@@ -201,7 +201,7 @@ void prod_setup(){
 
     solarXBatteryController.init();
 
-    SystemMonitor::init(10000); // 10 segundos
+    systemMonitor.init(10000); // 10 segundos
 
     // Initialize the gps
     // gps->init();

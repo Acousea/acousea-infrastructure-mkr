@@ -1,24 +1,29 @@
 #ifdef ARDUINO
 
 #include "MosfetController.hpp"
+
 MosfetController::MosfetController(const int mosfetControlPin)
-        : mosfetControlPin(mosfetControlPin) {
+    : mosfetControlPin(mosfetControlPin)
+{
     pinMode(mosfetControlPin, OUTPUT);
-    digitalWrite(mosfetControlPin, LOW); // Apagar inicialmente
+    digitalWrite(mosfetControlPin, LOW); // Apagar inicialmente (LED turns BLUE)
 }
 
-void MosfetController::switchOnMOSFET() const {
-    digitalWrite(mosfetControlPin, LOW); // LED turns BLUE
+void MosfetController::switchOnMOSFET() const
+{
+    digitalWrite(mosfetControlPin, HIGH); // LED turns RED
     Logger::logInfo(getClassNameString() + "MOSFET turned on.");
 }
 
-void MosfetController::switchOffMOSFET() const {
-    digitalWrite(mosfetControlPin, HIGH); // LED turns RED
+void MosfetController::switchOffMOSFET() const
+{
+    digitalWrite(mosfetControlPin, LOW); // LED turns BLUE
     Logger::logInfo(getClassNameString() + "MOSFET turned off.");
 }
 
-bool MosfetController::isMOSFETOn() const {
-    return digitalRead(mosfetControlPin) == LOW; // LOW means MOSFET is "on" (on output-A <BLUE>, off output-B<RED>)
+bool MosfetController::isMOSFETOn() const
+{
+    return digitalRead(mosfetControlPin) == HIGH; // LOW means MOSFET is "on" (on output-A <BLUE>, off output-B<RED>)
 }
 
 #endif // ARDUINO
