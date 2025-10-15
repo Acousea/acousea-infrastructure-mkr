@@ -4,22 +4,19 @@
 #include "IRoutine.h"
 #include "ICListenService/ICListenService.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
-#include "Logger/Logger.h"
-#include <utility>
-
 
 class StoreNodeConfigurationRoutine final : public IRoutine<acousea_CommunicationPacket>
 {
 private:
     NodeConfigurationRepository& nodeConfigurationRepository;
-    std::optional<std::shared_ptr<ICListenService>> icListenService;
+    std::optional<ICListenService*> icListenService;
 
 public:
     CLASS_NAME(StoreNodeConfigurationRoutine)
 
     explicit StoreNodeConfigurationRoutine(
         NodeConfigurationRepository& nodeConfigurationRepository,
-        std::optional<std::shared_ptr<ICListenService>> icListenService
+        std::optional<ICListenService*> icListenService
     );
 
     Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& optPacket) override;
@@ -27,7 +24,7 @@ public:
     void processModules(const acousea_UpdatedNodeConfigurationPayload_ModulesEntry* modules, pb_size_t count);
 
 private:
-    void storeIcListenConfiguration(uint32_t key, const acousea_ModuleWrapper* value) const;
+    void storeIcListenConfiguration(uint32_t key, const acousea_ModuleWrapper* value);
     void handleModule(int32_t key, bool hasValue, const acousea_ModuleWrapper* value
     );
     // ---------------------- ICListen specific methods ----------------------

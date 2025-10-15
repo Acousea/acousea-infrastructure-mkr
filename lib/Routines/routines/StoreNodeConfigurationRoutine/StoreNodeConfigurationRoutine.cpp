@@ -1,13 +1,14 @@
 #include "StoreNodeConfigurationRoutine.h"
 
+#include "Logger/Logger.h"
 
 StoreNodeConfigurationRoutine::StoreNodeConfigurationRoutine(
     NodeConfigurationRepository& nodeConfigurationRepository,
-    std::optional<std::shared_ptr<ICListenService>> icListenService
+    const std::optional<ICListenService*> icListenService
 )
     : IRoutine(getClassNameString()),
       nodeConfigurationRepository(nodeConfigurationRepository),
-      icListenService(std::move(icListenService))
+      icListenService(icListenService)
 {
 }
 
@@ -100,7 +101,7 @@ void StoreNodeConfigurationRoutine::handleModule(int32_t key, const bool hasValu
 void StoreNodeConfigurationRoutine::storeIcListenConfiguration(
     uint32_t key,
     const acousea_ModuleWrapper* value
-) const
+)
 {
     if (!icListenService.has_value())
     {
@@ -113,18 +114,18 @@ void StoreNodeConfigurationRoutine::storeIcListenConfiguration(
     case acousea_ModuleWrapper_icListenRecordingStats_tag:
         {
             Logger::logInfo(getClassNameString() + ": Storing ICListen Recording Stats from device.");
-            icListenService.value()->getCache()->storeICListenRecordingStats(value->module.icListenRecordingStats);
+            icListenService.value()->getCache().storeICListenRecordingStats(value->module.icListenRecordingStats);
             break;
         }
     case acousea_ModuleWrapper_icListenLoggingConfig_tag:
         {
             Logger::logInfo(getClassNameString() + ": Storing ICListen Logging Config from device.");
-            icListenService.value()->getCache()->storeICListenLoggingConfig(value->module.icListenLoggingConfig);
+            icListenService.value()->getCache().storeICListenLoggingConfig(value->module.icListenLoggingConfig);
             break;
         }
     case acousea_ModuleWrapper_icListenStreamingConfig_tag:
         {
-            icListenService.value()->getCache()->storeICListenStreamingConfig(value->module.icListenStreamingConfig);
+            icListenService.value()->getCache().storeICListenStreamingConfig(value->module.icListenStreamingConfig);
             Logger::logInfo(getClassNameString() + ": Storing ICListen Streaming Config from device.");
             break;
         }
@@ -132,14 +133,14 @@ void StoreNodeConfigurationRoutine::storeIcListenConfiguration(
     case acousea_ModuleWrapper_icListenStatus_tag:
         {
             Logger::logInfo(getClassNameString() + ": Storing ICListen Status from device.");
-            icListenService.value()->getCache()->storeICListenStatus(value->module.icListenStatus);
+            icListenService.value()->getCache().storeICListenStatus(value->module.icListenStatus);
             break;
         }
     case acousea_ModuleWrapper_icListenHF_tag:
         {
             // Example: store HF config
             Logger::logInfo(getClassNameString() + ": Storing ICListen HF Config from device.");
-            icListenService.value()->getCache()->storeICListenHFConfiguration(value->module.icListenHF);
+            icListenService.value()->getCache().storeICListenHFConfiguration(value->module.icListenHF);
             break;
         }
     default:

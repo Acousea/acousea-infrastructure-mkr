@@ -1,6 +1,8 @@
 #include "Router.h"
 
-#include "Ports/IPort.h"
+#include <Logger/Logger.h>
+#include <pb_encode.h>
+#include "pb_decode.h"
 
 
 // Decodifica un buffer raw -> acousea_CommunicationPacket
@@ -46,7 +48,6 @@ Result<std::vector<uint8_t>> Router::encodePacket(const acousea_CommunicationPac
     }
     return Result<std::vector<uint8_t>>::success(std::move(buf));
 }
-
 
 Router::Router(const std::vector<IPort*>& relayedPorts)
     : relayedPorts(relayedPorts)
@@ -162,3 +163,37 @@ void Router::sendSerial(const acousea_CommunicationPacket& packet) const
         }
     }
 }
+
+// --------------------------------------  Router::RouterSender --------------------------------------
+acousea_CommunicationPacket Router::RouterSender::configurePacketRouting(acousea_CommunicationPacket& inPacket) const
+{
+    // Configurar routing: respondemos al remitente del paquete original
+    inPacket.has_routing = true;
+    inPacket.routing = acousea_RoutingChunk_init_default;
+    inPacket.routing.sender = static_cast<int32_t>(localAddress);
+    return inPacket;
+}
+
+Router::RouterSender::RouterSender(uint8_t address, Router* router): localAddress(address), router(router)
+{
+}
+
+void Router::RouterSender::sendSBD(acousea_CommunicationPacket& packet) const
+{
+    const acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
+    router->sendSBD(mutablePacket);
+}
+
+void Router::RouterSender::sendLoRa(acousea_CommunicationPacket& packet) const
+{
+    const acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
+    router->sendLoRa(mutablePacket);
+}
+
+void Router::RouterSender::sendSerial(acousea_CommunicationPacket& packet) const
+{
+    const acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
+    router->sendSerial(mutablePacket);
+}
+
+

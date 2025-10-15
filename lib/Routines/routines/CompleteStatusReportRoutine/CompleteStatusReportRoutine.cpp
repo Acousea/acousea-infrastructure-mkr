@@ -3,27 +3,29 @@
 #include <algorithm>
 
 CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationRepository& nodeConfigurationRepository,
-                                                         std::optional<std::shared_ptr<ICListenService>>
-                                                         icListenService,
+                                                         std::optional<ICListenService*> icListenService,
                                                          IGPS* gps,
                                                          IBatteryController* battery,
                                                          RTCController* rtc
 )
     : IRoutine(getClassNameString()),
       nodeConfigurationRepository(nodeConfigurationRepository),
-      icListenService(std::move(icListenService)),
+      icListenService(icListenService),
       gps(gps),
       battery(battery),
-      rtc(rtc){
+      rtc(rtc)
+{
 }
 
 
 Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
-    const std::optional<_acousea_CommunicationPacket>& none){
+    const std::optional<_acousea_CommunicationPacket>& none)
+{
     // --- Obtener configuración actual ---
     const acousea_NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
     const auto reportTypeResult = getCurrentReportingConfiguration(nodeConfig);
-    if (reportTypeResult.isError()){
+    if (reportTypeResult.isError())
+    {
         return Result<acousea_CommunicationPacket>::failure(
             getClassNameString() + "Cannot get current reporting configuration: " + reportTypeResult.getError()
         );
@@ -36,7 +38,8 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
 
     // --- Log included modules ---
     std::string moduleIds = "[";
-    for (pb_size_t i = 0; i < reportType.includedModules_count; i++){
+    for (pb_size_t i = 0; i < reportType.includedModules_count; i++)
+    {
         moduleIds += std::to_string(reportType.includedModules[i]);
         if (i < reportType.includedModules_count - 1) moduleIds += ", ";
     }
@@ -47,52 +50,59 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
         " modules: " + moduleIds);
 
     // --- Fill modules ---
-    for (pb_size_t i = 0; i < reportType.includedModules_count; i++){
-        switch (auto moduleCode = reportType.includedModules[i]){
-        case acousea_ModuleCode_BATTERY_MODULE: {
-            acousea_StatusReportPayload_ModulesEntry entry =
-                acousea_StatusReportPayload_ModulesEntry_init_default;
-            entry.has_value = true;
-            entry.key = acousea_ModuleCode_BATTERY_MODULE;
-            entry.value.which_module = acousea_ModuleWrapper_battery_tag;
-            entry.value.module.battery.batteryPercentage = battery->voltageSOC_rounded();
-            entry.value.module.battery.batteryStatus = battery->status();
-            status.modules[status.modules_count++] = entry;
-            break;
-        }
-        case acousea_ModuleCode_LOCATION_MODULE: {
-            acousea_StatusReportPayload_ModulesEntry entry =
-                acousea_StatusReportPayload_ModulesEntry_init_default;
-            entry.has_value = true;
-            entry.key = acousea_ModuleCode_LOCATION_MODULE;
-            entry.value.which_module = acousea_ModuleWrapper_location_tag;
-            auto [lat, lon] = gps->read();
-            entry.value.module.location.latitude = lat;
-            entry.value.module.location.longitude = lon;
-            status.modules[status.modules_count++] = entry;
-            break;
-        }
-        case acousea_ModuleCode_ICLISTEN_HF: {
-            if (!icListenService.has_value()){
-                Logger::logWarning(getClassNameString() + ": ICListenService not available, skipping ICLISTEN_HF");
+    for (pb_size_t i = 0; i < reportType.includedModules_count; i++)
+    {
+        switch (auto moduleCode = reportType.includedModules[i])
+        {
+        case acousea_ModuleCode_BATTERY_MODULE:
+            {
+                acousea_StatusReportPayload_ModulesEntry entry =
+                    acousea_StatusReportPayload_ModulesEntry_init_default;
+                entry.has_value = true;
+                entry.key = acousea_ModuleCode_BATTERY_MODULE;
+                entry.value.which_module = acousea_ModuleWrapper_battery_tag;
+                entry.value.module.battery.batteryPercentage = battery->voltageSOC_rounded();
+                entry.value.module.battery.batteryStatus = battery->status();
+                status.modules[status.modules_count++] = entry;
                 break;
             }
-            auto cfg = icListenService.value()->getCache()->getICListenCompleteConfiguration();
-            if (!cfg.isFresh){
-                icListenService.value()->fetchHFConfiguration();
-                return Result<acousea_CommunicationPacket>::pending(
-                    getClassNameString() + ": ICListenHF configuration not fresh"
-                );
+        case acousea_ModuleCode_LOCATION_MODULE:
+            {
+                acousea_StatusReportPayload_ModulesEntry entry =
+                    acousea_StatusReportPayload_ModulesEntry_init_default;
+                entry.has_value = true;
+                entry.key = acousea_ModuleCode_LOCATION_MODULE;
+                entry.value.which_module = acousea_ModuleWrapper_location_tag;
+                auto [lat, lon] = gps->read();
+                entry.value.module.location.latitude = lat;
+                entry.value.module.location.longitude = lon;
+                status.modules[status.modules_count++] = entry;
+                break;
             }
-            acousea_StatusReportPayload_ModulesEntry entry =
-                acousea_StatusReportPayload_ModulesEntry_init_default;
-            entry.has_value = true;
-            entry.key = acousea_ModuleCode_ICLISTEN_HF;
-            entry.value.which_module = acousea_ModuleWrapper_icListenHF_tag;
-            entry.value.module.icListenHF = cfg.get();
-            status.modules[status.modules_count++] = entry;
-            break;
-        }
+        case acousea_ModuleCode_ICLISTEN_HF:
+            {
+                if (!icListenService.has_value())
+                {
+                    Logger::logWarning(getClassNameString() + ": ICListenService not available, skipping ICLISTEN_HF");
+                    break;
+                }
+                auto cfg = icListenService.value()->getCache().getICListenCompleteConfiguration();
+                if (!cfg.fresh())
+                {
+                    icListenService.value()->fetchHFConfiguration();
+                    return Result<acousea_CommunicationPacket>::pending(
+                        getClassNameString() + ": ICListenHF configuration not fresh"
+                    );
+                }
+                acousea_StatusReportPayload_ModulesEntry entry =
+                    acousea_StatusReportPayload_ModulesEntry_init_default;
+                entry.has_value = true;
+                entry.key = acousea_ModuleCode_ICLISTEN_HF;
+                entry.value.which_module = acousea_ModuleWrapper_icListenHF_tag;
+                entry.value.module.icListenHF = cfg.get();
+                status.modules[status.modules_count++] = entry;
+                break;
+            }
         default:
             Logger::logWarning(getClassNameString() + ": Module " + std::to_string(moduleCode) +
                 " in ReportType not supported yet");
@@ -122,14 +132,17 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
 
 
 Result<acousea_ReportType> CompleteStatusReportRoutine::getCurrentReportingConfiguration(
-    const acousea_NodeConfiguration nodeConfig){
+    const acousea_NodeConfiguration nodeConfig)
+{
     // Get the current operation mode
-    if (!nodeConfig.has_operationModesModule){
+    if (!nodeConfig.has_operationModesModule)
+    {
         return Result<
             acousea_ReportType>::failure(getClassNameString() + "No operation modes module in configuration.");
     }
 
-    if (!nodeConfig.has_reportTypesModule){
+    if (!nodeConfig.has_reportTypesModule)
+    {
         return Result<acousea_ReportType>::failure(getClassNameString() + "No report types module in configuration.");
     }
 
@@ -137,12 +150,14 @@ Result<acousea_ReportType> CompleteStatusReportRoutine::getCurrentReportingConfi
     const auto currentOperationModeIt = std::find_if(
         nodeConfig.operationModesModule.modes,
         nodeConfig.operationModesModule.modes + nodeConfig.operationModesModule.modes_count,
-        [currentOperationModeId](const acousea_OperationMode& mode){
+        [currentOperationModeId](const acousea_OperationMode& mode)
+        {
             return mode.id == currentOperationModeId;
         }
     );
 
-    if (currentOperationModeIt == nodeConfig.operationModesModule.modes + nodeConfig.operationModesModule.modes_count){
+    if (currentOperationModeIt == nodeConfig.operationModesModule.modes + nodeConfig.operationModesModule.modes_count)
+    {
         return Result<acousea_ReportType>::failure(
             getClassNameString() + "Current operation mode ID " + std::to_string(currentOperationModeId) +
             " not found in configuration."
@@ -155,12 +170,14 @@ Result<acousea_ReportType> CompleteStatusReportRoutine::getCurrentReportingConfi
     const acousea_ReportType* reportType = std::find_if(
         nodeConfig.reportTypesModule.reportTypes, // Begin
         nodeConfig.reportTypesModule.reportTypes + nodeConfig.reportTypesModule.reportTypes_count, // End
-        [currentReportTypeId](const acousea_ReportType& rt){
+        [currentReportTypeId](const acousea_ReportType& rt)
+        {
             return rt.id == currentReportTypeId;
         }
     );
 
-    if (reportType == nodeConfig.reportTypesModule.reportTypes + nodeConfig.reportTypesModule.reportTypes_count){
+    if (reportType == nodeConfig.reportTypesModule.reportTypes + nodeConfig.reportTypesModule.reportTypes_count)
+    {
         return Result<acousea_ReportType>::failure(
             getClassNameString() + "Report type ID " + std::to_string(currentReportTypeId) +
             " not found in configuration."

@@ -4,13 +4,9 @@
 #include <deque>
 #include <map>
 #include <Ports/IPort.h>
-#include <../interfaces/Result.h>
-#include <Logger/Logger.h>
+#include <Result.h>
+#include "bindings/nodeDevice.pb.h"
 
-#include "bindings/nodeDevice.pb.h"
-#include "bindings/nodeDevice.pb.h"
-#include <pb_encode.h>
-#include <pb_decode.h>
 
 /**
  * @brief Router class that relays packets between ports and processes them if necessary.
@@ -32,44 +28,19 @@ private:
         uint8_t localAddress;
         Router* router;
 
-        [[nodiscard]] acousea_CommunicationPacket configurePacketRouting(acousea_CommunicationPacket& inPacket) const
-        {
-            // Configurar routing: respondemos al remitente del paquete original
-            inPacket.has_routing = true;
-            inPacket.routing = acousea_RoutingChunk_init_default;
-            inPacket.routing.sender = static_cast<int32_t>(localAddress);
-            return inPacket;
-        }
+    private:
+        [[nodiscard]] acousea_CommunicationPacket configurePacketRouting(acousea_CommunicationPacket& inPacket) const;
 
     public:
-        explicit RouterSender(uint8_t address, Router* router)
-            : localAddress(address), router(router)
-        {
-        }
+        explicit RouterSender(uint8_t address, Router* router);
 
-
-        void sendSBD(acousea_CommunicationPacket& packet) const
-        {
-            const acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
-            router->sendSBD(mutablePacket);
-        }
-
-
-        void sendLoRa(acousea_CommunicationPacket& packet) const
-        {
-            const acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
-            router->sendLoRa(mutablePacket);
-        }
-
-        void sendSerial(acousea_CommunicationPacket& packet) const
-        {
-            const acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
-            router->sendSerial(mutablePacket);
-        }
+        void sendSBD(acousea_CommunicationPacket& packet) const;
+        void sendLoRa(acousea_CommunicationPacket& packet) const;
+        void sendSerial(acousea_CommunicationPacket& packet) const;
     };
 
 public:
-    Router(const std::vector<IPort*>& relayedPorts);
+    explicit Router(const std::vector<IPort*>& relayedPorts);
 
     void addRelayedPort(IPort* port);
 

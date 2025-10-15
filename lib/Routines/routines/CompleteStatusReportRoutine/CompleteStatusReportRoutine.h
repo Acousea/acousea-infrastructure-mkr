@@ -1,13 +1,12 @@
 #ifndef COMPLETE_STATUS_REPORT_ROUTINE_H
 #define COMPLETE_STATUS_REPORT_ROUTINE_H
 
-#include <utility>
 #include "IRoutine.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
-#include "IBatteryController.h"
-#include "IGPS.h"
-#include "RTCController.hpp"
 #include <ICListenService/ICListenService.h>
+#include "IGPS.h"
+#include "IBatteryController.h"
+#include "RTCController.hpp"
 
 
 /**
@@ -15,24 +14,22 @@
  * so that it can be retrieved by the corresponding operation mode that sends reports to the backend
  * It returns a NullPacket since it does not need to send any response to the sendFrom
  */
-class CompleteStatusReportRoutine final : public IRoutine<acousea_CommunicationPacket>{
+class CompleteStatusReportRoutine final : public IRoutine<acousea_CommunicationPacket>
+{
     NodeConfigurationRepository& nodeConfigurationRepository;
-    std::optional<std::shared_ptr<ICListenService>> icListenService;
+    std::optional<ICListenService*> icListenService;
     IGPS* gps;
     IBatteryController* battery;
     RTCController* rtc;
 
-
 public:
     CLASS_NAME(CompleteSummaryReportRoutine)
 
-    CompleteStatusReportRoutine(
-        NodeConfigurationRepository& nodeConfigurationRepository,
-        std::optional<std::shared_ptr<ICListenService>> icListenService,
-        IGPS* gps,
-        IBatteryController* battery,
-        RTCController* rtc
-    );
+    CompleteStatusReportRoutine(NodeConfigurationRepository& nodeConfigurationRepository,
+                                std::optional<ICListenService*> icListenService,
+                                IGPS* gps,
+                                IBatteryController* battery,
+                                RTCController* rtc);
 
     Result<acousea_CommunicationPacket> execute(const std::optional<_acousea_CommunicationPacket>& input) override;
 

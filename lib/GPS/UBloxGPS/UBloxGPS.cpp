@@ -2,8 +2,16 @@
 
 #include "UBloxGPS.h"
 
+#include <Logger/Logger.h>
+#include "SparkFun_u-blox_GNSS_Arduino_Library.h"
+
+
+
+static SFE_UBLOX_GNSS myGNSS;
+
 // Definición de los posibles tipos de fix GNSS
-enum GNSSFixType : uint8_t{
+enum GNSSFixType : uint8_t
+{
     NO_FIX = 0, // No fix
     DEAD_RECKONING_ONLY = 1, // Solo Dead Reckoning
     FIX_2D = 2, // Fix 2D
@@ -12,8 +20,10 @@ enum GNSSFixType : uint8_t{
     TIME_ONLY_FIX = 5 // Solo tiempo válido (sin posición)
 };
 
-const char* fixTypeToString(GNSSFixType fixType){
-    switch (fixType){
+const char* fixTypeToString(GNSSFixType fixType)
+{
+    switch (fixType)
+    {
     case NO_FIX: return "No Fix";
     case DEAD_RECKONING_ONLY: return "Dead Reckoning only";
     case FIX_2D: return "2D Fix";
@@ -27,7 +37,8 @@ const char* fixTypeToString(GNSSFixType fixType){
 // ---------------------------
 // Método de configuración GNSS
 // ---------------------------
-bool UBloxGNSS::config(){
+bool UBloxGNSS::config()
+{
     Logger::logInfo(getClassNameString() + "Configuring GNSS ...");
 
     // Salida solo UBX en I2C (interno a tu micro)
@@ -58,22 +69,26 @@ bool UBloxGNSS::config(){
     myGNSS.enableGNSS(false, SFE_UBLOX_GNSS_ID_QZSS);
 
     // Modelo dinámico: PORTABLE es versátil, STATIONARY si es una boya fija
-    if (!myGNSS.setDynamicModel(DYN_MODEL_PORTABLE)){
+    if (!myGNSS.setDynamicModel(DYN_MODEL_PORTABLE))
+    {
         Logger::logError(getClassNameString() + "Failed to set dynamic model");
         return false;
     }
 
     // Tasa de actualización (Hz). 1 Hz ahorra energía, 5 Hz es más rápido.
-    if (!myGNSS.setNavigationFrequency(1)){
+    if (!myGNSS.setNavigationFrequency(1))
+    {
         Logger::logError(getClassNameString() + "Failed to set navigation frequency");
         return false;
     }
 
     // Power save mode (si tu módulo lo soporta)
-    if (myGNSS.powerSaveMode()){
+    if (myGNSS.powerSaveMode())
+    {
         Logger::logInfo(getClassNameString() + "Power Save Mode enabled");
     }
-    else{
+    else
+    {
         Logger::logError(getClassNameString() + "Power Save Mode not supported / failed");
     }
 
@@ -81,26 +96,31 @@ bool UBloxGNSS::config(){
     const bool saved = myGNSS.saveConfigSelective(VAL_CFG_SUBSEC_IOPORT) &&
         myGNSS.saveConfigSelective(VAL_CFG_SUBSEC_NAVCONF);
 
-    if (saved){
+    if (saved)
+    {
         Logger::logInfo(getClassNameString() + "Configuration saved");
     }
-    else{
+    else
+    {
         Logger::logError(getClassNameString() + "Configuration save failed");
     }
 
     return saved;
 }
 
-bool UBloxGNSS::init(){
+bool UBloxGNSS::init()
+{
     Logger::logInfo(getClassNameString() + "Initializing GNSS ...");
 
-    if (myGNSS.begin() == false){
+    if (myGNSS.begin() == false)
+    {
         Logger::logError(getClassNameString() +
             "GNSS Failed! => u-blox GNSS not detected at default I2C address. Please check wiring");
         return false;
     }
 
-    if (!config()){
+    if (!config())
+    {
         Logger::logError(getClassNameString() + "GNSS configuration failed");
         return false;
     }
@@ -111,17 +131,21 @@ bool UBloxGNSS::init(){
     const uint32_t beginFix_ms = millis();
 
     auto fixType = static_cast<GNSSFixType>(myGNSS.getFixType());
-    if (fixType != NO_FIX && fixType != TIME_ONLY_FIX){
+    if (fixType != NO_FIX && fixType != TIME_ONLY_FIX)
+    {
         fixed = true;
     }
-    while (!fixed && ((millis() - beginFix_ms) < GNSS_MAX_FIX_TIME_MS)){
+    while (!fixed && ((millis() - beginFix_ms) < GNSS_MAX_FIX_TIME_MS))
+    {
         fixType = static_cast<GNSSFixType>(myGNSS.getFixType());
-        if (fixType != NO_FIX && fixType != TIME_ONLY_FIX){
+        if (fixType != NO_FIX && fixType != TIME_ONLY_FIX)
+        {
             fixed = true;
         }
     }
 
-    if (!fixed){
+    if (!fixed)
+    {
         char buffer[50];
         snprintf(buffer, sizeof(buffer), "ERROR: NO GNSS fix after %lu sec\n", (millis() - beginFix_ms) / 1000);
         Logger::logError(getClassNameString() + buffer);
@@ -136,12 +160,15 @@ bool UBloxGNSS::init(){
     return true;
 }
 
-GPSLocation UBloxGNSS::read(){
+GPSLocation UBloxGNSS::read()
+{
     const uint32_t beginTime_ms = millis();
 
-    while ((millis() - beginTime_ms) < GNSS_WAIT_TIME_MS){
+    while ((millis() - beginTime_ms) < GNSS_WAIT_TIME_MS)
+    {
         const auto fixType = static_cast<GNSSFixType>(myGNSS.getFixType());
-        if (fixType != NO_FIX && fixType != TIME_ONLY_FIX){
+        if (fixType != NO_FIX && fixType != TIME_ONLY_FIX)
+        {
             break;
         }
     }
@@ -152,22 +179,26 @@ GPSLocation UBloxGNSS::read(){
     return {latitude, longitude};
 }
 
-unsigned long UBloxGNSS::getTimestamp(){
+unsigned long UBloxGNSS::getTimestamp()
+{
     // Wait for valid time and date. If time is not valid for 10 seconds, return the given time
     unsigned long startWaitTime = millis();
-    while ((myGNSS.getTimeValid() == false) || (myGNSS.getDateValid() == false)){
+    while ((myGNSS.getTimeValid() == false) || (myGNSS.getDateValid() == false))
+    {
         if ((millis() - startWaitTime) > GNSS_MAX_TIMESTAMP_WAIT_TIME_MS) break;
     }
     return myGNSS.getUnixEpoch();
 }
 
-void UBloxGNSS::wakeup(){
+void UBloxGNSS::wakeup()
+{
     digitalWrite(GNSS_WAKEUP_PIN, HIGH);
     delay(1);
     digitalWrite(GNSS_WAKEUP_PIN, LOW);
 }
 
-void UBloxGNSS::calculateTrajectory(float targetLat, float targetLon, float& distance, float& bearing){
+void UBloxGNSS::calculateTrajectory(float targetLat, float targetLon, float& distance, float& bearing)
+{
     // Implementación de la fórmula de Haversine
     HaverSine(latitude, longitude, targetLat, targetLon, distance, bearing);
 }

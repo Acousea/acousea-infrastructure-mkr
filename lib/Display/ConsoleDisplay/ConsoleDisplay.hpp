@@ -1,12 +1,6 @@
 #ifndef CONSOLEDISPLAY_HPP
 #define CONSOLEDISPLAY_HPP
-
-
 #include "IDisplay.h"
-#include <cstddef>
-#include <cstdint>
-#include <vector>
-#include <string>
 
 class ConsoleDisplay : public IDisplay{
 public:

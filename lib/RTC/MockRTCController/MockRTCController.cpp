@@ -1,5 +1,7 @@
 #include "MockRTCController.h"
 
+#include "time/getMillis.hpp"
+
 MockRTCController::MockRTCController()
     : baseEpoch(0), baseMillis(getMillis()) {}
 

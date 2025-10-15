@@ -1,7 +1,6 @@
 #ifdef ARDUINO
 #include "RockPiPowerController.hpp"
-
-#include "WaitFor.hpp"
+#include "wait/WaitFor.hpp"
 
 RockPiPowerController::RockPiPowerController(const int mosfetControlPin, const int rockPiShutdownPin,
                                              const int rockPiMonitorPin) :

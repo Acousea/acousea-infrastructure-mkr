@@ -1,5 +1,7 @@
 #include "ConsoleDisplay.hpp"
 #include <cstdio>
+#include <cstdint>
+#include <cstddef>
 
 static inline void print_hex_line(const uint8_t* data, size_t length)
 {

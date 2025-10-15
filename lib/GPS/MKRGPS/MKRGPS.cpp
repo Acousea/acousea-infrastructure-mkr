@@ -2,6 +2,11 @@
 
 #include "MKRGPS.h"
 
+#include <Arduino.h>
+#include <ctime> // Or <time.h> depending on the environment
+#include <Arduino_MKRGPS.h>
+#include "Logger/Logger.h"
+
 bool MKRGPS::init() {
     Logger::logInfo(getClassNameString() + "Initializing GNSS ...");
 

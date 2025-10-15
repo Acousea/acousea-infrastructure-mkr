@@ -2,6 +2,13 @@
 
 #include "SolarXBatteryController.h"
 
+#include <algorithm>
+#include <vector>
+#include <Arduino.h>
+#include <Wire.h>
+#include "Logger/Logger.h"
+#include "time/getMillis.hpp"
+
 
 inline std::string toHexString(const uint8_t value) {
     char buf[8];

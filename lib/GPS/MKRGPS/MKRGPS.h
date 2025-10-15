@@ -3,13 +3,8 @@
 
 #ifdef ARDUINO
 
-
-#include <ctime> // Or <time.h> depending on the environment
-#include <Arduino_MKRGPS.h>
-
-#include "ClassName.h"
 #include "IGPS.h"
-#include "Logger/Logger.h"
+#include "ClassName.h"
 
 class MKRGPS : public IGPS
 {

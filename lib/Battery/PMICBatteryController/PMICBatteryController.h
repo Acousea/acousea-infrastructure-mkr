@@ -3,10 +3,7 @@
 
 #ifdef ARDUINO
 
-#include "Arduino_PMIC.h"
 #include "IBatteryController.h"
-#include <ErrorHandler/ErrorHandler.h>
-#include <Logger/Logger.h>
 
 class PMICBatteryController final : public IBatteryController {
 public:

@@ -3,7 +3,7 @@
 #ifdef ARDUINO
 
 #include "IBatteryController.h"
-#include "Adafruit_LC709203F.h"
+
 
 class AdafruitLCBatteryController final : public IBatteryController {
 public:
@@ -17,8 +17,6 @@ public:
 
     float temperature();
 
-private:
-    Adafruit_LC709203F adafruitLC; // Battery controller
 };
 
 #endif // ARDUINO

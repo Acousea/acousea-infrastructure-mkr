@@ -1,6 +1,7 @@
 #ifdef ARDUINO
 
 #include "SDStorageManager.h"
+#include "SD.h"
 
 SDStorageManager::SDStorageManager(uint8_t chipSelectPin) : chipSelectPin(chipSelectPin) {}
 

@@ -1,6 +1,7 @@
 #include "ErrorHandler.h"
 
 
+#include "Logger/Logger.h"
 
 #ifdef ARDUINO
   #include <Arduino.h>

@@ -1,5 +1,6 @@
 #include "MockGPS.h"
-
+#include <Logger/Logger.h>
+#include "time/getMillis.hpp"
 
 MockGPS::MockGPS(float startLat, float startLon, float moveRate)
     : latitude(startLat), longitude(startLon), moveRate(moveRate){

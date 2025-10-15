@@ -2,6 +2,10 @@
 
 #include "PMICBatteryController.h"
 
+#include "Arduino_PMIC.h"
+#include <ErrorHandler/ErrorHandler.h>
+#include <Logger/Logger.h>
+
 bool PMICBatteryController::init() {
     if (!PMIC.begin()) {
         ErrorHandler::handleError("Failed to initialize PMIC!");

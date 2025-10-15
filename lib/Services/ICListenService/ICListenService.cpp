@@ -1,9 +1,99 @@
 #include "ICListenService.h"
 
+#include <variant>
+#include "Logger/Logger.h"
+#include "ErrorHandler/ErrorHandler.h"
+
+#include "pb.h"        // asegura que pb_msgdesc_t esté visible
+#include "pb_decode.h"
+#include "pb_encode.h"
+
+// Helper genérico: compara dos mensajes nanopb por su codificación
+template <typename T>
+static bool nanopb_equal(const T& a, const T& b, const pb_msgdesc_t* fields)
+{
+    size_t sa = 0, sb = 0;
+    if (!pb_get_encoded_size(&sa, fields, &a)) return false;
+    if (!pb_get_encoded_size(&sb, fields, &b)) return false;
+    if (sa != sb) return false;
+
+    std::vector<uint8_t> ba(sa), bb(sb);
+
+    {
+        pb_ostream_t oa = pb_ostream_from_buffer(ba.data(), ba.size());
+        if (!pb_encode(&oa, fields, &a)) return false;
+    }
+    {
+        pb_ostream_t ob = pb_ostream_from_buffer(bb.data(), bb.size());
+        if (!pb_encode(&ob, fields, &b)) return false;
+    }
+    return ba == bb;
+}
+
+// ==============================================================
+// =================== ICListenService::Utils ===================
+// ==============================================================
+typedef enum sendICListenConfigModuleCode
+{
+    ICLISTEN_HF_LOGGING_CONFIG = acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG,
+    ICLISTEN_HF_STREAMING_CONFIG = acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG,
+} SendICListenConfigModuleCode;
+
+using SendICListenConfigModuleValue = std::variant<acousea_ICListenLoggingConfig,
+                                                   acousea_ICListenStreamingConfig>;
+acousea_CommunicationPacket buildSendICListenConfigPacket(
+    SendICListenConfigModuleCode code, SendICListenConfigModuleValue iclistenConfigValue)
+{
+    acousea_CommunicationPacket packet = acousea_CommunicationPacket_init_default;
+
+    // -------- Routing --------
+    packet.has_routing = true;
+    packet.routing = acousea_RoutingChunk_init_default;
+    packet.routing.sender = static_cast<int32_t>(Router::broadcastAddress);
+    packet.routing.receiver = 0;
+    packet.routing.ttl = 0;
+
+    // -------- Payload --------
+    packet.which_body = acousea_CommunicationPacket_command_tag;
+    packet.body = acousea_CommandBody_init_default;
+    packet.body.command.which_command = acousea_CommandBody_setConfiguration_tag;
+    packet.body.command.command.setConfiguration = acousea_SetNodeConfigurationPayload_init_default;
+    packet.body.command.command.setConfiguration.modules_count = 1;
+    acousea_SetNodeConfigurationPayload_ModulesEntry moduleEntry =
+        acousea_SetNodeConfigurationPayload_ModulesEntry_init_default;
+    moduleEntry.has_value = true;
+    moduleEntry.key = code;
+    moduleEntry.value.which_module = code;
+    moduleEntry.value = acousea_ModuleWrapper_init_default;
+
+    switch (code)
+    {
+    case acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG:
+        moduleEntry.value.module.icListenLoggingConfig = std::get<acousea_ICListenLoggingConfig>(iclistenConfigValue);
+        break;
+    case acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG:
+        moduleEntry.value.module.icListenStreamingConfig = std::get<acousea_ICListenStreamingConfig>(
+            iclistenConfigValue);
+        break;
+    default:
+        ErrorHandler::handleError(
+            "Unsupported module code" + std::to_string(code) + " in ICListenService::buildSendICListenConfigPacket");
+        break;
+    }
+    packet.body.command.command.setConfiguration.modules[0] = moduleEntry;
+
+    return packet;
+}
+
+
+
+// ==============================================================
+// ======================= ICListenService ======================
+// ==============================================================
 
 ICListenService::ICListenService(Router& router):
     router(router),
-    cache(std::make_unique<Cache>())
+    cache()
 
 {
 }
@@ -82,55 +172,12 @@ acousea_CommunicationPacket ICListenService::buildFetchICListenConfigPacket(acou
 }
 
 
-acousea_CommunicationPacket ICListenService::buildSendICListenConfigPacket(
-    SendICListenConfigModuleCode code, SendICListenConfigModuleValue iclistenConfigValue)
-{
-    acousea_CommunicationPacket packet = acousea_CommunicationPacket_init_default;
-
-    // -------- Routing --------
-    packet.has_routing = true;
-    packet.routing = acousea_RoutingChunk_init_default;
-    packet.routing.sender = static_cast<int32_t>(Router::broadcastAddress);
-    packet.routing.receiver = 0;
-    packet.routing.ttl = 0;
-
-    // -------- Payload --------
-    packet.which_body = acousea_CommunicationPacket_command_tag;
-    packet.body = acousea_CommandBody_init_default;
-    packet.body.command.which_command = acousea_CommandBody_setConfiguration_tag;
-    packet.body.command.command.setConfiguration = acousea_SetNodeConfigurationPayload_init_default;
-    packet.body.command.command.setConfiguration.modules_count = 1;
-    acousea_SetNodeConfigurationPayload_ModulesEntry moduleEntry =
-        acousea_SetNodeConfigurationPayload_ModulesEntry_init_default;
-    moduleEntry.has_value = true;
-    moduleEntry.key = code;
-    moduleEntry.value.which_module = code;
-    moduleEntry.value = acousea_ModuleWrapper_init_default;
-
-    switch (code)
-    {
-    case acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG:
-        moduleEntry.value.module.icListenLoggingConfig = std::get<acousea_ICListenLoggingConfig>(iclistenConfigValue);
-        break;
-    case acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG:
-        moduleEntry.value.module.icListenStreamingConfig = std::get<acousea_ICListenStreamingConfig>(
-            iclistenConfigValue);
-        break;
-    default:
-        ErrorHandler::handleError(
-            "Unsupported module code" + std::to_string(code) + " in ICListenService::buildSendICListenConfigPacket");
-        break;
-    }
-    packet.body.command.command.setConfiguration.modules[0] = moduleEntry;
-
-    return packet;
-}
 
 
 // Implementation of Requester
 void ICListenService::fetchStatus() const
 {
-    cache->invalidateStatus();
+    cache.invalidateStatus();
 
     acousea_CommunicationPacket packet = ICListenService::buildFetchICListenConfigPacket(
         acousea_ModuleCode_ICLISTEN_STATUS);
@@ -139,7 +186,7 @@ void ICListenService::fetchStatus() const
 
 void ICListenService::fetchLoggingConfig() const
 {
-    cache->invalidateLogging();
+    cache.invalidateLogging();
 
     acousea_CommunicationPacket packet = ICListenService::buildFetchICListenConfigPacket(
         acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG);
@@ -148,7 +195,7 @@ void ICListenService::fetchLoggingConfig() const
 
 void ICListenService::fetchStreamingConfig() const
 {
-    cache->invalidateStreaming();
+    cache.invalidateStreaming();
 
     acousea_CommunicationPacket packet = ICListenService::buildFetchICListenConfigPacket(
         acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG);
@@ -157,7 +204,7 @@ void ICListenService::fetchStreamingConfig() const
 
 void ICListenService::fetchRecordingStats() const
 {
-    cache->invalidateRecordingStats();
+    cache.invalidateRecordingStats();
 
     acousea_CommunicationPacket packet = ICListenService::buildFetchICListenConfigPacket(
         acousea_ModuleCode_ICLISTEN_RECORDING_STATS);
@@ -166,7 +213,7 @@ void ICListenService::fetchRecordingStats() const
 
 void ICListenService::fetchHFConfiguration() const
 {
-    cache->invalidateAll();
+    cache.invalidateAll();
 
     acousea_CommunicationPacket packet = ICListenService::buildFetchICListenConfigPacket(
         acousea_ModuleCode_ICLISTEN_HF);
@@ -175,16 +222,16 @@ void ICListenService::fetchHFConfiguration() const
 
 void ICListenService::sendLoggingConfig(const acousea_ICListenLoggingConfig& ic_listen_logging_config) const
 {
-    const auto cached = cache->getICListenLoggingConfig(); // copia segura
-    if (cached.hasValue() &&
+    const auto cached = cache.getICListenLoggingConfig(); // copia segura
+    if (cached.valid() &&
         nanopb_equal(&cached.get(), &ic_listen_logging_config, acousea_ICListenLoggingConfig_fields))
     {
         Logger::logInfo("ICListenService::sendLoggingConfig -> No changes in logging config, not sending");
         return;
     }
-    cache->invalidateLogging();
+    cache.invalidateLogging();
 
-    acousea_CommunicationPacket packet = ICListenService::buildSendICListenConfigPacket(
+    acousea_CommunicationPacket packet = buildSendICListenConfigPacket(
         SendICListenConfigModuleCode::ICLISTEN_HF_LOGGING_CONFIG, ic_listen_logging_config
     );
 
@@ -195,52 +242,53 @@ void ICListenService::sendLoggingConfig(const acousea_ICListenLoggingConfig& ic_
 void ICListenService::sendStreamingConfig(
     const acousea_ICListenStreamingConfig& ic_listen_streaming_config) const
 {
-    const auto cached = cache->getICListenStreamingConfig();
-    if (cached.hasValue() &&
+    const auto cached = cache.getICListenStreamingConfig();
+    if (cached.valid() &&
         nanopb_equal(&cached.get(), &ic_listen_streaming_config, acousea_ICListenStreamingConfig_fields))
     {
         Logger::logInfo("ICListenService::sendStreamingConfig -> No changes in streaming config, not sending");
         return;
     }
-    cache->invalidateStreaming();
-    acousea_CommunicationPacket packet = ICListenService::buildSendICListenConfigPacket(
+    cache.invalidateStreaming();
+    acousea_CommunicationPacket packet = buildSendICListenConfigPacket(
         SendICListenConfigModuleCode::ICLISTEN_HF_STREAMING_CONFIG, ic_listen_streaming_config
     );
     router.sendFrom(Router::broadcastAddress).sendSerial(packet);
 }
 
-// ======================================================================================================
+
+// // ======================================================================================================
 // =========================================== CACHE ====================================================
 // ======================================================================================================
 
-ICListenService::CachedValue<acousea_ICListenStatus> ICListenService::Cache::getICListenStatus()
+ICListenService::CachedValue<acousea_ICListenStatus> ICListenService::Cache::getICListenStatus() const
 {
     return icListenStatus;
 }
 
-ICListenService::CachedValue<acousea_ICListenLoggingConfig> ICListenService::Cache::getICListenLoggingConfig()
+ICListenService::CachedValue<acousea_ICListenLoggingConfig> ICListenService::Cache::getICListenLoggingConfig() const
 {
     return icListenLoggingConfig;
 }
 
-ICListenService::CachedValue<acousea_ICListenStreamingConfig> ICListenService::Cache::getICListenStreamingConfig()
+ICListenService::CachedValue<acousea_ICListenStreamingConfig> ICListenService::Cache::getICListenStreamingConfig() const
 {
     return icListenStreamingConfig;
 }
 
-ICListenService::CachedValue<acousea_ICListenRecordingStats> ICListenService::Cache::getICListenRecordingStats()
+ICListenService::CachedValue<acousea_ICListenRecordingStats> ICListenService::Cache::getICListenRecordingStats() const
 {
     return icListenRecordingStats;
 }
 
-ICListenService::CachedValue<acousea_ICListenHF> ICListenService::Cache::getICListenCompleteConfiguration()
+ICListenService::CachedValue<acousea_ICListenHF> ICListenService::Cache::getICListenCompleteConfiguration() const
 {
-    if (!icListenStatus.hasValue() ||
-        !icListenLoggingConfig.hasValue() ||
-        !icListenStreamingConfig.hasValue() ||
-        !icListenRecordingStats.hasValue())
+    if (!icListenStatus.valid() ||
+        !icListenLoggingConfig.valid() ||
+        !icListenStreamingConfig.valid() ||
+        !icListenRecordingStats.valid())
     {
-        return CachedValue<acousea_ICListenHF>(std::nullopt, false);
+        return {}; // invalid
     }
 
     acousea_ICListenHF hf = acousea_ICListenHF_init_default;
@@ -255,10 +303,10 @@ ICListenService::CachedValue<acousea_ICListenHF> ICListenService::Cache::getICLi
 
 
     return CachedValue<acousea_ICListenHF>(hf,
-                                           (icListenStatus.isFresh &&
-                                               icListenLoggingConfig.isFresh &&
-                                               icListenStreamingConfig.isFresh &&
-                                               icListenRecordingStats.isFresh)
+                                           (icListenStatus.fresh() &&
+                                               icListenLoggingConfig.fresh() &&
+                                               icListenStreamingConfig.fresh() &&
+                                               icListenRecordingStats.fresh())
     );
 }
 
@@ -304,4 +352,24 @@ void ICListenService::Cache::storeICListenHFConfiguration(const acousea_ICListen
     {
         icListenRecordingStats.store(hfConfig.recordingStats);
     }
+}
+
+void ICListenService::Cache::invalidateStatus() const
+{ icListenStatus.invalidate(); }
+
+void ICListenService::Cache::invalidateLogging() const
+{ icListenLoggingConfig.invalidate(); }
+
+void ICListenService::Cache::invalidateStreaming() const
+{ icListenStreamingConfig.invalidate(); }
+
+void ICListenService::Cache::invalidateRecordingStats() const
+{ icListenRecordingStats.invalidate(); }
+
+void ICListenService::Cache::invalidateAll() const
+{
+    icListenStatus.invalidate();
+    icListenLoggingConfig.invalidate();
+    icListenStreamingConfig.invalidate();
+    icListenRecordingStats.invalidate();
 }

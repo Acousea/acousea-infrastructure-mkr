@@ -1,9 +1,14 @@
 #ifdef ARDUINO
 
 #include "AdafruitLCBatteryController.h"
+#include "Adafruit_LC709203F.h"
 
-bool AdafruitLCBatteryController::init(){
-    if (!adafruitLC.begin()){
+static Adafruit_LC709203F adafruitLC; // Battery controller
+
+bool AdafruitLCBatteryController::init()
+{
+    if (!adafruitLC.begin())
+    {
         SerialUSB.println(F("Could not find Adafruit LC709203F?\nMake sure a battery is plugged in!"));
         return false;
     }
@@ -27,12 +32,14 @@ bool AdafruitLCBatteryController::init(){
     return true;
 }
 
-uint8_t AdafruitLCBatteryController::voltageSOC_rounded(){
+uint8_t AdafruitLCBatteryController::voltageSOC_rounded()
+{
     // Convert float to uint8_t getting the integer part
     return (uint8_t)adafruitLC.cellPercent();
 }
 
-acousea_BatteryStatus AdafruitLCBatteryController::status(){
+acousea_BatteryStatus AdafruitLCBatteryController::status()
+{
     float v = adafruitLC.cellVoltage();
     if (v >= 4.15) return acousea_BatteryStatus_BATTERY_STATUS_FULL;
     if (v > 3.2) return acousea_BatteryStatus_BATTERY_STATUS_DISCHARGING;
@@ -41,11 +48,13 @@ acousea_BatteryStatus AdafruitLCBatteryController::status(){
 }
 
 
-float AdafruitLCBatteryController::voltage(){
+float AdafruitLCBatteryController::voltage()
+{
     return adafruitLC.cellVoltage();
 }
 
-float AdafruitLCBatteryController::temperature(){
+float AdafruitLCBatteryController::temperature()
+{
     return adafruitLC.getCellTemperature();
 }
 

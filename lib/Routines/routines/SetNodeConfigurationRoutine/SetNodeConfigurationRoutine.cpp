@@ -1,14 +1,14 @@
 #include "SetNodeConfigurationRoutine.h"
 
-#include <utility>
+#include "Logger/Logger.h"
 
 SetNodeConfigurationRoutine::SetNodeConfigurationRoutine(
     NodeConfigurationRepository& nodeConfigurationRepository,
-    std::optional<std::shared_ptr<ICListenService>> icListenService
+    const std::optional<ICListenService*> icListenService
 )
     : IRoutine(getClassNameString()),
       nodeConfigurationRepository(nodeConfigurationRepository),
-      icListenService(std::move(icListenService)){
+      icListenService(icListenService){
 }
 
 
@@ -204,8 +204,8 @@ Result<void> SetNodeConfigurationRoutine::setICListenConfiguration(
 
 
     // Check if the set configuration is all fresh
-    if (!hfService->getCache()->getICListenLoggingConfig().isFresh ||
-        !hfService->getCache()->getICListenStreamingConfig().isFresh){
+    if (!hfService->getCache().getICListenLoggingConfig().fresh() ||
+        !hfService->getCache().getICListenStreamingConfig().fresh()){
         Logger::logInfo(getClassNameString() + ": ICListen configuration is NOT fresh.");
         return Result<void>::pending("ICListen configuration is not fresh");
     }

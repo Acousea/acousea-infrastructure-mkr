@@ -3,9 +3,7 @@
 
 #ifdef ARDUINO
 
-#include "SD.h"
 #include "StorageManager/StorageManager.hpp"
-
 
 #define SDCARD_SS_PIN 4
 

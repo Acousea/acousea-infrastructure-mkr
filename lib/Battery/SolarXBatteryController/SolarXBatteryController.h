@@ -4,16 +4,10 @@
 
 #ifdef ARDUINO
 
-#include <algorithm>
-#include <vector>
-#include <Arduino.h>
-#include <Wire.h>
-#include "Adafruit_INA219.h"
 #include "ClassName.h"
 #include "IBatteryController.h"
+#include "Adafruit_INA219.h"
 #include "Curves.h"
-#include "Logger/Logger.h"
-#include "time/getMillis.hpp"
 
 class SolarXBatteryController final : public IBatteryController {
     CLASS_NAME(SolarXBatteryController)

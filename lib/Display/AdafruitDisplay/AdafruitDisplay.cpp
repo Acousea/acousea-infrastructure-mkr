@@ -1,7 +1,10 @@
 #ifdef ARDUINO
 #include "AdafruitDisplay.h"
 
-AdafruitDisplay::AdafruitDisplay() : display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET) {}
+#include <Arduino.h>
+#include "Adafruit_SSD1306.h"
+
+static Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 void AdafruitDisplay::init() {
     if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS))

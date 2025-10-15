@@ -2,8 +2,6 @@
 #define ACOUSEA_ZERO_RTC_CONTROLLER_H
 
 #ifdef ARDUINO
-
-#include "RTCZero.h"
 #include "RTCController.hpp"
 
 class ZeroRTCController final : public RTCController {
@@ -17,9 +15,6 @@ public:
     uint32_t getEpoch();
 
     void setEpoch(unsigned long epoch);
-
-private:
-    RTCZero rtc;
 };
 
 

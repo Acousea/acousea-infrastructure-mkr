@@ -1,7 +1,7 @@
 #ifndef ACOUSEA_RTC_HPP
 #define ACOUSEA_RTC_HPP
 
-#include <stdint.h>
+#include <cstdint>
 
 class RTCController {
 public:

@@ -2,10 +2,8 @@
 #define MOCKGPS_H
 
 #include "IGPS.h"
-#include <Logger/Logger.h>
-#include "time/getMillis.hpp"
 
-class MockGPS : public IGPS {
+class MockGPS final : public IGPS {
 public:
     MockGPS(float startLat, float startLon, float moveRate);
 
