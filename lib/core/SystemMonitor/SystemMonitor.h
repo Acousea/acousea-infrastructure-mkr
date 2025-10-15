@@ -8,14 +8,17 @@
 #include "Logger/Logger.h"
 #include "IBatteryController.h"
 #include "RockPiPowerController/RockPiPowerController.hpp"
+#include "time/getMillis.hpp"
 
 
-class SystemMonitor {
+class SystemMonitor
+{
     CLASS_NAME(SystemMonitor)
 
 public:
-    SystemMonitor(IBatteryController *batteryCtrl, RockPiPowerController *rockpiCtrl)
-        : batteryController(batteryCtrl), rockpiController(rockpiCtrl) {
+    SystemMonitor(IBatteryController* batteryCtrl, RockPiPowerController* rockpiCtrl)
+        : batteryController(batteryCtrl), rockpiController(rockpiCtrl)
+    {
     }
 
     void init(int timeoutMs);
@@ -28,11 +31,12 @@ private:
     static void logResetCause();
 
     void sleepFor(uint32_t ms) const;
+    void manageRockPiAction(unsigned long cooldownMs, void (RockPiPowerController::*action)() const) const;
 
 private:
     int watchDogTimeoutMs = 5000; // Default 5 seconds
-    IBatteryController *batteryController;
-    RockPiPowerController *rockpiController;
+    IBatteryController* batteryController;
+    RockPiPowerController* rockpiController;
 };
 
 

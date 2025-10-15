@@ -1,5 +1,7 @@
 #include "SystemMonitor.h"
 
+
+
 #ifdef ARDUINO
 
 void SystemMonitor::init(const int timeoutMs)
@@ -62,12 +64,12 @@ void SystemMonitor::logResetCause()
 }
 
 
-
 void SystemMonitor::sleepFor(const uint32_t ms) const
 {
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH); // LED ON mientras se ejecuta
-    Logger::logWarning(getClassNameString() + " -> sleeping for " + (ms == 0 ? "indefinite" : std::to_string(ms) + " ms") + "...");
+    Logger::logWarning(
+        getClassNameString() + " -> sleeping for " + (ms == 0 ? "indefinite" : std::to_string(ms) + " ms") + "...");
     Watchdog.reset();
     Watchdog.disable();
     USBDevice.detach();
@@ -75,64 +77,87 @@ void SystemMonitor::sleepFor(const uint32_t ms) const
     ms == 0 ? LowPower.sleep() : LowPower.sleep(ms); // indefinite sleep
 
     USBDevice.attach();
-    Logger::logInfo(getClassNameString() + " -> woke up from " + (ms == 0 ? "indefinite" : std::to_string(ms) + " ms") + " sleep.");
+    Logger::logInfo(
+        getClassNameString() + " -> woke up from " + (ms == 0 ? "indefinite" : std::to_string(ms) + " ms") + " sleep.");
     Watchdog.enable(watchDogTimeoutMs); // re-enable watchdog on wake-up
     digitalWrite(LED_BUILTIN, LOW); // LED OFF al despertar
 }
+
+void SystemMonitor::manageRockPiAction(const unsigned long cooldownMs,
+                                       void (RockPiPowerController::*action)() const) const
+{
+    const unsigned long now = getMillis();
+    static unsigned long lastActionTime = now - cooldownMs - 1;
+
+    if (now - lastActionTime < cooldownMs)
+    {
+        Logger::logWarning(
+            getClassNameString() + "manageRockPiAction() -> Cooldown active (" + std::to_string(now - lastActionTime) +
+            "/" + std::to_string(cooldownMs) + " ms)"
+        );
+        return;
+    }
+
+    if (!rockpiController)
+    {
+        Logger::logError(getClassNameString() + "manageRockPiAction() -> No RockPi controller available.");
+        return;
+    }
+
+    (rockpiController->*action)();
+    lastActionTime = now;
+}
+
 
 void SystemMonitor::protectBattery() const
 {
     if (!batteryController)
     {
-        Logger::logWarning(getClassNameString() + " -> No battery Controller provided");
+        Logger::logWarning(getClassNameString() + " -> No battery controller provided.");
         return;
     }
+    const uint8_t soc = batteryController->voltageSOC_rounded();
 
-    constexpr uint8_t
-        HIGH_BATTERY_RESTART_THRESHOLD = 30,
-        LOW_BATTERY_THRESHOLD = 20,
-        AGGRESSIVE_BATTERY_THRESHOLD = 15,
-        CRITICAL_BATTERY_THRESHOLD = 10;
-    const auto soc = batteryController->voltageSOC_rounded();
-
-    if (soc > HIGH_BATTERY_RESTART_THRESHOLD)
+    using Comparator = bool (*)(uint8_t, uint8_t);
+    struct BatteryRule
     {
-        Logger::logInfo(getClassNameString() + " -> Battery level sufficient (" + std::to_string(soc) +
-            "%). Starting RockPi if it was OFF.");
-        if (rockpiController) rockpiController->commandStartup();
-        return;
-    }
+        uint8_t threshold;
+        Comparator cmp;
+        void (RockPiPowerController::*action)() const;
+        uint32_t actionCooldownMs;
+        int32_t sleepMs;
+    };
 
+    constexpr Comparator lessEq = +[](uint8_t a, uint8_t b) { return a <= b; };
+    constexpr Comparator greater = +[](uint8_t a, uint8_t b) { return a > b; };
+    constexpr BatteryRule rules[] = {
+        // Critical level: shut down immediately and sleep indefinitely
+        {10, lessEq, &RockPiPowerController::commandShutdown, 120000, 0},
 
-    if (soc <= CRITICAL_BATTERY_THRESHOLD)
+        // Aggressive protection: shut down and sleep for 10 minutes
+        {15, lessEq, &RockPiPowerController::commandShutdown, 120000, 600000},
+
+        // Low battery: keep RockPi on but sleep for 5 minutes
+        {20, lessEq, nullptr, 120000, 300000},
+
+        // Battery sufficient: start RockPi if it is off, no sleep
+        {30, greater, &RockPiPowerController::commandStartup, 120000, -1}
+    };
+
+    for (const auto& rule : rules)
     {
-        Logger::logWarning(getClassNameString() + " -> CRITICAL battery level (" + std::to_string(soc) +
-            "%). Sleeping indefinitely. Shutting down RockPi.");
-        if (rockpiController) rockpiController->commandShutdown();
-        SystemMonitor::sleepFor(0); // indefinite sleep
-        return;
+        if (rule.cmp(soc, rule.threshold))
+        {
+            Logger::logInfo(getClassNameString() + std::string(" -> Battery rule triggered (SOC=")
+                + std::to_string(soc) + "%, threshold=" + std::to_string(rule.threshold) + ")");
+
+
+            if (rockpiController && rule.action) manageRockPiAction(rule.actionCooldownMs, rule.action);
+            if (rule.sleepMs >= 0) SystemMonitor::sleepFor(rule.sleepMs);
+        }
     }
 
-    if (soc <= AGGRESSIVE_BATTERY_THRESHOLD)
-    {
-        constexpr uint32_t AGGRESIVE_BATTERY_SLEEP_MS = 600000; // 10 minutes
-        Logger::logWarning(getClassNameString() + " -> Aggressive protection mode (" + std::to_string(soc) +
-            "%). Shutting down RockPi and sleeping.");
-        if (rockpiController) rockpiController->commandShutdown();
-        SystemMonitor::sleepFor(AGGRESIVE_BATTERY_SLEEP_MS);
-        return;
-    }
-
-    if (soc <= LOW_BATTERY_THRESHOLD)
-    {
-        constexpr uint32_t LOW_BATTERY_SLEEP_MS = 60000; // 1 minute
-        Logger::logWarning(getClassNameString() + " -> Low battery mode (" + std::to_string(soc) +
-            "%). Sleeping 5 minutes, RockPi stays ON if it was already ON.");
-        SystemMonitor::sleepFor(LOW_BATTERY_SLEEP_MS);
-        return;
-    }
-
-    Logger::logInfo(getClassNameString() + " -> Battery level normal (" + std::to_string(soc) + "%).");
+    Logger::logInfo(getClassNameString() + " -> Battery normal (" + std::to_string(soc) + "%).");
 }
 
 

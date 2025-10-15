@@ -29,24 +29,6 @@ bool RockPiPowerController::isRockPiUp() const
 
 void RockPiPowerController::commandStartup() const
 {
-    const unsigned long now = getMillis();
-    constexpr unsigned long STARTUP_COOLDOWN = 120000; // 2 minutes
-    static unsigned long lastStartupTime = now - STARTUP_COOLDOWN - 1;
-
-    if (now - lastStartupTime < STARTUP_COOLDOWN)
-    {
-        Logger::logWarning(
-            getClassNameString() + "::commandStartup() -> Cooldown active. "
-            "now=" + std::to_string(now) +
-            ", lastStartupTime=" + std::to_string(lastStartupTime) +
-            ", diff=" + std::to_string(now - lastStartupTime) +
-            ", cooldown=" + std::to_string(STARTUP_COOLDOWN)
-        );
-        return;
-    }
-
-    lastStartupTime = now;
-
     if (isRockPiUp())
     {
         Logger::logInfo(getClassNameString() + "::commandStartup() -> Rock Pi already on.");
