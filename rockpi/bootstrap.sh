@@ -464,6 +464,17 @@ else ()
     message(WARNING "[PROTOBUF] Not found")
 endif ()
 
+# ---- LIBUSB ----
+find_package(PkgConfig QUIET)
+if (PkgConfig_FOUND)
+    pkg_check_modules(LIBUSB libusb-1.0)
+endif ()
+if (LIBUSB_FOUND)
+    message(STATUS "[LIBUSB] Found: v${LIBUSB_VERSION}")
+else ()
+    message(WARNING "[LIBUSB] Not found")
+endif ()
+
 # ---- GTEST ----
 find_package(GTest QUIET)
 if (GTest_FOUND)
