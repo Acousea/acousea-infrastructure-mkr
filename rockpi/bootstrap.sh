@@ -40,6 +40,15 @@ protobuf::install() {
 }
 
 # -------------------------
+# Namespace: libusb
+# -------------------------
+libusb::install() {
+  log "Installing libusb..."
+  sudo apt install -y libusb-1.0-0-dev
+}
+
+
+# -------------------------
 # Namespace: gtest
 # -------------------------
 gtest::install() {
@@ -487,6 +496,7 @@ all::install() {
   system::install_base
   sqlite::install
   protobuf::install
+  libusb::install
   gtest::install
   asio::install
   sndfile::install
@@ -508,8 +518,10 @@ all::install() {
 # -------------------------
 case "${1:-}" in
   all)        all::install ;;
+  system)     system::update; system::install_base ;;
   sqlite)     sqlite::install ;;
   protobuf)   protobuf::install ;;
+  libusb)     libusb::install ;;
   gtest)      gtest::install ;;
   asio)       asio::install ;;
   sndfile)    sndfile::install ;;
@@ -519,5 +531,5 @@ case "${1:-}" in
   daemon)     daemon::install ;;
   iclisten)   iclisten::info; iclisten::api; iclisten::configure_network_eth_route ;;
   test)       test::deps ;;
-  *)          echo "Usage: $0 {all|sqlite|protobuf|gtest|asio|sndfile|crow|overlays|pps|daemon|iclisten|test}" ;;
+  *)          echo "Usage: $0 {all|system|sqlite|protobuf|libusb|gtest|asio|sndfile|crow|overlays|pps|daemon|iclisten|test}" ;;
 esac
