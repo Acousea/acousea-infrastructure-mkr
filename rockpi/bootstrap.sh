@@ -2,7 +2,7 @@
 set -euo pipefail # Exit on error, undefined var, or pipe failure
 
 # =========================
-#  RockPi-S Dependencies Installer
+#  SBC Dependencies Installer
 # =========================
 
 # Utils
@@ -13,6 +13,21 @@ err() { echo -e "\033[1;31m[ERR]\033[0m  $*"; }
 # -------------------------
 # Namespace: system
 # -------------------------
+
+# Detecta el tipo de placa en ejecución
+system::detect_device() {
+  local model
+  model=$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || echo "")
+
+  if [[ "$model" =~ "Rock Pi S" ]]; then
+    echo "rockpis"
+  elif [[ "$model" =~ "Raspberry Pi" ]]; then
+    echo "raspberrypi"
+  else
+    echo "unknown"
+  fi
+}
+
 system::update() {
   log "Updating package lists..."
   sudo apt update
@@ -20,7 +35,7 @@ system::update() {
 
 system::install_base() {
   log "Installing base development tools..."
-  sudo apt install -y build-essential cmake git pkg-config autoconf automake libtool wget curl unzip sshpass gpiod
+  sudo apt install -y build-essential cmake git pkg-config autoconf automake autopoint libtool wget curl unzip sshpass gpiod scons
 }
 
 # -------------------------
@@ -47,6 +62,19 @@ libusb::install() {
   sudo apt install -y libusb-1.0-0-dev
 }
 
+# -------------------------
+# Namespace: util_linux
+# -------------------------
+util_linux::install() {
+  log "Installing util_linux..."
+  sudo apt install -y util-linux libmount-dev libblkid-dev
+}
+
+libboost::install() {
+  log "Installing Boost libraries..."
+  sudo apt install -y libboost-thread-dev libboost-system-dev libxxhash-dev
+
+}
 
 # -------------------------
 # Namespace: gtest
@@ -298,7 +326,7 @@ pps::install() {
   log "Installing GPSD, PPS tools, and Chrony..."
 
   sudo apt update
-  sudo apt install -y gpsd gpsd-clients pps-tools chrony
+  sudo apt install -y gpsd gpsd-clients pps-tools chrony libgps-dev
 
   log "PPS/GPS packages installed:"
   log " - gpsd (daemon)"
@@ -308,11 +336,39 @@ pps::install() {
 }
 
 pps::configure() {
-  local gps_device="/dev/ttyS1"
+  log "Configuring PPS + GPS support"
+
+  local board
+  board=$(system::detect_device)
+
+  local gps_device=""
+  case "$board" in
+    rockpis)
+      log "Detected => Rock Pi S"
+      gps_device="/dev/ttyS1"
+      ;;
+    raspberrypi)
+      log "Detected => Raspberry Pi"
+      if [[ -e /dev/serial0 ]]; then
+        gps_device="/dev/serial0"
+      elif [[ -e /dev/ttyAMA0 ]]; then
+        gps_device="/dev/ttyAMA0"
+      else
+        err "No suitable serial device found for GPS on Raspberry Pi."
+        exit 1
+      fi
+      ;;
+    *)
+      err "Unsupported or unknown board type: '$board'. Cannot configure PPS."
+      exit 1
+      ;;
+  esac
+
+  log "Detected platform: $board"
+  log "Using GPS device: $gps_device"
+
   local gpsd_conf="/etc/default/gpsd"
   local chrony_conf="/etc/chrony/chrony.conf"
-
-  log "Configuring PPS + GPS support"
 
   # --- gpsd config ---
   log "Updating $gpsd_conf"
@@ -328,10 +384,10 @@ pps::configure() {
   sudo sed -i '/^refclock PPS/d' "$chrony_conf"
   cat <<EOF | sudo tee -a "$chrony_conf" > /dev/null
 
-# Configuración del GPS (NMEA)
+# GPS (NMEA)
 refclock SHM 0 refid GPS precision 1e-1 offset 0.9999 delay 0.2
 
-# Configuración de PPS
+# PPS
 refclock PPS /dev/pps0 refid PPS
 EOF
 
@@ -343,7 +399,6 @@ EOF
   log "PPS + GPS configuration applied successfully"
   log "Test with: ppstest /dev/pps0, cgps -s, chronyc sources -v"
 }
-
 
 # -------------------------
 # Namespace: daemon
@@ -508,6 +563,7 @@ all::install() {
   sqlite::install
   protobuf::install
   libusb::install
+  util_linux::install
   gtest::install
   asio::install
   sndfile::install
@@ -546,6 +602,7 @@ case "${1:-}" in
   sqlite)     sqlite::install ;;
   protobuf)   protobuf::install ;;
   libusb)     libusb::install ;;
+  util_linux) util_linux::install ;;
   gtest)      gtest::install ;;
   asio)       asio::install ;;
   sndfile)    sndfile::install ;;
@@ -555,5 +612,5 @@ case "${1:-}" in
   daemon)     daemon::install ;;
   iclisten)   iclisten::info; iclisten::api; iclisten::configure_network_eth_route ;;
   test)       test::deps ;;
-  *)          echo "Usage: $0 {all|only_packages|system|sqlite|protobuf|libusb|gtest|asio|sndfile|crow|overlays|pps|daemon|iclisten|test}" ;;
+  *)          echo "Usage: $0 {all|only_packages|system|sqlite|protobuf|libusb|util_linux|gtest|asio|sndfile|crow|overlays|pps|daemon|iclisten|test}" ;;
 esac
