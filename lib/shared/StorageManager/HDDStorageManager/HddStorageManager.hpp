@@ -1,10 +1,13 @@
 #ifndef HDDSTORAGEMANAGER_HPP
 #define HDDSTORAGEMANAGER_HPP
 
+#ifdef PLATFORM_NATIVE
+
 #include "StorageManager/StorageManager.hpp"
 
 
-class HDDStorageManager final : public StorageManager {
+class HDDStorageManager final : public StorageManager
+{
 public:
     HDDStorageManager() = default;
 
@@ -17,8 +20,9 @@ public:
     bool overwriteFile(const char* path, const std::string& content) override;
     std::string readFile(const char* path) override;
     bool deleteFile(const char* path) override;
-
 };
 
+
+#endif // PLATFORM_NATIVE
 
 #endif //HDDSTORAGEMANAGER_HPP

@@ -1,4 +1,4 @@
-#ifndef ARDUINO
+#ifdef PLATFORM_NATIVE
 #include "NativeSerialPort.h"
 #include <cstring>
 #include <algorithm>

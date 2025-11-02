@@ -10,10 +10,12 @@
 #include "IDisplay.h"
 
 
-class Logger{
+class Logger
+{
 public:
     // Configuración del Logger: modo de operación
-    enum class Mode{
+    enum class Mode
+    {
         SDCard,
         SerialOnly,
         Both
@@ -26,7 +28,9 @@ public:
         const char* logFilePath,
         Mode mode = Mode::SerialOnly);
 
+#ifdef ARDUINO
     static void logFreeMemory(const std::string& prefix);
+#endif
     static void logInfo(const std::string& infoMessage);
     static void logfError(const char* fmt, ...);
     static void logfWarning(const char* fmt, ...);

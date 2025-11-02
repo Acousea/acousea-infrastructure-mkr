@@ -1,7 +1,7 @@
 #ifndef NATIVE_SERIAL_PORT_H
 #define NATIVE_SERIAL_PORT_H
 
-#ifndef ARDUINO
+#ifdef PLATFORM_NATIVE
 
 #include <string>
 #include <vector>

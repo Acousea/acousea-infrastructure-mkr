@@ -1,8 +1,8 @@
 #ifdef ARDUINO
-#include "RockPiPowerController.hpp"
+#include "PiController.hpp"
 #include "wait/WaitFor.hpp"
 
-RockPiPowerController::RockPiPowerController(const int mosfetControlPin, const int rockPiShutdownPin,
+PiController::PiController(const int mosfetControlPin, const int rockPiShutdownPin,
                                              const int rockPiMonitorPin) :
     rockPiShutdownPin(rockPiShutdownPin), rockPiMonitorPin(rockPiMonitorPin), mosfetController(mosfetControlPin)
 {
@@ -10,7 +10,7 @@ RockPiPowerController::RockPiPowerController(const int mosfetControlPin, const i
     pinMode(rockPiShutdownPin, OUTPUT);
 }
 
-bool RockPiPowerController::isRockPiUp() const
+bool PiController::isRockPiUp() const
 {
     constexpr int READ_COUNT = 5;
     constexpr int DELAY_MS = 250;
@@ -26,7 +26,7 @@ bool RockPiPowerController::isRockPiUp() const
     return highCount == READ_COUNT;
 }
 
-void RockPiPowerController::commandStartup() const
+void PiController::commandStartup() const
 {
     if (isRockPiUp())
     {
@@ -51,7 +51,7 @@ void RockPiPowerController::commandStartup() const
     Logger::logInfo(getClassNameString() + "::commandStartup() -> Rock Pi is on.");
 }
 
-void RockPiPowerController::commandShutdown() const
+void PiController::commandShutdown() const
 {
     if (!isRockPiUp())
     {
@@ -94,7 +94,7 @@ void RockPiPowerController::commandShutdown() const
     mosfetController.switchOffMOSFET();
 }
 
-void RockPiPowerController::forceRestart() const
+void PiController::forceRestart() const
 {
     Logger::logWarning(getClassNameString() + "::forceRestart() -> Forcing power cycle of Rock Pi...");
     mosfetController.switchOffMOSFET();

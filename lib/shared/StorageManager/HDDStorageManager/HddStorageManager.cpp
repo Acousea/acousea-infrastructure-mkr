@@ -1,4 +1,4 @@
-#ifndef ARDUINO
+#ifdef PLATFORM_NATIVE
 
 #include "HddStorageManager.hpp"
 

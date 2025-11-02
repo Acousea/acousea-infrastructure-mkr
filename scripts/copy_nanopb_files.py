@@ -3,24 +3,40 @@ from pathlib import Path
 
 Import("env", "projenv")
 
+
+def stringify_targets(targets):
+    """Convierte los objetos SCons en nombres legibles."""
+    result = []
+    for t in targets:
+        try:
+            # name or path if exists
+            if hasattr(t, "get_path"):
+                result.append(t.get_path())
+            elif hasattr(t, "name"):
+                result.append(str(t.name))
+            else:
+                result.append(str(t))
+        except Exception as e:
+            result.append(f"<unprintable:{type(t).__name__}> ({e})")
+    return result
+
 # Dump global construction environment (for debug purpose)
 # print("*" * 30 + " Environment Dump " + "*" * 30)
 # print(env.Dump())
 # print("*" * 30 + " Project Environment Dump " + "*" * 30)
 # print(projenv.Dump())
 
-# Print the target and source files (for debug purpose)
-print("=" * 60)
-print("Current CLI targets", COMMAND_LINE_TARGETS)
-print("Current Build targets", BUILD_TARGETS)
-print("Building project from", env.subst("$PROJECT_DIR"))
-print("Project name is", env.subst("$PROGNAME"))
-print("Project version is", env.subst("$VERSION"))
-print("Building for board", env.subst("$BOARD"))
-print("Building in", env.subst("$BUILD_DIR"))
-print("Using framework", env.subst("$PIOFRAMEWORK"))
-print("=" * 60)
 
+print("=" * 60)
+print(f"Current CLI targets: {stringify_targets(COMMAND_LINE_TARGETS)}")
+print(f"Current Build targets: {stringify_targets(BUILD_TARGETS)}")
+print(f"Building project from: {env.subst('$PROJECT_DIR')}")
+print(f"Project name: {env.subst('$PROGNAME')}")
+print(f"Project version: {env.subst('$VERSION')}")
+print(f"Board: {env.subst('$BOARD')}")
+print(f"Build dir: {env.subst('$BUILD_DIR')}")
+print(f"Framework: {env.subst('$PIOFRAMEWORK')}")
+print("=" * 60)
 
 def copy_nanopb_files(source, target, env):
     print("[COPY] Copiando archivos .pb.c y .pb.h generados por Nanopb...")

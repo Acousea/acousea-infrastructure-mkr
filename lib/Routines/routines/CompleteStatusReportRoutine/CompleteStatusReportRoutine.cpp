@@ -19,7 +19,7 @@ CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationReposi
 
 
 Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
-    const std::optional<_acousea_CommunicationPacket>& none)
+    const std::optional<acousea_CommunicationPacket>& none)
 {
     // --- Obtener configuración actual ---
     const acousea_NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();

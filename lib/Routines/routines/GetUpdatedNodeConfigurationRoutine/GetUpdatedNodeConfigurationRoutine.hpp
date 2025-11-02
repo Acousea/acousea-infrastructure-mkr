@@ -29,7 +29,7 @@ public:
         RTCController* rtcController
     );
 
-    Result<acousea_CommunicationPacket> execute(const std::optional<_acousea_CommunicationPacket>& optPacket) override;
+    Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& optPacket) override;
 };
 
 

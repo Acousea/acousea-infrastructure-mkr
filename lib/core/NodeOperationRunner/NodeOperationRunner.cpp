@@ -262,7 +262,7 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::processPacket(IP
 
 
 std::optional<acousea_CommunicationPacket> NodeOperationRunner::executeRoutine(
-    IRoutine<_acousea_CommunicationPacket>*& routine,
+    IRoutine<acousea_CommunicationPacket>*& routine,
     const std::optional<acousea_CommunicationPacket>& optPacket,
     const IPort::PortType portType,
     const bool requeueAllowed
