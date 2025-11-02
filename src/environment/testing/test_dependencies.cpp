@@ -68,7 +68,7 @@ GsmConfig gsmCfg = {
 };
 GsmMQTTPort gsmPort(gsmCfg);
 
-RockPiPowerController piPowerController;
+PiController piPowerController;
 
 TaskScheduler scheduler;
 

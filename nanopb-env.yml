@@ -1,4 +1,4 @@
-name: nanopb-env
+ame: nanopb-env
 channels:
   - conda-forge
   - defaults

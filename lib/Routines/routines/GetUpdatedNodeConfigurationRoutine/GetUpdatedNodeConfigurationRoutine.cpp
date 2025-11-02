@@ -9,7 +9,7 @@ GetUpdatedNodeConfigurationRoutine::GetUpdatedNodeConfigurationRoutine(
     IGPS* gps,
     IBatteryController* battery,
     RTCController* rtcController
-) : IRoutine<_acousea_CommunicationPacket>(getClassNameString()),
+) : IRoutine<acousea_CommunicationPacket>(getClassNameString()),
     nodeConfigurationRepository(nodeConfigurationRepository),
     icListenService(icListenService),
     gps(gps), battery(battery), rtcController(rtcController)
@@ -17,7 +17,7 @@ GetUpdatedNodeConfigurationRoutine::GetUpdatedNodeConfigurationRoutine(
 }
 
 Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
-    const std::optional<_acousea_CommunicationPacket>& optPacket
+    const std::optional<acousea_CommunicationPacket>& optPacket
 )
 {
     acousea_NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();

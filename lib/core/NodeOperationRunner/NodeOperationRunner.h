@@ -100,7 +100,7 @@ private:
     void tryReport(IPort::PortType port, unsigned long& lastMinute, unsigned long currentMinute);
 
     std::optional<acousea_CommunicationPacket> executeRoutine(
-        IRoutine<_acousea_CommunicationPacket>*& routine,
+        IRoutine<acousea_CommunicationPacket>*& routine,
         const std::optional<acousea_CommunicationPacket>& optPacket,
         const IPort::PortType portType,
         bool requeueAllowed

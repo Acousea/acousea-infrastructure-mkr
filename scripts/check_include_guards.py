@@ -2,7 +2,7 @@ import os
 from collections import defaultdict
 
 guards = defaultdict(list)
-for root, _, files in os.walk("lib"):
+for root, _, files in os.walk("../lib"):
     for f in files:
         if f.endswith((".h", ".hpp")):
             path = os.path.join(root, f)

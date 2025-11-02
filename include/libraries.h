@@ -77,7 +77,7 @@
 
 // ------------------ CONTROLLERS ------------------
 #include <MosfetController/MosfetController.hpp>
-#include <RockPiPowerController/RockPiPowerController.hpp>
+#include <PiController/PiController.hpp>
 #include <SolarXBatteryController/SolarXBatteryController.h>
 #include <SystemMonitor/SystemMonitor.h>
 #include <Logger/Logger.h>
@@ -86,6 +86,11 @@
 
 #else // NATIVE
 
+#ifdef PLATFORM_NATIVE
+#warning "Compiling for PLATFORM_NATIVE"
+#endif
+
+#warning "Compiling for NATIVE platform"
 // ------------------ STORAGE ------------------
 #include <StorageManager/HDDStorageManager/HddStorageManager.hpp>
 
@@ -102,12 +107,14 @@
 #include <ConsoleDisplay/ConsoleDisplay.hpp>
 
 // ------------------ PORTS ------------------
-#include "Ports/Serial/NativeSerialPort.h"
 #include <Ports/Serial/MockSerialPort.h>
 #include <Ports/LoRa/MockLoRaPort.h>
 #include <Ports/Iridium/MockIridiumPort.h>
-#include <Ports/http/HttpPort.hpp>
 
+#ifndef UNIT_TESTING
+// #include "Ports/Serial/NativeSerialPort.h"
+// #include <Ports/http/HttpPort.hpp>
+#endif
 
 
 #endif

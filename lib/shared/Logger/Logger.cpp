@@ -5,7 +5,6 @@
 
 #ifdef ARDUINO
 #include <Arduino.h>
-#endif
 
 extern "C" char* sbrk(int incr);
 
@@ -26,7 +25,7 @@ void Logger::logFreeMemory(const std::string& prefix) {
         "Heap free (reusable): " + std::to_string(mi.fordblks) + " bytes"
     );
 }
-
+#endif
 
 // void Logger::logFreeMemory(const std::string& prefix) {
 //     logInfo(prefix + " Free memory: " + std::to_string(freeMemory()) + " bytes");

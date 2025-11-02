@@ -10,7 +10,7 @@
 #include "PiPowerControlPins.hpp"
 
 /**
- * @class RockPiPowerController
+ * @class PiController
  * @brief Manages power control and startup/shutdown sequence of the Rock Pi.
  *
  * Uses a MOSFET to control main power and a dedicated shutdown pin to request
@@ -21,10 +21,10 @@
  *  - Query current power status.
  */
 
-class RockPiPowerController{
+class PiController{
 public:
     CLASS_NAME(RockPiPowerController)
-    explicit RockPiPowerController(
+    explicit PiController(
         int mosfetControlPin = MOSFET_CONTROL_PIN,
         int rockPiShutdownPin = ROCK_PI_SHUTDOWN_PIN,
         int rockPiMonitorPin = ROCK_PI_MONITOR_PIN

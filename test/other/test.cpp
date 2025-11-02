@@ -2,8 +2,8 @@
 #include <cstdio>
 #include <iostream>
 
-#include "../lib/Battery/SolarXBatteryController/Curves.h"
-#include "../.pio/libdeps/mkrgsm1400-test/MKRGSM/src/utility/GSMRootCerts.h"
+#include "../../lib/Battery/SolarXBatteryController/Curves.h"
+#include "../../.pio/libdeps/mkrgsm1400-test/MKRGSM/src/utility/GSMRootCerts.h"
 
 int main(){
     std::cout << "Test main()\n";

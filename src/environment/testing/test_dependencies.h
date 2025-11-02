@@ -53,7 +53,7 @@ extern SystemMonitor systemMonitor;
 // USB Display
 extern SerialArduinoDisplay serialUartDisplay;
 
-extern RockPiPowerController piPowerController;
+extern PiController piPowerController;
 
 extern StorageManager* storageManager;
 

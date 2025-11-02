@@ -1,9 +1,14 @@
 // Result.cpp
 #include "Result.h"
 
+#include <vector>
+#include "bindings/nodeDevice.pb.h"
+
 template <typename T>
 Result<T>::Result(std::optional<T> value, std::string errorMessage, Type type)
-    : value(std::move(value)), errorMessage(std::move(errorMessage)), type(type) {}
+    : value(std::move(value)), errorMessage(std::move(errorMessage)), type(type)
+{
+}
 
 
 template <typename T>
@@ -34,7 +39,9 @@ Result<T> Result<T>::fromOptional(std::optional<T> value, const std::string& err
 // ----- Result<void> specialization -----
 
 Result<void>::Result(std::string errorMessage, Type type)
-    : errorMessage(std::move(errorMessage)), type(type) {}
+    : errorMessage(std::move(errorMessage)), type(type)
+{
+}
 
 Result<void> Result<void>::success()
 {
@@ -55,3 +62,6 @@ Result<void> Result<void>::failure(const std::string& errorMessage)
 template class Result<int>;
 template class Result<float>;
 template class Result<double>;
+template class Result<acousea_CommunicationPacket>;
+template class Result<std::vector<uint8_t>>;
+// template class Result<std::vector<unsigned char>>;
