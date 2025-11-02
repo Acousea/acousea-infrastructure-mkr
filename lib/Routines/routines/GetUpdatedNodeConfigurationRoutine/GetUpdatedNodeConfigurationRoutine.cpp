@@ -5,13 +5,14 @@
 
 GetUpdatedNodeConfigurationRoutine::GetUpdatedNodeConfigurationRoutine(
     NodeConfigurationRepository& nodeConfigurationRepository,
-    const std::optional<ICListenService*> icListenService,
+
+    ModuleProxy& moduleProxy,
     IGPS* gps,
     IBatteryController* battery,
     RTCController* rtcController
 ) : IRoutine<acousea_CommunicationPacket>(getClassNameString()),
     nodeConfigurationRepository(nodeConfigurationRepository),
-    icListenService(icListenService),
+    moduleProxy(moduleProxy),
     gps(gps), battery(battery), rtcController(rtcController)
 {
 }
@@ -59,6 +60,8 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
     responsePacket.which_body = acousea_CommunicationPacket_response_tag;
 
     acousea_UpdatedNodeConfigurationPayload updatedConfiguration = acousea_UpdatedNodeConfigurationPayload_init_default;
+
+
     for (auto& configItem : requestedConfigurationPayload.requestedModules)
     {
         switch (configItem)
@@ -231,11 +234,6 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
 
         case acousea_ModuleCode_ICLISTEN_STATUS:
             {
-                if (!icListenService.has_value())
-                {
-                    Logger::logError(getClassNameString() + "ICListen service is not available");
-                    break;
-                }
                 acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenStatusEntry =
                     acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
 
@@ -243,29 +241,20 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 icListenStatusEntry.key = acousea_ModuleCode_ICLISTEN_STATUS;
                 icListenStatusEntry.value.which_module = acousea_ModuleWrapper_icListenStatus_tag;
 
-                ICListenService::CachedValue<acousea_ICListenStatus> statusCachedValue = icListenService.value()->
-                    getCache().getICListenStatus();
-
-                if (!statusCachedValue.fresh())
-                {
-                    icListenService.value()->fetchStatus();
+                const auto optICListenStatus_ModuleWrapper = moduleProxy.getCache()
+                                                                        .getIfFresh(
+                                                                            acousea_ModuleCode_ICLISTEN_STATUS);
+                if (!optICListenStatus_ModuleWrapper)
                     return Result<acousea_CommunicationPacket>::pending(
-                        getClassNameString() + "ICListen status is not fresh"
-                    );
-                }
+                        getClassNameString() + "ICListen status is not fresh");
+                icListenStatusEntry.value = *optICListenStatus_ModuleWrapper;
 
-                icListenStatusEntry.value.module.icListenStatus = statusCachedValue.get();
                 updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenStatusEntry;
                 updatedConfiguration.modules_count++;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG:
             {
-                if (!icListenService.has_value())
-                {
-                    Logger::logError(getClassNameString() + "ICListen service is not available");
-                    break;
-                }
                 acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenLoggingEntry =
                     acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
 
@@ -273,16 +262,14 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 icListenLoggingEntry.key = acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG;
                 icListenLoggingEntry.value.which_module = acousea_ModuleWrapper_icListenLoggingConfig_tag;
 
-                ICListenService::CachedValue<acousea_ICListenLoggingConfig> loggingCfgCachedValue = icListenService.
-                    value()->getCache().getICListenLoggingConfig();
-                if (!loggingCfgCachedValue.fresh())
-                {
-                    icListenService.value()->fetchLoggingConfig();
+                const auto optICListenLogging_ModuleWrapper = moduleProxy.getCache()
+                                                                         .getIfFresh(
+                                                                             acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG);
+                if (!optICListenLogging_ModuleWrapper)
                     return Result<acousea_CommunicationPacket>::pending(
-                        getClassNameString() + "ICListen logging config is not fresh"
-                    );
-                }
-                icListenLoggingEntry.value.module.icListenLoggingConfig = loggingCfgCachedValue.get();
+                        getClassNameString() + "ICListen logging config is not fresh");
+                icListenLoggingEntry.value = *optICListenLogging_ModuleWrapper;
+
                 updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenLoggingEntry;
                 updatedConfiguration.modules_count++;
 
@@ -290,11 +277,6 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
             }
         case acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG:
             {
-                if (!icListenService.has_value())
-                {
-                    Logger::logError(getClassNameString() + "ICListen service is not available");
-                    break;
-                }
                 acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenStreamingEntry =
                     acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
 
@@ -302,27 +284,20 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 icListenStreamingEntry.key = acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG;
                 icListenStreamingEntry.value.which_module = acousea_ModuleWrapper_icListenStreamingConfig_tag;
 
-                ICListenService::CachedValue<acousea_ICListenStreamingConfig> streamingConfigResult = icListenService.
-                    value()->getCache().getICListenStreamingConfig();
-                if (!streamingConfigResult.fresh())
-                {
-                    icListenService.value()->fetchStreamingConfig();
+                const auto optICListenStreaming_ModuleWrapper = moduleProxy.getCache()
+                                                                           .getIfFresh(
+                                                                               acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG);
+                if (!optICListenStreaming_ModuleWrapper)
                     return Result<acousea_CommunicationPacket>::pending(
-                        getClassNameString() + "ICListen streaming config is not fresh"
-                    );
-                }
-                icListenStreamingEntry.value.module.icListenStreamingConfig = streamingConfigResult.get();
+                        getClassNameString() + "ICListen streaming config is not fresh");
+                icListenStreamingEntry.value = *optICListenStreaming_ModuleWrapper;
+
                 updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenStreamingEntry;
                 updatedConfiguration.modules_count++;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_RECORDING_STATS:
             {
-                if (!icListenService.has_value())
-                {
-                    Logger::logError(getClassNameString() + "ICListen service is not available");
-                    break;
-                }
                 acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenRecordingStatsEntry =
                     acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
 
@@ -330,26 +305,19 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 icListenRecordingStatsEntry.key = acousea_ModuleCode_ICLISTEN_RECORDING_STATS;
                 icListenRecordingStatsEntry.value.which_module = acousea_ModuleWrapper_icListenRecordingStats_tag;
 
-                ICListenService::CachedValue<acousea_ICListenRecordingStats> recordingStatsResult = icListenService.
-                    value()->getCache().getICListenRecordingStats();
-                if (!recordingStatsResult.fresh())
-                {
+                const auto optICListenRecordingStats_ModuleWrapper = moduleProxy.getCache()
+                    .getIfFresh(acousea_ModuleCode_ICLISTEN_RECORDING_STATS);
+                if (!optICListenRecordingStats_ModuleWrapper)
                     return Result<acousea_CommunicationPacket>::pending(
-                        getClassNameString() + "ICListen recording stats is not fresh"
-                    );
-                }
-                icListenRecordingStatsEntry.value.module.icListenRecordingStats = recordingStatsResult.get();
+                        getClassNameString() + "ICListen recording stats is not fresh");
+
+                icListenRecordingStatsEntry.value = *optICListenRecordingStats_ModuleWrapper;
                 updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenRecordingStatsEntry;
                 updatedConfiguration.modules_count++;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_HF:
             {
-                if (!icListenService.has_value())
-                {
-                    Logger::logError(getClassNameString() + "ICListen service is not available");
-                    break;
-                }
                 acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenHfEntry =
                     acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
 
@@ -357,15 +325,13 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 icListenHfEntry.key = acousea_ModuleCode_ICLISTEN_HF;
                 icListenHfEntry.value.which_module = acousea_ModuleWrapper_icListenHF_tag;
 
-                ICListenService::CachedValue<acousea_ICListenHF> hfResult = icListenService.value()->getCache().
-                    getICListenCompleteConfiguration();
-                if (!hfResult.fresh())
-                {
+                const auto optICListenHf_ModuleWrapper = moduleProxy.getCache()
+                                                                    .getIfFresh(acousea_ModuleCode_ICLISTEN_HF);
+                if (!optICListenHf_ModuleWrapper)
                     return Result<acousea_CommunicationPacket>::pending(
-                        getClassNameString() + "ICListen HF config is not fresh"
-                    );
-                }
-                icListenHfEntry.value.module.icListenHF = hfResult.get();
+                        getClassNameString() + "ICListen HF is not fresh");
+
+                icListenHfEntry.value = *optICListenHf_ModuleWrapper;
                 updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenHfEntry;
                 updatedConfiguration.modules_count++;
                 break;

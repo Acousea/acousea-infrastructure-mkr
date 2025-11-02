@@ -44,8 +44,12 @@ extern StorageManager* storageManager;
 // Repo + Services
 extern NodeConfigurationRepository nodeConfigurationRepository;
 
-// IcListen
-extern std::shared_ptr<ICListenService> icListenServicePtr;
+// ModuleProxy
+extern const std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType> fullDevicePortMap;
+extern const std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType> iclistenOnlyPortMap;
+extern const std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType> emptyDevicePortMap;
+
+extern ModuleProxy moduleProxy;
 
 // Routines
 extern SetNodeConfigurationRoutine setNodeConfigurationRoutine;
@@ -83,7 +87,7 @@ extern LoraPort realLoraPort;
 
 // Power
 extern MosfetController mosfetController;
-extern RockPiPowerController rockPiPowerController;
+extern PiController rockPiPowerController;
 
 
 // =======================================================

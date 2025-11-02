@@ -169,10 +169,6 @@ void dev_setup(){
     // Inicializa el comunicador Iridium
     // iridiumPort->init();
 
-    // Initialize the iclistenServicePtr
-#if MODE == DRIFTER_MODE
-    icListenServicePtr->init();
-#endif
 
     // Inicializa el GPS
     // gps->init();

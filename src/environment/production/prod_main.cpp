@@ -169,11 +169,6 @@ void prod_setup(){
     // Inicializa el comunicador Iridium
     // iridiumPort->init();
 
-    // Initialize the iclistenServicePtr
-#if MODE == DRIFTER_MODE
-    icListenServicePtr->init();
-#endif
-
     // Inicializa el GPS
     // gps->init();
     // Logger::setCurrentTime(gps->getTimestamp());
@@ -209,12 +204,14 @@ void prod_setup(){
     static MethodTask<SolarXBatteryController> solarXBatterySyncTask(15000,
                                                                      &solarXBatteryController,
                                                                      &SolarXBatteryController::sync);
-    // static FunctionTask watchDogTask(5000, &SystemMonitor::reset);
-    static MethodTask<SystemMonitor> watchDogTask(5000,
+    static FunctionTask watchDogTask(5000, &SystemMonitor::reset);
+
+    static MethodTask<SystemMonitor> systemMonitorTask(10000, // This must be less than watchdog timeout (10s)
                                                   &systemMonitor,
-                                                  &SystemMonitor::sync);
+                                                  &SystemMonitor::protectBattery);
 
     scheduler.addTask(&watchDogTask);
+    scheduler.addTask(&systemMonitorTask);
     scheduler.addTask(&solarXBatterySyncTask);
 
 #if MODE == DRIFTER_MODE

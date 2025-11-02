@@ -23,7 +23,7 @@ Result<acousea_CommunicationPacket> Router::decodePacket(const std::vector<uint8
         );
     }
 
-    return Result<acousea_CommunicationPacket>::success(std::move(pkt));
+    return Result<acousea_CommunicationPacket>::success(pkt);
 }
 
 Result<std::vector<uint8_t>> Router::encodePacket(const acousea_CommunicationPacket& pkt)
@@ -49,6 +49,7 @@ Result<std::vector<uint8_t>> Router::encodePacket(const acousea_CommunicationPac
     return Result<std::vector<uint8_t>>::success(std::move(buf));
 }
 
+
 Router::Router(const std::vector<IPort*>& relayedPorts)
     : relayedPorts(relayedPorts)
 {
@@ -59,9 +60,14 @@ void Router::addRelayedPort(IPort* port)
     relayedPorts.push_back(port);
 }
 
-Router::RouterSender Router::sendFrom(uint8_t senderAddress)
+Router::RouterSender Router::from(const uint8_t sender) const
 {
-    return RouterSender(senderAddress, this);
+    return RouterSender(sender, this);
+}
+
+Router::RouterSender Router::broadcast()
+{
+    return RouterSender(this);
 }
 
 std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> Router::readPorts(const uint8_t& localAddress)
@@ -119,81 +125,45 @@ std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> Router::readP
     return receivedPackets;
 }
 
-void Router::sendSBD(const acousea_CommunicationPacket& packet) const
+bool Router::sendToPort(IPort::PortType port, const acousea_CommunicationPacket& packet) const
 {
     const auto bytesPacketResult = encodePacket(packet);
-    if (bytesPacketResult.isError()) return;
+    if (bytesPacketResult.isError()) return false;
 
     for (const auto& relayedPort : relayedPorts)
     {
-        if (relayedPort->getType() == IPort::PortType::SBDPort)
+        if (relayedPort->getType() == port)
         {
-            relayedPort->send(bytesPacketResult.getValueConst());
-            return;
+            return relayedPort->send(bytesPacketResult.getValueConst());
         }
     }
+    Logger::logError("Router::sendToPort() -> No relayed port found for type " + IPort::portTypeToString(port));
+    return false;
 }
 
-void Router::sendLoRa(const acousea_CommunicationPacket& packet) const
-{
-    const auto bytesPacketResult = encodePacket(packet);
-    if (bytesPacketResult.isError()) return;
-
-    for (const auto& relayedPort : relayedPorts)
-    {
-        if (relayedPort->getType() == IPort::PortType::LoraPort)
-        {
-            relayedPort->send(bytesPacketResult.getValueConst());
-            return;
-        }
-    }
-}
-
-void Router::sendSerial(const acousea_CommunicationPacket& packet) const
-{
-    const auto bytesPacketResult = encodePacket(packet);
-    if (bytesPacketResult.isError()) return;
-
-    for (auto& relayedPort : relayedPorts)
-    {
-        if (relayedPort->getType() == IPort::PortType::SerialPort)
-        {
-            relayedPort->send(bytesPacketResult.getValueConst());
-            return;
-        }
-    }
-}
 
 // --------------------------------------  Router::RouterSender --------------------------------------
-acousea_CommunicationPacket Router::RouterSender::configurePacketRouting(acousea_CommunicationPacket& inPacket) const
-{
-    // Configurar routing: respondemos al remitente del paquete original
-    inPacket.has_routing = true;
-    inPacket.routing = acousea_RoutingChunk_init_default;
-    inPacket.routing.sender = static_cast<int32_t>(localAddress);
-    return inPacket;
-}
 
-Router::RouterSender::RouterSender(uint8_t address, Router* router): localAddress(address), router(router)
+Router::RouterSender::RouterSender(const Router* router) : router(router)
 {
 }
 
-void Router::RouterSender::sendSBD(acousea_CommunicationPacket& packet) const
+Router::RouterSender::RouterSender(const uint8_t sender, const Router* router) : senderAddress(sender), router(router)
 {
-    const acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
-    router->sendSBD(mutablePacket);
-}
-
-void Router::RouterSender::sendLoRa(acousea_CommunicationPacket& packet) const
-{
-    const acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
-    router->sendLoRa(mutablePacket);
-}
-
-void Router::RouterSender::sendSerial(acousea_CommunicationPacket& packet) const
-{
-    const acousea_CommunicationPacket mutablePacket = configurePacketRouting(packet);
-    router->sendSerial(mutablePacket);
 }
 
 
+bool Router::RouterSender::send(const acousea_CommunicationPacket& pkt) const
+{
+    acousea_CommunicationPacket modPkt = pkt;
+    modPkt.has_routing = true;
+    modPkt.routing = acousea_RoutingChunk_init_default;
+    modPkt.routing.sender = senderAddress;
+    return router->sendToPort(selectedPort, modPkt);
+}
+
+Router::RouterSender& Router::RouterSender::through(IPort::PortType type)
+{
+    selectedPort = type;
+    return *this;
+}

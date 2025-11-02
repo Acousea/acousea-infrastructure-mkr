@@ -2,7 +2,7 @@
 #ifndef RESULT_H
 #define RESULT_H
 
-#pragma message ("Compiling Result.h from: " __FILE__)
+// #pragma message ("Compiling Result.h from: " __FILE__)
 
 #include <optional>
 #include <string>

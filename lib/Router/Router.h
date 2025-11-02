@@ -20,31 +20,16 @@ public:
 private:
     std::vector<IPort*> relayedPorts;
 
-
-    // Clase interna para manejar el envío con una dirección
-    class RouterSender
-    {
-    private:
-        uint8_t localAddress;
-        Router* router;
-
-    private:
-        [[nodiscard]] acousea_CommunicationPacket configurePacketRouting(acousea_CommunicationPacket& inPacket) const;
-
-    public:
-        explicit RouterSender(uint8_t address, Router* router);
-
-        void sendSBD(acousea_CommunicationPacket& packet) const;
-        void sendLoRa(acousea_CommunicationPacket& packet) const;
-        void sendSerial(acousea_CommunicationPacket& packet) const;
-    };
-
 public:
     explicit Router(const std::vector<IPort*>& relayedPorts);
 
     void addRelayedPort(IPort* port);
 
-    Router::RouterSender sendFrom(uint8_t senderAddress);
+    class RouterSender;
+
+    [[nodiscard]] Router::RouterSender from(uint8_t sender) const;
+
+    [[nodiscard]] Router::RouterSender broadcast();
 
     /**
         * @brief Reads packets from the ports and returns them grouped by port type.
@@ -53,17 +38,41 @@ public:
         */
     std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> readPorts(const uint8_t& localAddress);
 
+
+    // ======================================================
+    // Builder interno para API fluida
+    // ======================================================
+    class RouterSender
+    {
+    public:
+        // friend class Router; // Permite a Router acceder a constructores privados
+        friend Router::RouterSender Router::from(uint8_t) const;
+        friend Router::RouterSender Router::broadcast();
+
+    private:
+        explicit RouterSender(const Router* router);
+
+        explicit RouterSender(uint8_t sender, const Router* router);
+
+    public:
+        // Etapa 1: seleccionar puerto
+        RouterSender& through(IPort::PortType type);
+
+        // Etapa 2: enviar paquete
+        [[nodiscard]] bool send(const acousea_CommunicationPacket& pkt) const;
+
+    private:
+        uint8_t senderAddress{broadcastAddress};
+        IPort::PortType selectedPort{IPort::PortType::SerialPort};
+        const Router* router;
+    };
+
 private:
     // ---------------------- Packet encoding/decoding ----------------------
     static Result<acousea_CommunicationPacket> decodePacket(const std::vector<uint8_t>& raw);
     static Result<std::vector<uint8_t>> encodePacket(const acousea_CommunicationPacket& pkt);
 
-    // ---------------------- Sending to specific ports ----------------------
-    void sendSBD(const acousea_CommunicationPacket& packet) const;
-
-    void sendLoRa(const acousea_CommunicationPacket& packet) const;
-
-    void sendSerial(const acousea_CommunicationPacket& packet) const;
+    [[nodiscard]] bool sendToPort(IPort::PortType port, const acousea_CommunicationPacket& packet) const;
 };
 
 #endif // COMMUNICATOR_RELAY_H

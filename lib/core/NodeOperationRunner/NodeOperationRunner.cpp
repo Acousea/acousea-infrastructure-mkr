@@ -317,19 +317,9 @@ void NodeOperationRunner::sendResponsePacket(const IPort::PortType portType,
         " to " + std::to_string(localAddress) +
         " through " + IPort::portTypeToString(portType)
     );
-    switch (portType){
-    case IPort::PortType::SBDPort:
-        router.sendFrom(localAddress).sendSBD(responsePacket);
-        break;
-    case IPort::PortType::LoraPort:
-        router.sendFrom(localAddress).sendLoRa(responsePacket);
-        break;
-    case IPort::PortType::SerialPort:
-        router.sendFrom(localAddress).sendSerial(responsePacket);
-        break;
-    default:
-        Logger::logError(getClassNameString() + ": Unknown port type for response packet!");
-        break;
+    if (const auto sendOk = router.from(localAddress).through(portType).send(responsePacket); !sendOk){
+        Logger::logError(getClassNameString() + ": Failed to send response packet through " +
+            IPort::portTypeToString(portType));
     }
 }
 

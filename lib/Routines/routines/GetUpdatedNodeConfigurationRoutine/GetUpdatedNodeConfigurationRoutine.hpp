@@ -3,17 +3,17 @@
 
 #include "IRoutine.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
-#include "ICListenService/ICListenService.h"
 #include "IGPS.h"
 #include "IBatteryController.h"
 #include "RTCController.hpp"
+#include "ModuleProxy/ModuleProxy.hpp"
 
 
 class GetUpdatedNodeConfigurationRoutine final : public IRoutine<acousea_CommunicationPacket>
 {
 private:
     NodeConfigurationRepository& nodeConfigurationRepository;
-    std::optional<ICListenService*> icListenService;
+    ModuleProxy& moduleProxy;
     IGPS* gps;
     IBatteryController* battery;
     RTCController* rtcController;
@@ -23,7 +23,7 @@ public:
 
     GetUpdatedNodeConfigurationRoutine(
         NodeConfigurationRepository& nodeConfigurationRepository,
-        std::optional<ICListenService*> icListenService,
+        ModuleProxy& moduleProxy,
         IGPS* gps,
         IBatteryController* battery,
         RTCController* rtcController

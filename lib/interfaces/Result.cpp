@@ -63,5 +63,11 @@ template class Result<int>;
 template class Result<float>;
 template class Result<double>;
 template class Result<acousea_CommunicationPacket>;
+template class Result<acousea_NodeConfiguration>;
+template class Result<acousea_OperationMode>;
+template class Result<acousea_ReportingPeriodEntry>;
+template class Result<acousea_ReportType>;
+template class Result<acousea_ModuleWrapper>;
+
 template class Result<std::vector<uint8_t>>;
 // template class Result<std::vector<unsigned char>>;

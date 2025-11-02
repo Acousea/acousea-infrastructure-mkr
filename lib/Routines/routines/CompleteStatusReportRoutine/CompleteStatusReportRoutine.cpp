@@ -3,14 +3,16 @@
 #include <algorithm>
 
 CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationRepository& nodeConfigurationRepository,
-                                                         std::optional<ICListenService*> icListenService,
+
+                                                         ModuleProxy& moduleProxy,
                                                          IGPS* gps,
                                                          IBatteryController* battery,
                                                          RTCController* rtc
 )
     : IRoutine(getClassNameString()),
       nodeConfigurationRepository(nodeConfigurationRepository),
-      icListenService(icListenService),
+
+      moduleProxy(moduleProxy),
       gps(gps),
       battery(battery),
       rtc(rtc)
@@ -81,25 +83,24 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
             }
         case acousea_ModuleCode_ICLISTEN_HF:
             {
-                if (!icListenService.has_value())
+                const auto optHF = moduleProxy.getCache().getIfFresh(
+                    acousea_ModuleCode_ICLISTEN_HF);
+
+                // Si no está fresco → la rutina queda en estado pending
+                if (!optHF)
                 {
-                    Logger::logWarning(getClassNameString() + ": ICListenService not available, skipping ICLISTEN_HF");
-                    break;
-                }
-                auto cfg = icListenService.value()->getCache().getICListenCompleteConfiguration();
-                if (!cfg.fresh())
-                {
-                    icListenService.value()->fetchHFConfiguration();
                     return Result<acousea_CommunicationPacket>::pending(
                         getClassNameString() + ": ICListenHF configuration not fresh"
                     );
                 }
+
+
                 acousea_StatusReportPayload_ModulesEntry entry =
                     acousea_StatusReportPayload_ModulesEntry_init_default;
                 entry.has_value = true;
                 entry.key = acousea_ModuleCode_ICLISTEN_HF;
                 entry.value.which_module = acousea_ModuleWrapper_icListenHF_tag;
-                entry.value.module.icListenHF = cfg.get();
+                entry.value = *optHF;
                 status.modules[status.modules_count++] = entry;
                 break;
             }

@@ -100,9 +100,8 @@ Router router({serialPort, loraOrGsmPort, iridiumPort});
 // --------- Power ----------
 TaskScheduler scheduler;
 MosfetController mosfetController;
-RockPiPowerController rockPiPowerController;
+PiController rockPiPowerController;
 SystemMonitor systemMonitor(batteryController, &rockPiPowerController);
-
 
 
 // =======================================================
@@ -155,42 +154,47 @@ Router router({serialPort, loraPort, iridiumPort});
 
 NodeConfigurationRepository nodeConfigurationRepository(*storageManager);
 
-std::shared_ptr<ICListenService> icListenServicePtr = std::make_shared<ICListenService>(router);
+// ============================================================
+// =========== Device port mappings ===========================
+// ============================================================
 
-SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository, icListenServicePtr);
+// Mapa con ambos dispositivos (ICListen + VR2C)
+const std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType> fullDevicePortMap = {
+    {ModuleProxy::DeviceAlias::ICListen, IPort::PortType::SerialPort},
+    {ModuleProxy::DeviceAlias::VR2C, IPort::PortType::SerialPort}
+};
+
+// Mapa con solo ICListen
+const std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType> iclistenOnlyPortMap = {
+    {ModuleProxy::DeviceAlias::ICListen, IPort::PortType::SerialPort}
+};
+
+const std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType> emptyDevicePortMap = {};
+
+ModuleProxy moduleProxy(router, fullDevicePortMap);
+
+SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository, moduleProxy);
 // SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository, std::nullopt);
 
 GetUpdatedNodeConfigurationRoutine getUpdatedNodeConfigurationRoutine(nodeConfigurationRepository,
-                                                                      icListenServicePtr,
+                                                                      moduleProxy,
                                                                       gps,
                                                                       batteryController,
                                                                       rtcController
 );
 
-// GetUpdatedNodeConfigurationRoutine getUpdatedNodeConfigurationRoutine(nodeConfigurationRepository,
-//                                                                       std::nullopt,
-//                                                                       gps,
-//                                                                       battery,
-//                                                                       rtcController
-// );
 
 CompleteStatusReportRoutine completeStatusReportRoutine(nodeConfigurationRepository,
-                                                        icListenServicePtr,
+                                                        moduleProxy,
                                                         gps,
                                                         batteryController,
                                                         rtcController
 );
 
-// CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationRepository,
-//                                                          std::nullopt,
-//                                                          gps,
-//                                                          batteryController,
-//                                                          rtcController
-// );s
 
 StoreNodeConfigurationRoutine storeNodeConfigurationRoutine(
     nodeConfigurationRepository,
-    icListenServicePtr
+    moduleProxy
 );
 
 std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> commandRoutines = {
@@ -214,5 +218,3 @@ NodeOperationRunner nodeOperationRunner(
     nodeConfigurationRepository,
     commandRoutines, responseRoutines, reportRoutines
 );
-
-

@@ -54,7 +54,7 @@ public:
     static void printCertificates(const std::vector<StoredCert>& currentCerts);
 
     void init() override;
-    void send(const std::vector<uint8_t>& data) override;
+    bool send(const std::vector<uint8_t>& data) override;
     bool available() override;
     std::vector<std::vector<uint8_t>> read() override;
 

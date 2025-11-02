@@ -35,7 +35,7 @@
 
 // ------------------------- SERVICES -------------------------
 #include <NodeOperationRunner/NodeOperationRunner.h>
-#include <ICListenService/ICListenService.h>
+#include <ModuleProxy/ModuleProxy.hpp>
 
 
 // ================== DEPEDNING ON PLATFORM ==================

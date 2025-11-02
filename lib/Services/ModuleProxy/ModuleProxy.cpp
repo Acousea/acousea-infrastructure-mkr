@@ -5,8 +5,24 @@
 // ================ Constructor ======================
 // ===================================================
 
+constexpr const char* ModuleProxy::toString(const ModuleProxy::DeviceAlias alias) noexcept
+{
+    switch (alias)
+    {
+    case ModuleProxy::DeviceAlias::ICListen: return "ICListen";
+    case ModuleProxy::DeviceAlias::VR2C: return "VR2C";
+    default: return "Unknown";
+    }
+}
+
+
 ModuleProxy::ModuleProxy(Router& router)
     : router(router)
+{
+}
+
+ModuleProxy::ModuleProxy(Router& router, const std::unordered_map<DeviceAlias, IPort::PortType>& devicePortMap)
+    : router(router), devicePortMap(devicePortMap)
 {
 }
 
@@ -14,18 +30,61 @@ ModuleProxy::ModuleProxy(Router& router)
 // ============== Envío de comandos ==================
 // ===================================================
 
-void ModuleProxy::requestModule(acousea_ModuleCode code) const
+bool ModuleProxy::requestModule(const acousea_ModuleCode code, const DeviceAlias alias) const
 {
-    auto pkt = buildRequestPacket(code);
-    router.sendFrom(Router::broadcastAddress).sendSerial(pkt);
+    const auto pkt = buildRequestPacket(code);
+    const auto portType = resolvePort(alias);
+    if (!portType.has_value())
+    {
+        Logger::logWarning("ModuleProxy::requestModule() -> Could not resolve port for alias");
+        return false;
+    }
+
+    Logger::logInfo("Requesting module " + std::to_string(code) +
+        " through " + IPort::portTypeToString(*portType) +
+        " for alias " + std::string(toString(alias)));
+
+    return router
+           .from(Router::broadcastAddress)
+           .through(*portType)
+           .send(pkt);
 }
 
-template <typename ModuleT>
-void ModuleProxy::sendModule(acousea_ModuleCode code, const ModuleT& module) const
+bool ModuleProxy::sendModule(const acousea_ModuleCode code, const acousea_ModuleWrapper& module, const DeviceAlias alias) const
 {
     const auto pkt = buildSetPacket(code, module);
-    router.sendFrom(Router::broadcastAddress).sendSerial(pkt);
+    const auto portType = resolvePort(alias);
+    if (!portType.has_value())
+    {
+        Logger::logWarning(
+            "ModuleProxy::sendModule() -> Could not resolve port for alias" + std::string(toString(alias)));
+        return false;
+    }
+
+    Logger::logInfo("Sending module " + std::to_string(code) +
+        " through " + IPort::portTypeToString(*portType) +
+        " for alias " + std::string(toString(alias)));
+
+
+    return router
+           .from(Router::broadcastAddress)
+           .through(*portType)
+           .send(pkt);
 }
+
+std::optional<IPort::PortType> ModuleProxy::resolvePort(const DeviceAlias alias) const
+{
+    const auto it = devicePortMap.find(alias);
+    if (it == devicePortMap.end())
+    {
+        Logger::logWarning(
+            "ModuleProxy::resolvePort() -> Node has no port associated with device alias: " + std::string(
+                toString(alias)));
+        return std::nullopt;
+    }
+    return it->second;
+}
+
 
 acousea_CommunicationPacket ModuleProxy::buildRequestPacket(acousea_ModuleCode code)
 {
@@ -48,9 +107,9 @@ acousea_CommunicationPacket ModuleProxy::buildRequestPacket(acousea_ModuleCode c
 // ============ buildSetPacket (corregido) ===========
 // ===================================================
 
-template <typename ModuleT>
-acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode code, const ModuleT& module)
+acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode code, const acousea_ModuleWrapper& module)
 {
+
     acousea_CommunicationPacket pkt = acousea_CommunicationPacket_init_default;
     pkt.has_routing = true;
     pkt.routing.sender = Router::broadcastAddress;
@@ -66,38 +125,7 @@ acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode code,
     auto& entry = pkt.body.command.command.setConfiguration.modules[0];
     entry.has_value = true;
     entry.key = code;
-    entry.value = acousea_ModuleWrapper_init_default;
-
-    // ===============================
-    //  Asignar al campo correcto
-    // ===============================
-    if constexpr (std::is_same_v<ModuleT, acousea_ICListenLoggingConfig>) {
-        entry.value.which_module = acousea_ModuleWrapper_icListenLoggingConfig_tag;
-        entry.value.module.icListenLoggingConfig = module;
-    }
-    else if constexpr (std::is_same_v<ModuleT, acousea_ICListenStreamingConfig>) {
-        entry.value.which_module = acousea_ModuleWrapper_icListenStreamingConfig_tag;
-        entry.value.module.icListenStreamingConfig = module;
-    }
-    else if constexpr (std::is_same_v<ModuleT, acousea_ICListenHF>) {
-        entry.value.which_module = acousea_ModuleWrapper_icListenHF_tag;
-        entry.value.module.icListenHF = module;
-    }
-    else if constexpr (std::is_same_v<ModuleT, acousea_ICListenRecordingStats>) {
-        entry.value.which_module = acousea_ModuleWrapper_icListenRecordingStats_tag;
-        entry.value.module.icListenRecordingStats = module;
-    }
-    else if constexpr (std::is_same_v<ModuleT, acousea_BatteryModule>) {
-        entry.value.which_module = acousea_ModuleWrapper_battery_tag;
-        entry.value.module.battery = module;
-    }
-    else if constexpr (std::is_same_v<ModuleT, acousea_LocationModule>) {
-        entry.value.which_module = acousea_ModuleWrapper_location_tag;
-        entry.value.module.location = module;
-    }
-    else {
-        static_assert([] { return false; }(), "Unsupported ModuleT type for buildSetPacket");
-    }
+    entry.value = module;
 
     return pkt;
 }
@@ -111,10 +139,17 @@ void ModuleProxy::ModuleCache::store(acousea_ModuleCode code, const acousea_Modu
     cache[code].store(wrapper);
 }
 
-std::optional<acousea_ModuleWrapper> ModuleProxy::ModuleCache::get(acousea_ModuleCode code) const
+ModuleProxy::CachedValue ModuleProxy::ModuleCache::get(acousea_ModuleCode code) const
 {
     const auto it = cache.find(code);
-    if (it == cache.end() || !it->second.valid()) return std::nullopt;
+    if (it == cache.end() || !it->second.valid()) return CachedValue::empty();
+    return it->second;
+}
+
+std::optional<acousea_ModuleWrapper> ModuleProxy::ModuleCache::getIfFresh(acousea_ModuleCode code) const
+{
+    const auto it = cache.find(code);
+    if (it == cache.end() || !it->second.fresh()) return std::nullopt;
     return it->second.get();
 }
 
@@ -135,14 +170,3 @@ bool ModuleProxy::ModuleCache::fresh(acousea_ModuleCode code) const
     const auto it = cache.find(code);
     return (it != cache.end()) && it->second.fresh();
 }
-
-// ===================================================
-// ============ Instanciaciones explícitas ===========
-// ===================================================
-
-template acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode, const acousea_ICListenLoggingConfig&);
-template acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode, const acousea_ICListenStreamingConfig&);
-template acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode, const acousea_ICListenHF&);
-template acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode, const acousea_ICListenRecordingStats&);
-template acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode, const acousea_BatteryModule&);
-template acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode, const acousea_LocationModule&);

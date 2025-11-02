@@ -2,7 +2,6 @@
 
 #include "environment/credentials.hpp"
 
-
 // =======================================================
 //       ARDUINO BUILD
 // =======================================================
@@ -23,9 +22,9 @@ Uart softwareSerialSercom1(&sercom1,
 
 
 // --------- Batería ----------
-PMICBatteryController pmicBatteryController;
-AdafruitLCBatteryController adafruitLCBatteryController;
-MockBatteryController mockBatteryController;
+// PMICBatteryController pmicBatteryController;
+// AdafruitLCBatteryController adafruitLCBatteryController;
+// MockBatteryController mockBatteryController;
 SolarXBatteryController solarXBatteryController(
     INA219_ADDRESS + 1, //  0x41 // Address of the battery sensor
     INA219_ADDRESS // 0x40 // Address of the solar panel sensor
@@ -35,7 +34,7 @@ SolarXBatteryController solarXBatteryController(
 IBatteryController* batteryController = &solarXBatteryController; // o PMIC según HW
 
 // --------- Display ----------
-AdafruitDisplay adafruitDisplay;
+// AdafruitDisplay adafruitDisplay;
 SerialArduinoDisplay serialUSBDisplay(&ConsoleSerial);
 IDisplay* display = &serialUSBDisplay;
 
@@ -50,21 +49,21 @@ LoraPort realLoraPort;
 MockIridiumPort mockIridiumPort;
 IridiumPort realIridiumPort;
 
-// #ifdef PLATFORM_HAS_GSM
-// // Configuración GSM
-// GsmConfig gsmCfg = {
-//     .pin = SECRET_PINNUMBER, // Tu SIM no tiene PIN
-//     .apn = SECRET_GPRS_APN, // APN del operador (ejemplo: Hologram)
-//     .user = SECRET_GPRS_LOGIN, // Usuario del APN
-//     .pass = SECRET_GPRS_PASSWORD, // Password del APN
-//     .clientId = AWS_MQTT_CLIENT_ID,
-//     .broker = AWS_MQTT_BROKER, // Host del servidor destino
-//     .port = 8883, // Puerto destino (8883 para MQTT sobre SSL)
-//     .certificate = CLIENT_CERTIFICATE
-// };
-//
-// GsmMQTTPort gsmPort(gsmCfg);
-// #endif
+#ifdef PLATFORM_HAS_GSM
+// Configuración GSM
+GsmConfig gsmCfg = {
+    .pin = SECRET_PINNUMBER, // Tu SIM no tiene PIN
+    .apn = SECRET_GPRS_APN, // APN del operador (ejemplo: Hologram)
+    .user = SECRET_GPRS_LOGIN, // Usuario del APN
+    .pass = SECRET_GPRS_PASSWORD, // Password del APN
+    .clientId = AWS_MQTT_CLIENT_ID,
+    .broker = AWS_MQTT_BROKER, // Host del servidor destino
+    .port = 8883, // Puerto destino (8883 para MQTT sobre SSL)
+    .certificate = CLIENT_CERTIFICATE
+};
+
+GsmMQTTPort gsmPort(gsmCfg);
+#endif
 
 
 IPort* serialPort = &realSerialPort;
@@ -72,38 +71,36 @@ IPort* serialPort = &realSerialPort;
 #ifdef PLATFORM_HAS_LORA
 IPort* loraOrGsmPort = &mockLoraPort;
 #elif defined(PLATFORM_HAS_GSM)
-// IPort* loraOrGsmPort = &mockLoraPort;
+IPort* loraOrGsmPort = &gsmPort;
 #endif
 
 IPort* iridiumPort = &mockIridiumPort;
 
 // --------- GPS ----------
-MockGPS mockGPS(0.0, 0.0, 1.0);
-MKRGPS mkrGPS;
+// MockGPS mockGPS(0.0, 0.0, 1.0);
+// IGPS* gps = &mockGPS;
+// MKRGPS mkrGPS;
+// IGPS* gps = &mkrGPS;
 UBloxGNSS uBloxGPS;
-IGPS* gps = &mockGPS;
+IGPS* gps = &uBloxGPS;
 
 // --------- RTC ----------
 ZeroRTCController zeroRTCController;
-MockRTCController mockRTCController;
-RTCController* rtcController = &mockRTCController;
+// MockRTCController mockRTCController;
+RTCController* rtcController = &zeroRTCController;
 
 // --------- Storage ----------
 SDStorageManager sdStorageManager;
 StorageManager* storageManager = &sdStorageManager; // o hddStorageManager según build
 
 // --------- Router ----------
-Router router({
-    serialPort,
-    // loraOrGsmPort,
-    iridiumPort
-});
-
-
+Router router({serialPort, loraOrGsmPort, iridiumPort});
 
 // --------- Power ----------
+TaskScheduler scheduler;
 MosfetController mosfetController;
-RockPiPowerController rockPiPowerController;
+PiController rockPiPowerController;
+SystemMonitor systemMonitor(batteryController, &rockPiPowerController);
 
 
 // =======================================================
@@ -156,42 +153,47 @@ Router router({serialPort, loraPort, iridiumPort});
 
 NodeConfigurationRepository nodeConfigurationRepository(*storageManager);
 
-std::shared_ptr<ICListenService> icListenServicePtr = std::make_shared<ICListenService>(router);
+// ============================================================
+// =========== Device port mappings ===========================
+// ============================================================
 
-SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository, icListenServicePtr);
+// Mapa con ambos dispositivos (ICListen + VR2C)
+const std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType> fullDevicePortMap = {
+    {ModuleProxy::DeviceAlias::ICListen, IPort::PortType::SerialPort},
+    {ModuleProxy::DeviceAlias::VR2C, IPort::PortType::SerialPort}
+};
+
+// Mapa con solo ICListen
+const std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType> iclistenOnlyPortMap = {
+    {ModuleProxy::DeviceAlias::ICListen, IPort::PortType::SerialPort}
+};
+
+const std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType> emptyDevicePortMap = {};
+
+ModuleProxy moduleProxy(router, fullDevicePortMap);
+
+SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository, moduleProxy);
 // SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationRepository, std::nullopt);
 
 GetUpdatedNodeConfigurationRoutine getUpdatedNodeConfigurationRoutine(nodeConfigurationRepository,
-                                                                      icListenServicePtr,
+                                                                      moduleProxy,
                                                                       gps,
                                                                       batteryController,
                                                                       rtcController
 );
 
-// GetUpdatedNodeConfigurationRoutine getUpdatedNodeConfigurationRoutine(nodeConfigurationRepository,
-//                                                                       std::nullopt,
-//                                                                       gps,
-//                                                                       battery,
-//                                                                       rtcController
-// );
 
 CompleteStatusReportRoutine completeStatusReportRoutine(nodeConfigurationRepository,
-                                                        icListenServicePtr,
+                                                        moduleProxy,
                                                         gps,
                                                         batteryController,
                                                         rtcController
 );
 
-// CompleteStatusReportRoutine completeSummaryReportRoutine(nodeConfigurationRepository,
-//                                                          std::nullopt,
-//                                                          gps,
-//                                                          batteryController,
-//                                                          rtcController
-// );s
 
 StoreNodeConfigurationRoutine storeNodeConfigurationRoutine(
     nodeConfigurationRepository,
-    icListenServicePtr
+    moduleProxy
 );
 
 std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> commandRoutines = {

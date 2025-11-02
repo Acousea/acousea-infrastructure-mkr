@@ -12,7 +12,7 @@ public:
 public:
     void init() override;
 
-    void send(const std::vector<uint8_t> &data) override;
+    bool send(const std::vector<uint8_t>& data) override;
 
     bool available() override;
 

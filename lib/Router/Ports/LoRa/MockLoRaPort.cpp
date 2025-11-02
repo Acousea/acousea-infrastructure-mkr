@@ -9,9 +9,10 @@ void MockLoRaPort::init() {
     Logger::logInfo("MockLoRaPort: Initializing LoRa port...");
 }
 
-void MockLoRaPort::send(const std::vector<uint8_t> &data) {
+bool MockLoRaPort::send(const std::vector<uint8_t>& data) {
     // Print packet through serial monitor for debugging
     Logger::logInfo("MockLoRaPort: Sending packet... " + Logger::vectorToHexString(data));
+    return true;
 }
 
 bool MockLoRaPort::available() {

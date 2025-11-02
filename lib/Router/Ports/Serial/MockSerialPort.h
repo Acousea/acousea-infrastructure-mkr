@@ -13,7 +13,7 @@ public:
     void init() override;
 
     // Envía un paquete serializado
-    void send(const std::vector<uint8_t> &data) override;
+    bool send(const std::vector<uint8_t>& data) override;
 
     // Comprueba si hay suficientes datos disponibles para un paquete
     bool available() override;

@@ -2,7 +2,7 @@
 #define CHANGE_MODE_ROUTINE_H
 
 #include "IRoutine.h"
-#include "ICListenService/ICListenService.h"
+#include "ModuleProxy/ModuleProxy.hpp"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
 
 
@@ -10,14 +10,14 @@ class SetNodeConfigurationRoutine final : public IRoutine<acousea_CommunicationP
 {
 private:
     NodeConfigurationRepository& nodeConfigurationRepository;
-    std::optional<ICListenService*> icListenService;
+    ModuleProxy& moduleProxy;
 
 public:
     CLASS_NAME(SetNodeConfigurationRoutine)
 
     explicit SetNodeConfigurationRoutine(
         NodeConfigurationRepository& nodeConfigurationRepository,
-        std::optional<ICListenService*> icListenService
+        ModuleProxy& moduleProxy
     );
 
     Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& inPacket) override;

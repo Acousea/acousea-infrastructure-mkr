@@ -8,25 +8,32 @@
 #include <string>
 
 // Definición de la interfaz de comunicador
-class IPort{
+class IPort
+{
 public:
-    enum class PortType{
-        LocalhostPort,
+    enum class PortType
+    {
+        None,
         GsmMqttPort,
         LoraPort,
         SBDPort,
         SerialPort,
     };
 
-    explicit IPort(PortType type) : type(type){
+    explicit IPort(PortType type) : type(type)
+    {
     }
 
-    [[nodiscard]] PortType getType() const{
+    [[nodiscard]] PortType getType() const
+    {
         return type;
     }
 
-    [[nodiscard]] static std::string portTypeToString(PortType type){
-        switch (type){
+    [[nodiscard]] static std::string portTypeToString(PortType type)
+    {
+        switch (type)
+        {
+        case PortType::None: return "None";
         case PortType::LoraPort: return "LoraPort";
         case PortType::SBDPort: return "SBDPort";
         case PortType::SerialPort: return "SerialPort";
@@ -38,7 +45,7 @@ public:
 public:
     virtual void init() = 0;
 
-    virtual void send(const std::vector<uint8_t>& data) = 0; // Cambiado para aceptar datos crudos
+    virtual bool send(const std::vector<uint8_t>& data) = 0; // Cambiado para aceptar datos crudos
     virtual bool available() = 0;
 
     virtual std::vector<std::vector<uint8_t>> read() = 0; // Devuelve lista de vectores de bytes

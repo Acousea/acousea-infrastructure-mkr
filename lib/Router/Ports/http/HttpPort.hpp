@@ -14,7 +14,7 @@ public:
                       int pollMax = 1);
 
     void init() override;
-    void send(const std::vector<uint8_t>& data) override;     // MO -> /enqueue_mo
+    bool send(const std::vector<uint8_t>& data) override;     // MO -> /enqueue_mo
     bool available() override;                                 // intenta poll si cola vacía
     std::vector<std::vector<uint8_t>> read() override;         // drena cola (poll si vacío)
 

@@ -4,8 +4,9 @@
 
 #include "Router.h"
 #include "nodeDevice.pb.h"
-#include <map>
+
 #include <optional>
+#include <unordered_map>
 
 /**
  * @brief Proporciona una interfaz genérica para solicitar y enviar configuraciones
@@ -14,22 +15,38 @@
 class ModuleProxy
 {
 public:
+    // ===================== Alias for devices associated with prots =====================
+    enum class DeviceAlias
+    {
+        ICListen,
+        VR2C
+    };
+
+    static constexpr const char* toString(DeviceAlias alias) noexcept;
+
+    // ============================================================
+    // Constructors
+    // ============================================================
     explicit ModuleProxy(Router& router);
 
-    // ===================== Envío / Solicitud =====================
-    void requestModule(acousea_ModuleCode code) const;
+    ModuleProxy(Router& router, const std::unordered_map<DeviceAlias, IPort::PortType>& devicePortMap);
 
-    template <typename ModuleT>
-    void sendModule(acousea_ModuleCode code, const ModuleT& module) const;
+    // ===================== Send / Receive =====================
+    bool requestModule(acousea_ModuleCode code, DeviceAlias alias) const;
+
+    bool sendModule(acousea_ModuleCode code, const acousea_ModuleWrapper& module, DeviceAlias alias) const;
+
 
     // ===================== Caché =====================
     class CachedValue
     {
     public:
         CachedValue() = default;
-        explicit CachedValue(const acousea_ModuleWrapper& v, bool fresh = true)
-            : value(v), hasValue(true), isFresh(fresh)
-        {}
+
+        explicit CachedValue(const acousea_ModuleWrapper& v, bool hasValue = true, bool fresh = true)
+            : value(v), hasValue(hasValue), isFresh(fresh)
+        {
+        }
 
         void store(const acousea_ModuleWrapper& v)
         {
@@ -38,6 +55,11 @@ public:
         }
 
         void invalidate() { isFresh = false; }
+
+        static CachedValue empty()
+        {
+            return {}; // usa el constructor por defecto
+        }
 
         [[nodiscard]] bool valid() const { return hasValue; }
         [[nodiscard]] bool fresh() const { return hasValue && isFresh; }
@@ -54,7 +76,8 @@ public:
     {
     public:
         void store(acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper);
-        std::optional<acousea_ModuleWrapper> get(acousea_ModuleCode code) const;
+        CachedValue get(acousea_ModuleCode code) const;
+        std::optional<acousea_ModuleWrapper> getIfFresh(acousea_ModuleCode code) const;
         void invalidate(acousea_ModuleCode code) const;
         void invalidateAll() const;
         bool fresh(acousea_ModuleCode code) const;
@@ -70,12 +93,20 @@ private:
     Router& router;
     ModuleCache cache;
 
+    // ===================== Mapeo alias -> puerto =====================
+    const std::unordered_map<DeviceAlias, IPort::PortType> devicePortMap{
+        {DeviceAlias::ICListen, IPort::PortType::SerialPort},
+        {DeviceAlias::VR2C, IPort::PortType::SerialPort}
+    };
+
+    std::optional<IPort::PortType> resolvePort(DeviceAlias alias) const;
+
+
+    // ===================== Construcción de paquetes =====================
     static acousea_CommunicationPacket buildRequestPacket(acousea_ModuleCode code);
 
-    template <typename ModuleT>
-    static acousea_CommunicationPacket buildSetPacket(acousea_ModuleCode code, const ModuleT& module);
+    static acousea_CommunicationPacket buildSetPacket(acousea_ModuleCode code, const acousea_ModuleWrapper& module);
 };
-
 
 
 #endif //ACOUSEA_INFRASTRUCTURE_MKR_MODULEPROXY_HPP

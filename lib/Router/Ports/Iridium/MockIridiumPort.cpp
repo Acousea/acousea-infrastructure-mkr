@@ -9,8 +9,9 @@ void MockIridiumPort::init() {
     Logger::logInfo("MockIridiumPort: Iridium modem initialized");
 }
 
-void MockIridiumPort::send(const std::vector<uint8_t> &data) {
+bool MockIridiumPort::send(const std::vector<uint8_t>& data) {
     Logger::logInfo("MockIridiumPort: Sending packet... " + Logger::vectorToHexString(data));
+    return true;
 }
 
 bool MockIridiumPort::available() {

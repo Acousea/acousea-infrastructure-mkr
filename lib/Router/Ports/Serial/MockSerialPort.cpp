@@ -13,8 +13,9 @@ bool MockSerialPort::available(){
     return false;
 }
 
-void MockSerialPort::send(const std::vector<uint8_t>& data){
+bool MockSerialPort::send(const std::vector<uint8_t>& data){
     Logger::logInfo("MOCKSerialPort::send() -> " + Logger::vectorToHexString(data));
+    return true;
 }
 
 std::vector<std::vector<uint8_t>> MockSerialPort::read(){

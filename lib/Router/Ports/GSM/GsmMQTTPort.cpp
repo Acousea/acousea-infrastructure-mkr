@@ -126,9 +126,9 @@ void GsmMQTTPort::init(){
 }
 
 
-void GsmMQTTPort::send(const std::vector<uint8_t>& data){
+bool GsmMQTTPort::send(const std::vector<uint8_t>& data){
     const std::string topic = config.getOutputTopic();
-    mqttPublishToTopic(data, topic);
+    return mqttPublishToTopic(data, topic);
 }
 
 bool GsmMQTTPort::available(){
