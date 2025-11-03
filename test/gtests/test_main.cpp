@@ -2,6 +2,9 @@
 // uncomment line below if you plan to use GMock
 #include <gmock/gmock.h>
 
+#include <ConsoleDisplay/ConsoleDisplay.hpp>
+#include <Logger/Logger.h>
+
 // TEST(...)
 // TEST_F(...)
 
@@ -30,17 +33,21 @@ void loop()
 }
 
 #else
+
 int main(int argc, char **argv)
 {
-    std::cout << "Running main() from test_main.cpp\n" << std::endl;
+    std::cout << "Running main() from test_main.cpp\n"
+              << std::endl;
     ::testing::InitGoogleTest(&argc, argv);
     // if you plan to use GMock, replace the line above with
     // ::testing::InitGoogleMock(&argc, argv);
 
-    if (RUN_ALL_TESTS())
-        ;
+    static ConsoleDisplay disp;
 
-    // Always return zero-code and allow PlatformIO to parse results
-    return 0;
+    // 🔧 Inicialización global del logger antes de correr todos los tests
+    Logger::initialize(&disp, nullptr, nullptr, "LOG.TXT", Logger::Mode::SerialOnly);
+    Logger::logInfo("Logger initialized for tests");
+
+    return RUN_ALL_TESTS();
 }
 #endif

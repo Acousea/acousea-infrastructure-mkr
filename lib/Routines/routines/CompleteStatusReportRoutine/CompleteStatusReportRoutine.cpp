@@ -1,9 +1,9 @@
 #include "CompleteStatusReportRoutine.h"
 
 #include <algorithm>
+#include "Logger/Logger.h"
 
 CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationRepository& nodeConfigurationRepository,
-
                                                          ModuleProxy& moduleProxy,
                                                          IGPS* gps,
                                                          IBatteryController* battery,
@@ -11,7 +11,6 @@ CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationReposi
 )
     : IRoutine(getClassNameString()),
       nodeConfigurationRepository(nodeConfigurationRepository),
-
       moduleProxy(moduleProxy),
       gps(gps),
       battery(battery),

@@ -3,7 +3,7 @@
 
 
 #include "Router.h"
-#include "nodeDevice.pb.h"
+#include "bindings/nodeDevice.pb.h"
 
 #include <optional>
 #include <unordered_map>
@@ -103,9 +103,11 @@ private:
 
 
     // ===================== Construcción de paquetes =====================
-    static acousea_CommunicationPacket buildRequestPacket(acousea_ModuleCode code);
+    [[nodiscard]] static acousea_CommunicationPacket buildRequestPacket(acousea_ModuleCode code);
 
-    static acousea_CommunicationPacket buildSetPacket(acousea_ModuleCode code, const acousea_ModuleWrapper& module);
+    friend class ModuleProxyTest_SendModuleBuildsValidPacket_Test;
+    [[nodiscard]] static acousea_CommunicationPacket buildSetPacket(acousea_ModuleCode code,
+                                                                    const acousea_ModuleWrapper& module);
 };
 
 

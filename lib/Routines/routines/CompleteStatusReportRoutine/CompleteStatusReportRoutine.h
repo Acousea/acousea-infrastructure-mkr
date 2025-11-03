@@ -7,6 +7,7 @@
 #include "IBatteryController.h"
 #include "RTCController.hpp"
 #include "ModuleProxy/ModuleProxy.hpp"
+#include "bindings/nodeDevice.pb.h"
 
 
 /**

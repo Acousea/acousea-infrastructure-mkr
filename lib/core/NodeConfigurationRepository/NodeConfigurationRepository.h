@@ -1,16 +1,10 @@
-#ifndef REPORTING_PERIOD_MANAGER_H
-#define REPORTING_PERIOD_MANAGER_H
+#ifndef NODE_CONFIGURATION_REPOSITORY_H
+#define NODE_CONFIGURATION_REPOSITORY_H
 
-
-#include <string>
 #include "bindings/nodeDevice.pb.h"
-#include "ErrorHandler/ErrorHandler.h"
 #include "StorageManager/StorageManager.hpp"
-#include "Logger/Logger.h"
 #include "Result.h"
-#include <pb_encode.h>
-#include <pb_decode.h>
-
+#include <string>
 #include "ClassName.h"
 
 
@@ -39,6 +33,12 @@ private:
 private:
     StorageManager& storageManager;
     inline static const char* configFilePath = "nodeconf"; // MAX 8 chars for 8.3 filenames
+
+#ifdef UNIT_TESTING
+private:
+    friend class TestableNodeConfigurationRepository;
+
+#endif
 };
 
-#endif // REPORTING_PERIOD_MANAGER_H
+#endif // NODE_CONFIGURATION_REPOSITORY_H
