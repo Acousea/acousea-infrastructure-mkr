@@ -40,9 +40,10 @@ bool ModuleProxy::requestModule(const acousea_ModuleCode code, const DeviceAlias
         return false;
     }
 
-    Logger::logInfo("Requesting module " + std::to_string(code) +
-        " through " + IPort::portTypeToString(*portType) +
-        " for alias " + std::string(toString(alias)));
+
+    LOG_CLASS_INFO("Requesting module %d through %s for alias %s", static_cast<int>(code),
+                   IPort::portTypeToCString(*portType), toString(alias)
+    );
 
     return router
            .from(Router::broadcastAddress)
@@ -50,20 +51,19 @@ bool ModuleProxy::requestModule(const acousea_ModuleCode code, const DeviceAlias
            .send(pkt);
 }
 
-bool ModuleProxy::sendModule(const acousea_ModuleCode code, const acousea_ModuleWrapper& module, const DeviceAlias alias) const
+bool ModuleProxy::sendModule(const acousea_ModuleCode code, const acousea_ModuleWrapper& module,
+                             const DeviceAlias alias) const
 {
     const auto pkt = buildSetPacket(code, module);
     const auto portType = resolvePort(alias);
     if (!portType.has_value())
     {
-        Logger::logWarning(
-            "ModuleProxy::sendModule() -> Could not resolve port for alias" + std::string(toString(alias)));
+        LOG_CLASS_WARNING("ModuleProxy::sendModule() -> Could not resolve port for alias %s", toString(alias));
         return false;
     }
 
-    Logger::logInfo("Sending module " + std::to_string(code) +
-        " through " + IPort::portTypeToString(*portType) +
-        " for alias " + std::string(toString(alias)));
+    LOG_CLASS_INFO("::sendModule() -> Sending module %d through %s for alias %s", static_cast<int>(code), IPort::portTypeToCString(*portType), toString(alias)
+    );
 
 
     return router
@@ -77,9 +77,7 @@ std::optional<IPort::PortType> ModuleProxy::resolvePort(const DeviceAlias alias)
     const auto it = devicePortMap.find(alias);
     if (it == devicePortMap.end())
     {
-        Logger::logWarning(
-            "ModuleProxy::resolvePort() -> Node has no port associated with device alias: " + std::string(
-                toString(alias)));
+        LOG_CLASS_WARNING( "ModuleProxy::resolvePort() -> Node has no port associated with device alias: %s", toString(alias));
         return std::nullopt;
     }
     return it->second;
@@ -109,7 +107,6 @@ acousea_CommunicationPacket ModuleProxy::buildRequestPacket(acousea_ModuleCode c
 
 acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode code, const acousea_ModuleWrapper& module)
 {
-
     acousea_CommunicationPacket pkt = acousea_CommunicationPacket_init_default;
     pkt.has_routing = true;
     pkt.routing.sender = Router::broadcastAddress;

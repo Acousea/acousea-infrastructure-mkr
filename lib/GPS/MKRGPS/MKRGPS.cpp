@@ -7,62 +7,71 @@
 #include <Arduino_MKRGPS.h>
 #include "Logger/Logger.h"
 
-bool MKRGPS::init() {
-    Logger::logInfo(getClassNameString() + "Initializing GNSS ...");
+bool MKRGPS::init()
+{
+    LOG_CLASS_INFO("Initializing GNSS ...");
 
-    if (!GPS.begin()) {
-        Logger::logInfo(getClassNameString() + "GNSS initialization failed!");
+    if (!GPS.begin())
+    {
+        LOG_CLASS_INFO("GNSS initialization failed!");
         return false;
     }
 
-    Logger::logInfo(getClassNameString() + "Awaiting first GNSS fix ...");
+    LOG_CLASS_INFO("Awaiting first GNSS fix ...");
 
     unsigned long startMillis = millis();
-    while (!GPS.available() && ((millis() - startMillis) < GNSS_MAX_FIX_TIME_MS)) {
+    while (!GPS.available() && ((millis() - startMillis) < GNSS_MAX_FIX_TIME_MS))
+    {
         delay(500);
     }
     unsigned long endMillis = millis();
 
     char buffer[50];
-    if (endMillis - startMillis >= GNSS_MAX_FIX_TIME_MS) {
-        snprintf(buffer, sizeof(buffer), "ERROR: NO GNSS fix after %lu sec\n", (endMillis - startMillis) / 1000);
-        Logger::logError(getClassNameString() + buffer);
+    if (endMillis - startMillis >= GNSS_MAX_FIX_TIME_MS)
+    {
+        LOG_CLASS_ERROR("ERROR: NO GNSS fix after %lu sec\n", (endMillis - startMillis) / 1000);
         return false;
     }
-    snprintf(buffer, sizeof(buffer), "Fix: %lu sec\n", (endMillis - startMillis) / 1000);
-    Logger::logInfo(getClassNameString() + buffer);
+    LOG_CLASS_INFO("Fix: %lu sec\n", (endMillis - startMillis) / 1000);
     return true;
-
 }
 
-GPSLocation MKRGPS::read() {
+GPSLocation MKRGPS::read()
+{
     unsigned long startMillis = millis();
 
-    while (!GPS.available() && ((millis() - startMillis) < GNSS_WAIT_TIME_MS)) {
+    while (!GPS.available() && ((millis() - startMillis) < GNSS_WAIT_TIME_MS))
+    {
         delay(500);
     }
 
-    if (GPS.available()) {
+    if (GPS.available())
+    {
         latitude = GPS.latitude();
         longitude = GPS.longitude();
         return {latitude, longitude};
-    } else {
-        Logger::logInfo(getClassNameString() + "No GNSS data available");
+    }
+    else
+    {
+        LOG_CLASS_INFO("No GNSS data available");
         // Create a GPSLocation with invalid data (-1)
         return {-1, -1};
     }
 }
 
-unsigned long MKRGPS::getTimestamp() {
+unsigned long MKRGPS::getTimestamp()
+{
     return GPS.getTime();
 }
 
 
-void MKRGPS::wakeup() {
+void MKRGPS::wakeup()
+{
     // Implementar si es necesario
 }
 
-void MKRGPS::calculateTrajectory(float targetLat, float targetLon, float &distance, float &bearing) {
+void MKRGPS::calculateTrajectory(float targetLat, float targetLon, float& distance, float& bearing)
+{
     // Implementación de la fórmula de Haversine
     HaverSine(latitude, longitude, targetLat, targetLon, distance, bearing);
 }

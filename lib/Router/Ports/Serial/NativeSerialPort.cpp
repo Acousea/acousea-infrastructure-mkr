@@ -3,6 +3,8 @@
 #include "NativeSerialPort.h"
 #include <cstring>
 #include <algorithm>
+#include "Logger/Logger.h"
+
 
 void NativeSerialPort::closeIfOpen()
 {
@@ -40,8 +42,7 @@ bool NativeSerialPort::configurePort()
     termios tio{};
     if (tcgetattr(fd, &tio) != 0)
     {
-        Logger::logError(std::string("NativeSerialPort::configurePort() -> tcgetattr failed: ")
-            + std::strerror(errno));
+        LOG_CLASS_ERROR("::configurePort() -> tcgetattr failed: %s", std::strerror(errno));
         return false;
     }
 
@@ -65,21 +66,18 @@ bool NativeSerialPort::configurePort()
     auto speed = toSpeed(baudRate);
     if (!speed)
     {
-        Logger::logError("NativeSerialPort::configurePort() -> Unsupported baud rate: "
-            + std::to_string(baudRate));
+        LOG_CLASS_ERROR("configurePort() -> Unsupported baud rate: %d", baudRate);
         return false;
     }
     if (cfsetispeed(&tio, *speed) != 0 || cfsetospeed(&tio, *speed) != 0)
     {
-        Logger::logError(std::string("NativeSerialPort::configurePort() -> cfset*speed failed: ")
-            + std::strerror(errno));
+        LOG_CLASS_ERROR("::configurePort() -> cfset*speed failed: %s", std::strerror(errno));
         return false;
     }
 
     if (tcsetattr(fd, TCSANOW, &tio) != 0)
     {
-        Logger::logError(std::string("NativeSerialPort::configurePort() -> tcsetattr failed: ")
-            + std::strerror(errno));
+        LOG_CLASS_ERROR("::configurePort() -> tcsetattr failed: %s", std::strerror(errno));
         return false;
     }
 
@@ -95,8 +93,7 @@ void NativeSerialPort::init()
     fd = ::open(devicePath.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd < 0)
     {
-        Logger::logError(std::string("NativeSerialPort::init() -> open(") + devicePath + ") failed: "
-            + std::strerror(errno));
+        LOG_CLASS_ERROR("::init() -> open(%s) failed: %s", devicePath.c_str(), std::strerror(errno));
         return;
     }
     if (!configurePort())
@@ -105,8 +102,7 @@ void NativeSerialPort::init()
         return;
     }
 
-    Logger::logInfo(std::string("NativeSerialPort::init() -> Opened ") + devicePath
-        + " @ " + std::to_string(baudRate) + " baud");
+    LOG_CLASS_ERROR("::init() -> Opened %s @ %d baud", devicePath.c_str(), baudRate);
 }
 
 bool NativeSerialPort::available()
@@ -132,19 +128,21 @@ bool NativeSerialPort::send(const std::vector<uint8_t>& data)
 {
     if (fd < 0)
     {
-        Logger::logError("NativeSerialPort::send() -> port not open");
+        LOG_CLASS_ERROR("NativeSerialPort::send() -> port not open");
         return false;
     }
     if (data.size() > 255)
     {
-        Logger::logError("NativeSerialPort::send() -> packet > 255 bytes");
+        LOG_CLASS_ERROR("NativeSerialPort::send() -> packet > 255 bytes");
         return false;
     }
 
     const uint8_t sof = kSOF;
     const uint8_t len = static_cast<uint8_t>(data.size());
 
-    Logger::logInfo("NativeSerialPort::send() -> " + Logger::vectorToHexString(data));
+    LOG_CLASS_INFO("::send() -> Sending packet: SOF=0x%02X, LEN=%d, DATA=%s", sof, len,
+                   Logger::vectorToHexString(data.data(), data.size()).c_str());
+
 
     // Escribir paquete completo (pequeños buffers; una sola write normalmente basta)
     ssize_t w1 = ::write(fd, &sof, 1);
@@ -153,8 +151,7 @@ bool NativeSerialPort::send(const std::vector<uint8_t>& data)
 
     if (w1 != 1 || w2 != 1 || w3 != static_cast<ssize_t>(data.size()))
     {
-        Logger::logError(std::string("NativeSerialPort::send() -> write failed: ")
-            + std::strerror(errno));
+        LOG_CLASS_ERROR("::send() -> write failed: %s", std::strerror(errno));
         return false;
     }
     return true;
@@ -177,7 +174,7 @@ std::vector<std::vector<uint8_t>> NativeSerialPort::read()
             // Cota de seguridad
             if (rxBuffer.size() > kMaxBuf)
             {
-                Logger::logError("NativeSerialPort::read() -> RX overflow, trimming");
+                LOG_CLASS_ERROR("NativeSerialPort::read() -> RX overflow, trimming");
                 using diff_t = std::vector<uint8_t>::difference_type;
                 rxBuffer.erase(rxBuffer.begin(),
                                rxBuffer.end() - static_cast<diff_t>(kMaxBuf));
@@ -197,8 +194,7 @@ std::vector<std::vector<uint8_t>> NativeSerialPort::read()
                 // no hay más por ahora
                 break;
             }
-            Logger::logError(std::string("NativeSerialPort::read() -> read error: ")
-                + std::strerror(errno));
+            LOG_CLASS_ERROR("::read() -> read error: " "%s", std::strerror(errno));
             break;
         }
     }
@@ -226,7 +222,7 @@ std::vector<std::vector<uint8_t>> NativeSerialPort::read()
         const uint8_t len = rxBuffer[sofPos + 1];
         if (len == 0 || len > 255 || len > MAX_RECEIVED_PACKET_SIZE)
         {
-            Logger::logError("NativeSerialPort::read() -> invalid length: " + std::to_string(len));
+            LOG_CLASS_ERROR("NativeSerialPort::read() -> invalid length: %d", len);
             consume = sofPos + 1; // avanzar 1 y seguir buscando
             continue;
         }

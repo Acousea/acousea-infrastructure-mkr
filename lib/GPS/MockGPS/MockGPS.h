@@ -1,9 +1,11 @@
 #ifndef MOCKGPS_H
 #define MOCKGPS_H
 
+#include "ClassName.h"
 #include "IGPS.h"
 
 class MockGPS final : public IGPS {
+    CLASS_NAME(MockGPS)
 public:
     MockGPS(float startLat, float startLon, float moveRate);
 

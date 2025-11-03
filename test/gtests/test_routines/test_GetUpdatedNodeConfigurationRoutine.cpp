@@ -34,8 +34,8 @@ private:
 class GetUpdatedNodeConfigurationRoutineTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        ErrorHandler::setHandler([](const std::string& msg) {
-            fprintf(stderr, "[TEST_ERROR_HANDLER] %s\n", msg.c_str());
+        ErrorHandler::setHandler([](const char* msg) {
+            fprintf(stderr, "[TEST_ERROR_HANDLER] %s\n", msg);
         });
 
         Logger::initialize(&display, nullptr, nullptr, "LOG.TXT", Logger::Mode::SerialOnly);
@@ -112,7 +112,7 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, ReturnsPendingIfICListenNotFresh)
     auto result = routine.execute(req);
 
     EXPECT_TRUE(result.isPending());
-    EXPECT_NE(result.getError().find("ICListen"), std::string::npos);
+    EXPECT_NE(std::string(result.getError()).find("ICListen"), std::string::npos);
 }
 
 // Caso 3: Falla si el paquete no tiene el body esperado
@@ -133,7 +133,7 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfPacketNotCommandType) {
     auto result = routine.execute(invalidPkt);
 
     EXPECT_TRUE(result.isError());
-    EXPECT_NE(result.getError().find("not of type command"), std::string::npos);
+    EXPECT_NE(std::string(result.getError()).find("not of type command"), std::string::npos);
 }
 
 // Caso 4: Falla si no se pasa ningún paquete
@@ -151,7 +151,7 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfNoPacketProvided) {
     auto result = routine.execute(std::nullopt);
 
     EXPECT_TRUE(result.isError());
-    EXPECT_NE(result.getError().find("No packet provided"), std::string::npos);
+    EXPECT_NE(std::string(result.getError()).find("No packet provided"), std::string::npos);
 }
 
 // Caso 5: Devuelve correctamente la hora del RTC

@@ -5,6 +5,8 @@
 #include <map>
 #include <Ports/IPort.h>
 #include <Result.h>
+
+#include "ClassName.h"
 #include "bindings/nodeDevice.pb.h"
 
 
@@ -13,6 +15,7 @@
  */
 class Router
 {
+    CLASS_NAME(Router)
 public:
     static constexpr uint8_t originAddress = 0;
     static constexpr uint8_t broadcastAddress = 255;

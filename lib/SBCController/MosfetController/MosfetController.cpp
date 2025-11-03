@@ -12,13 +12,13 @@ MosfetController::MosfetController(const int mosfetControlPin)
 void MosfetController::switchOnMOSFET() const
 {
     digitalWrite(mosfetControlPin, HIGH); // LED turns RED
-    Logger::logInfo(getClassNameString() + "MOSFET turned on.");
+    LOG_CLASS_INFO("MOSFET turned on.");
 }
 
 void MosfetController::switchOffMOSFET() const
 {
     digitalWrite(mosfetControlPin, LOW); // LED turns BLUE
-    Logger::logInfo(getClassNameString() + "MOSFET turned off.");
+    LOG_CLASS_INFO("MOSFET turned off.");
 }
 
 bool MosfetController::isMOSFETOn() const

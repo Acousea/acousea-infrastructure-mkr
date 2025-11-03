@@ -4,19 +4,24 @@
 #ifdef ARDUINO
 
 #include <Arduino.h>
+
+#include "ClassName.h"
 #include "Ports/IPort.h"
 #include "Logger/Logger.h"
 
-class SerialPort : public IPort {
+class SerialPort : public IPort
+{
+    CLASS_NAME(SerialPort)
+
 private:
-    Uart *serialPort;
+    Uart* serialPort;
     int baudRate;
     std::vector<uint8_t> rxBuffer;
-    static constexpr uint8_t kSOF = 0x2A;        // Start Of Frame
-    static constexpr size_t  kMaxBuf = 4096;     // cota de seguridad del RX buffer
+    static constexpr uint8_t kSOF = 0x2A; // Start Of Frame
+    static constexpr size_t kMaxBuf = 4096; // cota de seguridad del RX buffer
 
 public:
-    SerialPort(Uart *serialPort, int baudRate);
+    SerialPort(Uart* serialPort, int baudRate);
 
     // Inicialización del puerto serial
     void init() override;
@@ -29,7 +34,6 @@ public:
 
     // Lee datos y construye un paquete
     std::vector<std::vector<uint8_t>> read() override;
-
 };
 
 #endif // ARDUINO

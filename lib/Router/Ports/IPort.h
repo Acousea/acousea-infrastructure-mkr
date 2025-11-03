@@ -29,18 +29,17 @@ public:
         return type;
     }
 
-    [[nodiscard]] static std::string portTypeToString(PortType type)
-    {
-        switch (type)
-        {
-        case PortType::None: return "None";
-        case PortType::LoraPort: return "LoraPort";
-        case PortType::SBDPort: return "SBDPort";
-        case PortType::SerialPort: return "SerialPort";
+    [[nodiscard]] static constexpr const char* portTypeToCString(const PortType type) {
+        switch (type) {
+        case PortType::None:        return "None";
+        case PortType::LoraPort:    return "LoraPort";
+        case PortType::SBDPort:     return "SBDPort";
+        case PortType::SerialPort:  return "SerialPort";
         case PortType::GsmMqttPort: return "GSM-MQTT";
-        default: return "Unknown";
+        default:                    return "Unknown";
         }
     }
+
 
 public:
     virtual void init() = 0;

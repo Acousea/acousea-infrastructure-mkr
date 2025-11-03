@@ -1,10 +1,8 @@
 #ifndef ACOUSEA_LOGGER_H
 #define ACOUSEA_LOGGER_H
 
-#include <string>
+
 #include <ctime>
-#include <vector>
-#include <cstdarg>   // para va_list, va_start, va_end
 #include "StorageManager/StorageManager.hpp"
 #include "RTCController.hpp"
 #include "IDisplay.h"
@@ -21,27 +19,47 @@ public:
         Both
     };
 
+#ifdef LOGGER_HEXSTRING_DYNAMIC
+    struct HexString
+    {
+        char* buffer = nullptr;
+        size_t size = 0;
+        ~HexString() { if (buffer) free(buffer); }
+        [[nodiscard]] const char* c_str() const { return buffer ? buffer : ""; }
+    };
+#else
+    struct HexString
+    {
+        static constexpr size_t MAX_SIZE = 1024;
+        char buffer[MAX_SIZE]{};
+        [[nodiscard]] const char* c_str() const { return buffer; }
+    };
+
+#endif
+
+
     static void initialize(
-        IDisplay* display,
-        StorageManager* sdManager,
-        RTCController* rtc,
-        const char* logFilePath,
-        Mode mode = Mode::SerialOnly);
+        IDisplay* display_,
+        StorageManager* sdManager_,
+        RTCController* rtc_,
+        const char* logFilePath_,
+        Mode mode_ = Mode::SerialOnly);
 
 #ifdef ARDUINO
-    static void logFreeMemory(const std::string& prefix);
+    static void logfFreeMemory(const char* fmt = "", ...) __attribute__((format(printf, 1, 2)));
 #endif
-    static void logInfo(const std::string& infoMessage);
-    static void logfError(const char* fmt, ...);
-    static void logfWarning(const char* fmt, ...);
-    static void logfInfo(const char* fmt, ...);
-    static void logError(const std::string& errorMessage);
-    static void logWarning(const std::string& warningMessage);
+    static void logInfo(const char* message);
+    static void logWarning(const char* message);
+    static void logError(const char* message);
 
-    static void printLog();
+    static void logfInfo(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+    static void logfWarning(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+    static void logfError(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+
     static bool clearLog();
 
-    static std::string vectorToHexString(const std::vector<unsigned char>& data);
+    static void vectorToHexString(const unsigned char* data, size_t length, char* outBuffer, size_t outSize);
+    static HexString vectorToHexString(const unsigned char* data, size_t length);
 
 private:
     static inline IDisplay* display = nullptr;
@@ -52,13 +70,51 @@ private:
     static inline time_t currentTime = 0; // tiempo actual en epoch
 
 
-    static std::string getTimestampString();
+    static void getTimestamp(char* buffer, size_t len);
 
-    static void logToSerial(const std::string& logType, const std::string& message);
-
-    static void logToSDCard(const std::string& logType, const std::string& message);
-
-    static void log(const std::string& logType, const std::string& message);
+    static void logToSerial(const char* logType, const char* message);
+    static void logToSDCard(const char* logType, const char* message);
+    static void log(const char* logType, const char* message);
 };
+
+// ============================================================================
+// Logging convenience macros (safe fallback when CLASS_NAME is missing)
+// ============================================================================
+
+#ifndef ACOUSEA_LOGGER_MACROS
+#define ACOUSEA_LOGGER_MACROS
+
+// ---------- Class-aware logging (uses CLASS_NAME) ----------
+#define LOG_CLASS_INFO(fmt, ...) \
+Logger::logfInfo("%s" fmt, getClassNameCString(), ##__VA_ARGS__)
+
+#define LOG_CLASS_WARNING(fmt, ...) \
+Logger::logfWarning("%s" fmt, getClassNameCString(), ##__VA_ARGS__)
+
+#define LOG_CLASS_ERROR(fmt, ...) \
+Logger::logfError("%s" fmt, getClassNameCString(), ##__VA_ARGS__)
+
+// ---------- Global / free-function logging (no class prefix) ----------
+#define LOG_INFO(fmt, ...) \
+Logger::logfInfo(fmt, ##__VA_ARGS__)
+
+#define LOG_WARNING(fmt, ...) \
+Logger::logfWarning(fmt, ##__VA_ARGS__)
+
+#define LOG_ERROR(fmt, ...) \
+Logger::logfError(fmt, ##__VA_ARGS__)
+
+// ---------- Free memory logging (Arduino-only) ----------
+#ifdef ARDUINO
+#define LOG_FREE_MEMORY(fmt, ...) \
+Logger::logfFreeMemory(fmt, ##__VA_ARGS__)
+#else
+#define LOG_FREE_MEMORY(fmt, ...) \
+((void)0)
+#endif
+
+
+
+#endif // ACOUSEA_LOGGER_MACROS
 
 #endif // ACOUSEA_LOGGER_H

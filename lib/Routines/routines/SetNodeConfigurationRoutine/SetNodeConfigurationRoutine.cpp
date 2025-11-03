@@ -1,12 +1,14 @@
 #include "SetNodeConfigurationRoutine.h"
 
+#include <cinttypes>
+
 #include "Logger/Logger.h"
 
 SetNodeConfigurationRoutine::SetNodeConfigurationRoutine(
     NodeConfigurationRepository& nodeConfigurationRepository,
     ModuleProxy& moduleProxy
 )
-    : IRoutine(getClassNameString()),
+    : IRoutine(getClassNameCString()),
       nodeConfigurationRepository(nodeConfigurationRepository),
       moduleProxy(moduleProxy)
 {
@@ -20,18 +22,16 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
 
     if (!inPacket.has_value())
     {
-        return Result<acousea_CommunicationPacket>::failure(getClassNameString() + ": No packet provided");
+        return RESULT_FAILUREF(acousea_CommunicationPacket, ": No packet provided");
     }
 
     if (inPacket.value().which_body != acousea_CommunicationPacket_command_tag)
     {
-        return Result<acousea_CommunicationPacket>::failure(
-            getClassNameString() + ": Packet is not of type command");
+        return RESULT_FAILUREF(acousea_CommunicationPacket, " Packet is not of type command");
     }
     if (inPacket.value().body.command.which_command != acousea_CommandBody_setConfiguration_tag)
     {
-        return Result<acousea_CommunicationPacket>::failure(
-            getClassNameString() + ": Packet command is not of type setNodeConfiguration");
+        return RESULT_FAILUREF(acousea_CommunicationPacket, " Packet command is not of type setNodeConfiguration");
     }
 
     const auto [modules_count, modules] = inPacket.value().body.command.command.setConfiguration;
@@ -41,7 +41,7 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
         const auto& module = modules[i];
         if (!module.has_value)
         {
-            Logger::logError("Module with key: " + std::to_string(module.key) + " has no value. Skipping.");
+            LOG_CLASS_ERROR("Module with key: %" PRId32 " has no value. Skipping.", module.key);
             continue;
         }
 
@@ -51,7 +51,7 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
             {
                 if (const auto result = setOperationModes(nodeConfig, module); result.isError())
                 {
-                    return Result<acousea_CommunicationPacket>::failure(result.getError());
+                    return RESULT_FAILUREF(acousea_CommunicationPacket, "%s", result.getError());
                 }
                 break;
             }
@@ -59,7 +59,7 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
             {
                 if (const auto result = setReportTypesModule(nodeConfig, module); result.isError())
                 {
-                    return Result<acousea_CommunicationPacket>::failure(result.getError());
+                    return RESULT_FAILUREF(acousea_CommunicationPacket, "%s", result.getError());
                 }
 
                 break;
@@ -70,7 +70,7 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
             {
                 if (const auto result = setReportingPeriods(nodeConfig, module); result.isError())
                 {
-                    return Result<acousea_CommunicationPacket>::failure(result.getError());
+                    return RESULT_FAILUREF(acousea_CommunicationPacket, "%s", result.getError());
                 }
 
                 break;
@@ -83,20 +83,19 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
                 const auto setIcListenConfigResult = setICListenConfiguration(module);
                 if (setIcListenConfigResult.isError())
                 {
-                    return Result<acousea_CommunicationPacket>::failure(setIcListenConfigResult.getError());
+                    return RESULT_FAILUREF(acousea_CommunicationPacket, "%s", setIcListenConfigResult.getError());
                 }
                 if (setIcListenConfigResult.isPending())
                 {
-                    return Result<acousea_CommunicationPacket>::pending(setIcListenConfigResult.getError());
+                    return RESULT_PENDINGF(acousea_CommunicationPacket, "%s", setIcListenConfigResult.getError());
                 }
-                Logger::logInfo(getClassNameString() + "New ICListen configuration sent to device.");
+                LOG_CLASS_ERROR("New ICListen configuration sent to device.");
                 break;
             }
 
         default:
-            return Result<acousea_CommunicationPacket>::failure("Invalid TagType in SetNodeConfigurationPayload. Key=" +
-                std::to_string(module.key)
-            );
+            return RESULT_FAILUREF(acousea_CommunicationPacket,
+                                   "Invalid TagType in SetNodeConfigurationPayload. Key=%" PRId32, module.key);
         }
     }
 
@@ -109,7 +108,7 @@ Result<acousea_CommunicationPacket> SetNodeConfigurationRoutine::execute(
     outPacket.body.response.response.setConfiguration = inPacket.value().body.command.command.setConfiguration;
 
 
-    return Result<acousea_CommunicationPacket>::success(outPacket);
+    return RESULT_SUCCESS(acousea_CommunicationPacket, outPacket);
 }
 
 Result<void> SetNodeConfigurationRoutine::setOperationModes(
@@ -118,14 +117,12 @@ Result<void> SetNodeConfigurationRoutine::setOperationModes(
 {
     if (!moduleEntry.has_value || moduleEntry.value.which_module != acousea_ModuleWrapper_operationModes_tag)
     {
-        const auto errorStr = "OperationModesModule with key: " + std::to_string(moduleEntry.key) +
-            " has no value. Skipping.";
-        Logger::logError(errorStr);
-        return Result<void>::failure(errorStr);
+        return RESULT_VOID_FAILUREF("OperationModesModule with key: %" PRId32 " has no value. Skipping.",
+                                    moduleEntry.key);
     }
     const auto operationModesModule = moduleEntry.value.module.operationModes;
     nodeConfig.operationModesModule = operationModesModule;
-    return Result<void>::success();
+    return RESULT_VOID_SUCCESS();
 }
 
 Result<void> SetNodeConfigurationRoutine::setReportTypesModule(
@@ -133,14 +130,11 @@ Result<void> SetNodeConfigurationRoutine::setReportTypesModule(
 {
     if (!moduleEntry.has_value || moduleEntry.value.which_module != acousea_ModuleWrapper_reportTypes_tag)
     {
-        const auto errorStr = "ReportTypesModule with key: " + std::to_string(moduleEntry.key) +
-            " has no value. Skipping.";
-        Logger::logError(errorStr);
-        return Result<void>::failure(errorStr);
+        return RESULT_VOID_FAILUREF("ReportTypesModule with key: %" PRId32 " has no value. Skipping.", moduleEntry.key);
     }
     const auto reportTypesModule = moduleEntry.value.module.reportTypes;
     nodeConfig.reportTypesModule = reportTypesModule;
-    return Result<void>::success();
+    return RESULT_VOID_SUCCESS();
 }
 
 Result<void> SetNodeConfigurationRoutine::setReportingPeriods(
@@ -149,10 +143,7 @@ Result<void> SetNodeConfigurationRoutine::setReportingPeriods(
 {
     if (!moduleEntry.has_value)
     {
-        const auto errorStr = "ReportingModule with key: " + std::to_string(moduleEntry.key) +
-            " has no value. Skipping.";
-        Logger::logError(errorStr);
-        return Result<void>::failure(errorStr);
+        return RESULT_VOID_FAILUREF("ReportingModule with key: %" PRId32 " has no value. Skipping.", moduleEntry.key);
     }
 
     switch (moduleEntry.value.which_module)
@@ -177,13 +168,11 @@ Result<void> SetNodeConfigurationRoutine::setReportingPeriods(
         }
     default:
         {
-            const auto errorStr = "ReportingModule with key: " + std::to_string(moduleEntry.key) +
-                " has invalid type (NOT LORA NOR IRIDIUM). Skipping.";
-            Logger::logError(errorStr);
-            return Result<void>::failure(errorStr);
+            return RESULT_VOID_FAILUREF("ReportingModule with key: %" PRId32
+                                        " has invalid type (NOT LORA NOR IRIDIUM). Skipping.", moduleEntry.key);
         }
     }
-    return Result<void>::success();
+    return RESULT_VOID_SUCCESS();
 }
 
 Result<void> SetNodeConfigurationRoutine::setICListenConfiguration(
@@ -191,8 +180,7 @@ Result<void> SetNodeConfigurationRoutine::setICListenConfiguration(
 {
     if (!entry.has_value)
     {
-        Logger::logError(getClassNameString() + ": ICListen module entry has no value. Skipping.");
-        return Result<void>::failure("ICListen module entry has no value");
+        return RESULT_VOID_FAILUREF("ICListen module entry has no value.");
     }
 
     // Reenviar directamente el módulo recibido
@@ -205,10 +193,9 @@ Result<void> SetNodeConfigurationRoutine::setICListenConfiguration(
 
     if (!loggingFresh || !streamingFresh)
     {
-        Logger::logInfo(getClassNameString() + ": ICListen configuration not yet fresh.");
-        return Result<void>::pending("ICListen configuration not fresh");
+        return RESULT_VOID_PENDINGF("ICListen configuration not fresh");
     }
 
-    Logger::logInfo(getClassNameString() + ": ICListen configuration updated and fresh.");
-    return Result<void>::success();
+    LOG_CLASS_INFO(": ICListen configuration updated and fresh.");
+    return RESULT_VOID_SUCCESS();
 }

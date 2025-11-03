@@ -15,11 +15,7 @@ class AdafruitDisplay final : public IDisplay
 public:
     void init();
 
-    void print(const std::string& message) override;
-
     void print(const uint8_t* data, size_t length) override;
-
-    void print(const std::vector<uint8_t>& data) override;
 
     void print(const char* message) override;
 

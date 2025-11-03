@@ -1,10 +1,13 @@
 #ifndef MOCK_SERIAL_PORT_H
 #define MOCK_SERIAL_PORT_H
 
+#include "ClassName.h"
 #include "Ports/IPort.h"
 #include "Logger/Logger.h"
 
-class MockSerialPort : public IPort {
+class MockSerialPort : public IPort
+{
+    CLASS_NAME(MockSerialPort)
 
 public:
     MockSerialPort();
@@ -20,7 +23,6 @@ public:
 
     // Lee datos y construye un paquete
     std::vector<std::vector<uint8_t>> read() override;
-
 };
 
 #endif // SERIAL_PORT_H

@@ -65,17 +65,17 @@ public:
     static bool logAndCheckResponse(const int result, const std::string& action, const std::string& name){
         switch (result){
         case 1:
-            Logger::logInfo(getClassNameString() + " -> Removed " + action + ": " + name);
+            LOG_CLASS_INFO("Removed %s: %s", action.c_str(), name.c_str());
             return true;
         case 2:
-            Logger::logError(getClassNameString() + " -> AT command error while removing " + action + ": " + name);
+            LOG_CLASS_ERROR(" -> AT command error while removing %s: %s", action.c_str(), name.c_str());
             return false;
         case 3:
-            Logger::logError(getClassNameString() + " -> No carrier while removing " + action + ": " + name);
+            LOG_CLASS_ERROR(" -> No carrier while removing %s: %s", action.c_str(), name.c_str());
             return false;
         case -1:
         default:
-            Logger::logError(getClassNameString() + " -> Timeout while removing " + action + ": " + name);
+            LOG_CLASS_ERROR(" -> Timeout while removing %s: %s", action.c_str(), name.c_str());
             return false;
         }
     }

@@ -50,9 +50,9 @@ class CompleteStatusReportRoutineTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        ErrorHandler::setHandler([](const std::string& msg)
+        ErrorHandler::setHandler([](const char* msg)
         {
-            fprintf(stderr, "[TEST_ERROR_HANDLER] %s\n", msg.c_str());
+            fprintf(stderr, "[TEST_ERROR_HANDLER] %s\n", msg);
         });
 
         Logger::initialize(&display, nullptr, nullptr, "LOG.TXT", Logger::Mode::SerialOnly);
@@ -134,7 +134,7 @@ TEST_F(CompleteStatusReportRoutineTest, Execute_ReturnsPendingIfICListenNotFresh
     auto result = routine.execute(std::nullopt);
 
     EXPECT_TRUE(result.isPending());
-    EXPECT_NE(result.getError().find("ICListenHF"), std::string::npos);
+    EXPECT_NE(std::string(result.getError()).find("ICListenHF"), std::string::npos);
 }
 
 // --- Caso 3: Falla por ausencia de operationModesModule ---
@@ -156,7 +156,7 @@ TEST_F(CompleteStatusReportRoutineTest, Execute_FailsWithoutOperationModesModule
     auto result = routine.execute(std::nullopt);
 
     EXPECT_TRUE(result.isError());
-    EXPECT_NE(result.getError().find("operation modes"), std::string::npos);
+    EXPECT_NE(std::string(result.getError()).find("operation modes"), std::string::npos);
 }
 
 // --- Caso 4: Falla por ausencia de reportTypesModule ---
@@ -178,7 +178,7 @@ TEST_F(CompleteStatusReportRoutineTest, Execute_FailsWithoutReportTypesModule)
     auto result = routine.execute(std::nullopt);
 
     EXPECT_TRUE(result.isError());
-    EXPECT_NE(result.getError().find("report types"), std::string::npos);
+    EXPECT_NE(std::string(result.getError()).find("report types"), std::string::npos);
 }
 
 // --- Caso 5: ReportType no contiene módulos soportados ---

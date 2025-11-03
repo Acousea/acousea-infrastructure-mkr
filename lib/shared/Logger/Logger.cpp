@@ -1,77 +1,96 @@
 #include "Logger.h"
 
-#include <malloc.h>   // mallinfo
-#include <string.h>
+#include <malloc.h> // mallinfo
+#include <cstdarg>  // para va_list, va_start, va_end
+#include <cstring>
 
 #ifdef ARDUINO
 #include <Arduino.h>
 
-extern "C" char* sbrk(int incr);
+extern "C" char *sbrk(int incr);
 
-int freeMemoryStackVsHeap() {
+int freeMemoryStackVsHeap()
+{
     char top;
-    return &top - reinterpret_cast<char*>(sbrk(0));
+    return &top - reinterpret_cast<char *>(sbrk(0));
 }
 
-void Logger::logFreeMemory(const std::string& prefix) {
+void Logger::logfFreeMemory(const char *fmt, ...)
+{
     struct mallinfo mi = mallinfo();
+    const int freeMem = freeMemoryStackVsHeap();
 
-    int freeMem = freeMemoryStackVsHeap();
-
-    logInfo(prefix +
-        " Free stack/heap gap: " + std::to_string(freeMem) + " bytes, " +
-        "Heap total (arena): " + std::to_string(mi.arena) + " bytes, " +
-        "Heap used: " + std::to_string(mi.uordblks) + " bytes, " +
-        "Heap free (reusable): " + std::to_string(mi.fordblks) + " bytes"
-    );
-}
-#endif
-
-// void Logger::logFreeMemory(const std::string& prefix) {
-//     logInfo(prefix + " Free memory: " + std::to_string(freeMemory()) + " bytes");
-// }
-
-void Logger::initialize(
-    IDisplay* display, StorageManager* sdManager, RTCController* rtc, const char* logFilePath, Mode mode) {
-    Logger::display = display;
-    Logger::storageManager = sdManager;
-    Logger::rtc = rtc;
-    Logger::logFilePath = logFilePath;
-    Logger::mode = mode;
-
-    const bool validPath = (logFilePath && strlen(logFilePath) <= 8);
-
-    const std::string msg = validPath
-        ? ("[Logger] Log file path set to: " + std::string(logFilePath))
-        : "[Logger] Invalid log file path (must follow 8.3 format).";
-
-    if (display) {
-        display->print(msg.c_str());
-    } else {
-#if defined(ARDUINO)
-        Serial.println(msg.c_str());
-#else
-        printf("%s\n", msg.c_str());
-#endif
+    // Formatea prefijo opcional
+    char prefix[128];
+    if (fmt && *fmt)
+    {
+        va_list args;
+        va_start(args, fmt);
+        vsnprintf(prefix, sizeof(prefix), fmt, args);
+        va_end(args);
     }
+    else
+    {
+        prefix[0] = '\0';
+    }
+
+    logfInfo("%s Free stack/heap gap: %d bytes, Heap total: %d bytes, Used: %d, Free reusable: %d",
+             prefix, freeMem, mi.arena, mi.uordblks, mi.fordblks);
+}
+#endif
+
+void Logger::initialize(IDisplay *display_, StorageManager *sdManager_, RTCController *rtc_, const char *logFilePath_,
+                        Mode mode_)
+{
+    Logger::display = display_;
+    Logger::storageManager = sdManager_;
+    Logger::rtc = rtc_;
+    Logger::logFilePath = logFilePath_;
+    Logger::mode = mode_;
+
+    const bool validPath = (logFilePath_ && strlen(logFilePath_) <= 8);
+
+    char msg[64];
+    snprintf(msg, sizeof(msg),
+             validPath ? "[Logger] Log file path: %s" : "[Logger] Invalid path (must follow 8.3 format).",
+             validPath ? logFilePath_ : "");
+
+#if defined(ARDUINO)
+    if (display)
+        display->print(msg);
+    else
+        Serial.println(msg);
+#else
+    if (display)
+        display->print(msg);
+    else
+        printf("%s\n", msg);
+#endif
 }
 
-void Logger::logError(const std::string& errorMessage){
-    display->setColor(IDisplay::Color::RED);
-    log("ERROR", errorMessage);
+void Logger::logError(const char *message)
+{
+    if (display)
+        display->setColor(IDisplay::Color::RED);
+    log("ERROR", message);
 }
 
-void Logger::logWarning(const std::string& warningMessage){
-    display->setColor(IDisplay::Color::ORANGE);
-    log("WARNING", warningMessage);
+void Logger::logWarning(const char *message)
+{
+    if (display)
+        display->setColor(IDisplay::Color::ORANGE);
+    log("WARNING", message);
 }
 
-void Logger::logInfo(const std::string& infoMessage){
-    display->setColor(IDisplay::Color::DEFAULT);
-    log("INFO", infoMessage);
+void Logger::logInfo(const char *message)
+{
+    if (display)
+        display->setColor(IDisplay::Color::DEFAULT);
+    log("INFO", message);
 }
 
-void Logger::logfError(const char* fmt, ...) {
+void Logger::logfError(const char *fmt, ...)
+{
     display->setColor(IDisplay::Color::RED);
 
     char buffer[256]; // ajusta según tu RAM disponible
@@ -83,7 +102,8 @@ void Logger::logfError(const char* fmt, ...) {
     log("ERROR", buffer);
 }
 
-void Logger::logfWarning(const char* fmt, ...) {
+void Logger::logfWarning(const char *fmt, ...)
+{
     display->setColor(IDisplay::Color::ORANGE);
 
     char buffer[256];
@@ -95,7 +115,8 @@ void Logger::logfWarning(const char* fmt, ...) {
     log("WARNING", buffer);
 }
 
-void Logger::logfInfo(const char* fmt, ...) {
+void Logger::logfInfo(const char *fmt, ...)
+{
     display->setColor(IDisplay::Color::DEFAULT);
 
     char buffer[256];
@@ -107,10 +128,10 @@ void Logger::logfInfo(const char* fmt, ...) {
     log("INFO", buffer);
 }
 
-
-
-void Logger::log(const std::string& logType, const std::string& message){
-    switch (mode){
+void Logger::log(const char *logType, const char *message)
+{
+    switch (mode)
+    {
     case Mode::SDCard:
         logToSDCard(logType, message);
         break;
@@ -124,62 +145,99 @@ void Logger::log(const std::string& logType, const std::string& message){
     }
 }
 
-
-void Logger::printLog(){
-    if (mode == Mode::SDCard && storageManager){
-        std::string content = storageManager->readFile(logFilePath);
-        if (content.empty()){
-            display->print("Logger::printLog() -> No logs available.");
-            return;
-        }
-        display->print("Logger::printLog() -> Log Content:");
-        display->print(content.c_str());
-    }
-    else{
-        display->print("Logger::printLog() -> SD card logging not enabled.");
-    }
-}
-
-bool Logger::clearLog(){
-    if (mode == Mode::SDCard && storageManager){
+bool Logger::clearLog()
+{
+    if (mode == Mode::SDCard && storageManager)
+    {
         return storageManager->overwriteFile(logFilePath, "");
     }
     return false;
 }
 
-std::string Logger::vectorToHexString(const std::vector<unsigned char>& data){
-    std::string result = "";
-    for (const auto& byte : data){
-        char buffer[3];
-        sprintf(buffer, "%02X", byte);
-        result += buffer;
-    }
-    return result;
+void Logger::vectorToHexString(const unsigned char *data, const size_t length, char *outBuffer, const size_t outSize)
+{
+    size_t needed = (length * 2) + 1;
+    if (outSize < needed)
+        return;
+    for (size_t i = 0; i < length; ++i)
+        sprintf(outBuffer + i * 2, "%02X", data[i]);
+    outBuffer[length * 2] = '\0';
 }
 
-std::string Logger::getTimestampString(){
-    if (rtc){
-        currentTime = rtc->getEpoch();
-    }
-    else{
-        currentTime = time(nullptr);
-    }
-    char buffer[20];
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", localtime(&currentTime));
-    return std::string(buffer);
+Logger::HexString Logger::vectorToHexString(const unsigned char *data, const size_t length)
+{
+#ifdef LOGGER_HEXSTRING_DYNAMIC
+    HexString hex{};
+    hex.size = (length * 2) + 1;
+    hex.buffer = static_cast<char *>(malloc(hex.size));
+    if (!hex.buffer)
+        return hex;
+    for (size_t i = 0; i < length; ++i)
+        sprintf(hex.buffer + i * 2, "%02X", data[i]);
+    hex.buffer[length * 2] = '\0';
+    return hex;
+#else
+    HexString hex{};
+    constexpr size_t max = HexString::MAX_SIZE;
+    for (size_t i = 0; i < length && (i * 2 + 2) < max; ++i)
+        sprintf(hex.buffer + i * 2, "%02X", data[i]);
+    hex.buffer[(length * 2) < max ? (length * 2) : (max - 1)] = '\0';
+    return hex;
+#endif
 }
 
-void Logger::logToSerial(const std::string& logType, const std::string& message){
-    display->print(("[" + getTimestampString() + "] " + logType + ": " + message).c_str());
-}
+void Logger::getTimestamp(char *buffer, const size_t len)
+{
+    time_t epoch_t = rtc ? static_cast<time_t>(rtc->getEpoch()) : time(nullptr);
 
-void Logger::logToSDCard(const std::string& logType, const std::string& message){
-    if (!storageManager){
-        display->print("Logger::logToSDCard() -> StorageManager not initialized.");
+    const tm *t = localtime(&epoch_t);
+    if (!t) { // Fallback en caso raro de fallo de localtime()        
+        snprintf(buffer, len, "[INVALID TIME]");
         return;
     }
-    const std::string entry = getTimestampString() + "," + logType + "," + message + "\n";
-    if (!storageManager->appendToFile(logFilePath, entry)){
-        display->print("Logger::logToSDCard() -> Failed to append to log file.");
+    snprintf(buffer, len, "%04d-%02d-%02d %02d:%02d:%02d",
+             t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+             t->tm_hour, t->tm_min, t->tm_sec);
+}
+
+void Logger::logToSerial(const char *logType, const char *message)
+{
+    char ts[20];
+    getTimestamp(ts, sizeof(ts));
+
+    char line[300];
+    snprintf(line, sizeof(line) - 1, "[%s] %s: %s", ts, logType, message);
+    line[sizeof(line) - 1] = '\0';
+
+    if (display)
+        display->print(line);
+#if defined(ARDUINO)
+    else
+        Serial.println(line);
+#else
+    else
+        printf("%s\n", line);
+#endif
+}
+
+void Logger::logToSDCard(const char *logType, const char *message)
+{
+    if (!storageManager)
+    {
+        if (display)
+            display->print("Logger::logToSDCard() -> StorageManager not initialized.");
+        return;
+    }
+
+    char ts[20];
+    getTimestamp(ts, sizeof(ts));
+
+    char entry[300];
+    snprintf(entry, sizeof(entry), "%s,%s,%s\n", ts, logType, message);
+
+    if (!storageManager->appendToFile(logFilePath, entry))
+    {
+        if (display)
+            display->print("Logger::logToSDCard() -> Failed to append to log file.");
     }
 }

@@ -8,7 +8,7 @@
 
 bool PMICBatteryController::init() {
     if (!PMIC.begin()) {
-        ErrorHandler::handleError("Failed to initialize PMIC!");
+        ERROR_HANDLE_CLASS("Failed to initialize PMIC!");
         return false;
     }
 
@@ -43,44 +43,45 @@ acousea_BatteryStatus PMICBatteryController::status() {
 
 
 void PMICBatteryController::printStatus() const {
-    Logger::logInfo("Charge status: " + std::string(getChargeStatusMessage(PMIC.chargeStatus())));
-    Logger::logInfo("Battery is connected: " + std::string(PMIC.isBattConnected() ? "Yes" : "No"));
-    Logger::logInfo("Power is good: " + std::string(PMIC.isPowerGood() ? "Yes" : "No"));
-    Logger::logInfo("Charge current (A): " + std::to_string(PMIC.getChargeCurrent()));
-    Logger::logInfo("Charge voltage (V): " + std::to_string(PMIC.getChargeVoltage()));
-    Logger::logInfo("Minimum system voltage (V): " + std::to_string(PMIC.getMinimumSystemVoltage()));
-    Logger::logInfo(
-        "Battery voltage is below minimum system voltage: " + std::string(PMIC.canRunOnBattery() ? "Yes" : "No"));
+    LOG_CLASS_INFO("Charge status: %s", getChargeStatusMessage(PMIC.chargeStatus()));
+    LOG_CLASS_INFO("Battery is connected: %s", PMIC.isBattConnected() ? "Yes" : "No");
+    LOG_CLASS_INFO("Power is good: %s", PMIC.isPowerGood() ? "Yes" : "No");
+    LOG_CLASS_INFO("Charge current (A): %.2f", PMIC.getChargeCurrent());
+    LOG_CLASS_INFO("Charge voltage (V): %.2f", PMIC.getChargeVoltage());
+    LOG_CLASS_INFO("Minimum system voltage (V): %.2f", PMIC.getMinimumSystemVoltage());
+    LOG_CLASS_INFO("Battery voltage is below minimum system voltage: %s",
+                     PMIC.canRunOnBattery() ? "Yes" : "No");
 }
+
 
 void PMICBatteryController::applySettings() {
     if (!PMIC.setInputCurrentLimit(INPUT_CURRENT_LIMIT)) {
         error = true;
-        Logger::logError("PMIC.setInputCurrentLimit() failed!");
+        LOG_CLASS_ERROR("PMIC.setInputCurrentLimit() failed!");
     }
 
     if (!PMIC.setInputVoltageLimit(INPUT_VOLTAGE_LIMIT)) {
         error = true;
-        Logger::logError("PMIC.setInputVoltageLimit() failed!");
+        LOG_CLASS_ERROR("PMIC.setInputVoltageLimit() failed!");
     }
 
     if (!PMIC.setMinimumSystemVoltage(MIN_SYSTEM_VOLTAGE)) {
         error = true;
-        Logger::logError("PMIC.setMinimumSystemVoltage() failed!");
+        LOG_CLASS_ERROR("PMIC.setMinimumSystemVoltage() failed!");
     }
 
     if (!PMIC.setChargeVoltage(CHARGE_VOLTAGE)) {
         error = true;
-        Logger::logError("PMIC.setChargeVoltage() failed!");
+        LOG_CLASS_ERROR("PMIC.setChargeVoltage() failed!");
     }
 
     if (!PMIC.setChargeCurrent(CHARGE_CURRENT)) {
         error = true;
-        Logger::logError("PMIC.setChargeCurrent() failed!");
+        LOG_CLASS_ERROR("PMIC.setChargeCurrent() failed!");
     }
     if (!PMIC.enableCharge()) {
         error = true;
-        Logger::logError("PMIC.enableCharge() failed!");
+        LOG_CLASS_ERROR("PMIC.enableCharge() failed!");
     }
 }
 

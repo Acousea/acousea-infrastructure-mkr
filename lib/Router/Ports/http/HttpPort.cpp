@@ -1,6 +1,5 @@
 #include "HttpPort.hpp"
 #include <Logger/Logger.h>
-
 #if defined(__linux__)
 #include <curl/curl.h>
 #include <cctype>
@@ -38,31 +37,33 @@ void HttpPort::init()
     CURLcode rc = curl_global_init(CURL_GLOBAL_DEFAULT);
     if (rc != CURLE_OK)
     {
-        Logger::logError("HttpPort::init() -> curl_global_init failed");
+        LOG_CLASS_ERROR("HttpPort::init() -> curl_global_init failed");
         return;
     }
     initialized_ = true;
-    Logger::logInfo("HttpPort::init() -> OK (libcurl)");
+    LOG_CLASS_INFO("HttpPort::init() -> OK (libcurl)");
 #else
-    Logger::logError("HttpPort solo soportado en Linux en esta implementación.");
+    LOG_CLASS_ERROR("HttpPort solo soportado en Linux en esta implementación.");
 #endif
 }
 
 bool HttpPort::send(const std::vector<uint8_t>& data)
 {
 #if defined(__linux__)
-    if (!initialized_) {
-        Logger::logError("HttpPort::send() -> not initialized");
+    if (!initialized_)
+    {
+        LOG_CLASS_ERROR("HttpPort::send() -> not initialized");
         return false;
     }
 
     const std::string url = baseUrl_ + "/enqueue_mo";
     const std::string dataHex = bytesToHex(data);
-    Logger::logInfo("HttpPort::send() -> MO hex: " + dataHex);
+    LOG_CLASS_INFO("HttpPort::send() -> MO hex: %s", dataHex.c_str());
 
     CURL* curl = curl_easy_init();
-    if (!curl) {
-        Logger::logError("HttpPort::send() -> curl_easy_init failed");
+    if (!curl)
+    {
+        LOG_CLASS_ERROR("HttpPort::send() -> curl_easy_init failed");
         return false;
     }
 
@@ -71,10 +72,12 @@ bool HttpPort::send(const std::vector<uint8_t>& data)
 
     bool success = false; // para control centralizado del resultado
 
-    do {
+    do
+    {
         imeiEsc = curl_easy_escape(curl, imei_.c_str(), static_cast<int>(imei_.size()));
-        if (!imeiEsc) {
-            Logger::logError("HttpPort::send() -> curl_easy_escape failed");
+        if (!imeiEsc)
+        {
+            LOG_CLASS_ERROR("HttpPort::send() -> curl_easy_escape failed");
             break;
         }
 
@@ -92,23 +95,25 @@ bool HttpPort::send(const std::vector<uint8_t>& data)
         curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, timeoutMs_);
 
         CURLcode rc = curl_easy_perform(curl);
-        if (rc != CURLE_OK) {
-            Logger::logError(std::string("HttpPort::send() -> CURL error: ") + curl_easy_strerror(rc));
+        if (rc != CURLE_OK)
+        {
+            LOG_CLASS_ERROR("HttpPort::send() -> CURL error: %s", curl_easy_strerror(rc));
             break;
         }
 
         long code = 0;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
-        if (code / 100 != 2) {
-            Logger::logError("HttpPort::send() -> HTTP status " + std::to_string(code));
+        if (code / 100 != 2)
+        {
+            LOG_CLASS_ERROR("HttpPort::send() -> HTTP status %d", code);
             break;
         }
 
         // éxito total
-        Logger::logInfo("HttpPort::send() -> HTTP OK (" + std::to_string(code) + ")");
+        LOG_CLASS_INFO("HttpPort::send() -> HTTP OK (%d)", code);
         success = true;
-
-    } while (false);
+    }
+    while (false);
 
     if (imeiEsc) curl_free(imeiEsc);
     if (hdrs) curl_slist_free_all(hdrs);
@@ -118,7 +123,7 @@ bool HttpPort::send(const std::vector<uint8_t>& data)
 
 #else
     (void)data;
-    Logger::logError("HttpPort::send() not supported on this platform");
+    LOG_CLASS_ERROR("HttpPort::send() not supported on this platform");
     return false;
 #endif
 }
@@ -170,7 +175,7 @@ bool HttpPort::fetchOne()
     CURLcode rc = curl_easy_perform(curl);
     if (rc != CURLE_OK)
     {
-        Logger::logError(std::string("HttpPort::fetchOne() -> CURL error: ") + curl_easy_strerror(rc));
+        LOG_CLASS_ERROR("HttpPort::fetchOne() -> CURL error: %s", curl_easy_strerror(rc).c_str());
         curl_easy_cleanup(curl);
         return false;
     }
@@ -181,7 +186,8 @@ bool HttpPort::fetchOne()
 
     if (code / 100 != 2)
     {
-        Logger::logError("HttpPort::fetchOne() -> HTTP status " + std::to_string(code));
+        LOG_CLASS_ERROR("HttpPort::fetchOne() -> HTTP status %d", code);
+
         return false;
     }
 
@@ -209,16 +215,16 @@ bool HttpPort::fetchOne()
     std::vector<uint8_t> bytes;
     if (!hexToBytes(hex, bytes))
     {
-        Logger::logError("HttpPort::fetchOne() -> invalid hex in data_hex");
+        LOG_CLASS_ERROR("HttpPort::fetchOne() -> invalid hex in data_hex");
         return false;
     }
 
     if (receivedRawPackets.size() >= MAX_QUEUE_SIZE)
     {
-        Logger::logInfo("HttpPort::fetchOne(): queue full, dropping oldest");
+        LOG_CLASS_INFO("HttpPort::fetchOne(): queue full, dropping oldest");
         receivedRawPackets.pop_front();
     }
-    Logger::logInfo("HttpPort::fetchOne() -> RX " + std::to_string(bytes.size()) + " bytes (MT)");
+    LOG_CLASS_INFO("HttpPort::fetchOne() -> RX %zu bytes (MT)", bytes.size());
     receivedRawPackets.push_back(std::move(bytes));
     return true;
 #else

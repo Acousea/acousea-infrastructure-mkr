@@ -2,11 +2,10 @@
 #define CONSOLEDISPLAY_HPP
 #include "IDisplay.h"
 
-class ConsoleDisplay : public IDisplay{
+class ConsoleDisplay : public IDisplay
+{
 public:
     void print(const uint8_t* data, size_t length) override;
-    void print(const std::vector<uint8_t>& data) override;
-    void print(const std::string& message) override;
     void print(const char* message) override;
     void clear() override;
 };

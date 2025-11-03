@@ -1,5 +1,6 @@
 #include "Router.h"
 
+#include <cinttypes>
 #include <Logger/Logger.h>
 #include <pb_encode.h>
 #include "pb_decode.h"
@@ -10,7 +11,7 @@ Result<acousea_CommunicationPacket> Router::decodePacket(const std::vector<uint8
 {
     if (raw.empty())
     {
-        return Result<acousea_CommunicationPacket>::failure("decodePacket: empty input buffer");
+        return RESULT_FAILUREF(acousea_CommunicationPacket, "decodePacket: empty input buffer");
     }
 
     acousea_CommunicationPacket pkt = acousea_CommunicationPacket_init_default;
@@ -18,12 +19,10 @@ Result<acousea_CommunicationPacket> Router::decodePacket(const std::vector<uint8
     pb_istream_t is = pb_istream_from_buffer(raw.data(), raw.size());
     if (!pb_decode(&is, acousea_CommunicationPacket_fields, &pkt))
     {
-        return Result<acousea_CommunicationPacket>::failure(
-            std::string("decodePacket: pb_decode failed: ") + PB_GET_ERROR(&is)
-        );
+        return RESULT_FAILUREF(acousea_CommunicationPacket, "decodePacket: pb_decode failed: %s", PB_GET_ERROR(&is));
     }
 
-    return Result<acousea_CommunicationPacket>::success(pkt);
+    return RESULT_SUCCESS(acousea_CommunicationPacket, pkt);
 }
 
 Result<std::vector<uint8_t>> Router::encodePacket(const acousea_CommunicationPacket& pkt)
@@ -31,22 +30,19 @@ Result<std::vector<uint8_t>> Router::encodePacket(const acousea_CommunicationPac
     pb_ostream_t sizing = PB_OSTREAM_SIZING;
     if (!pb_encode(&sizing, acousea_CommunicationPacket_fields, &pkt))
     {
-        Logger::logError(std::string("Router encodePacket(SIZE) -> ") + PB_GET_ERROR(&sizing));
-        return Result<std::vector<uint8_t>>::failure(
-            std::string("encodePacket (size): pb_encode failed: ") + PB_GET_ERROR(&sizing)
-        );
+        LOG_CLASS_ERROR("encodePacket(SIZE) -> %s", PB_GET_ERROR(&sizing));
+        return RESULT_FAILUREF(std::vector<uint8_t>, "encodePacket (size): pb_encode failed: %s",
+                               PB_GET_ERROR(&sizing));
     }
 
     std::vector<uint8_t> buf(sizing.bytes_written);
     pb_ostream_t os = pb_ostream_from_buffer(buf.data(), buf.size());
     if (!pb_encode(&os, acousea_CommunicationPacket_fields, &pkt))
     {
-        Logger::logError(std::string("Router encodePacket(WRITE) -> ") + PB_GET_ERROR(&os));
-        return Result<std::vector<uint8_t>>::failure(
-            std::string("encodePacket (write): pb_encode failed: ") + PB_GET_ERROR(&os)
-        );
+        LOG_CLASS_ERROR("encodePacket(WRITE) -> %s", PB_GET_ERROR(&os));
+        return RESULT_FAILUREF(std::vector<uint8_t>, "encodePacket (write): pb_encode failed: %s", PB_GET_ERROR(&os));
     }
-    return Result<std::vector<uint8_t>>::success(std::move(buf));
+    return RESULT_SUCCESS(std::vector<uint8_t>, std::move(buf));
 }
 
 
@@ -80,8 +76,7 @@ std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> Router::readP
             continue;
         }
 
-
-        Logger::logInfo("Reading from port " + IPort::portTypeToString(port->getType()));
+        LOG_CLASS_INFO("Reading from port %s", IPort::portTypeToCString(port->getType()));
         std::vector<std::vector<uint8_t>> rawPacketBytes = port->read();
 
 
@@ -90,7 +85,7 @@ std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> Router::readP
             Result<acousea_CommunicationPacket> decodedPacketResult = decodePacket(rawData);
             if (decodedPacketResult.isError())
             {
-                Logger::logError("Router::readPorts() -> decode failed: " + decodedPacketResult.getError());
+                LOG_CLASS_ERROR("Router::readPorts() -> decode failed: %s", decodedPacketResult.getError());
                 continue;
             }
 
@@ -99,7 +94,7 @@ std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> Router::readP
             // Si no hay routing, no podemos decidir destino
             if (!packet.has_routing)
             {
-                Logger::logError("Router::readPorts() -> packet has no routing info. Ignoring packet...");
+                LOG_CLASS_ERROR("Router::readPorts() -> packet has no routing info. Ignoring packet...");
                 continue;
             }
 
@@ -107,17 +102,13 @@ std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> Router::readP
             const auto receiver = static_cast<uint8_t>(packet.routing.receiver);
             if (receiver != localAddress && receiver != broadcastAddress)
             {
-                Logger::logInfo(
-                    "Packet not for this node. This node: " + std::to_string(localAddress) +
-                    " receiver: " + std::to_string(receiver)
-                );
+                LOG_CLASS_INFO("Packet not for this node. This node: %d receiver: %d", localAddress, receiver);
                 continue;
             }
 
             // (Opcional) logging compacto del paquete
-            Logger::logInfo("Router::readPorts() -> packet OK (sender=" +
-                std::to_string(packet.routing.sender) + ", receiver=" +
-                std::to_string(packet.routing.receiver) + ")");
+            LOG_CLASS_INFO("Router::readPorts() -> packet OK (sender=%" PRId32 ", receiver=%" PRId32 ")",
+                           packet.routing.sender, packet.routing.receiver);
 
             receivedPackets[port->getType()].push_back(packet);
         }
@@ -137,7 +128,8 @@ bool Router::sendToPort(IPort::PortType port, const acousea_CommunicationPacket&
             return relayedPort->send(bytesPacketResult.getValueConst());
         }
     }
-    Logger::logError("Router::sendToPort() -> No relayed port found for type " + IPort::portTypeToString(port));
+    LOG_CLASS_ERROR("Router::sendToPort() -> No relayed port found for type %s", IPort::portTypeToCString(port));
+
     return false;
 }
 

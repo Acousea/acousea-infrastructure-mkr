@@ -27,7 +27,7 @@ inline CertType certTypeFromString(const std::string& typeStr){
  * Copies only \n characters once to normalize CRLF to LF and remove duplicate LFs.
 */
 std::string& normalizeOutputCrlfAndQuotationMarks(std::string& input){
-    Logger::logInfo("normalizeCrlf() -> Normalizing input of size: " + std::to_string(input.size()));
+    LOG_INFO("normalizeCrlf() -> Normalizing input of size: %zu", input.size());
 
     size_t writeIndex = 0;
     bool lastWasNewline = false;
@@ -62,7 +62,7 @@ std::vector<std::string> splitByNewlines(const std::string& normalizedCleanInput
     std::string current;
     current.reserve(128); // para evitar muchas realocaciones
 
-    Logger::logInfo("splitByNewlines() -> Cleaned input size: " + std::to_string(normalizedCleanInput.size()));
+    LOG_INFO("splitByNewlines() -> Cleaned input size: %zu", normalizedCleanInput.size());
 
     for (const char c : normalizedCleanInput){
         if (c != '\n'){
@@ -70,17 +70,17 @@ std::vector<std::string> splitByNewlines(const std::string& normalizedCleanInput
             continue;
         }
         lines.push_back(current);
-        Logger::logInfo("splitByNewlines() -> Line: " + current);
+        LOG_INFO("splitByNewlines() -> Line: %s", current.c_str());
         current.clear();
     }
 
     // añadir la última línea si no terminó en '\n'
     if (!current.empty()){
         lines.push_back(current);
-        Logger::logInfo("splitByNewlines() -> Line: " + current);
+        LOG_INFO("splitByNewlines() -> Line: %s", lines.back().c_str());
     }
 
-    Logger::logInfo("splitByNewlines() -> Total lines parsed: " + std::to_string(lines.size()));
+    LOG_INFO("splitByNewlines() -> Total lines parsed: %zu", lines.size());
     return lines;
 }
 
@@ -109,11 +109,12 @@ StoredCert buildStoredCert(const std::string& input){
 
     StoredCert cert{parts[0], parts[1], parts[2], parts[3]};
 
-    Logger::logInfo("buildStoredCert() -> Parsed cert line -"
-        " Type: " + cert.type +
-        ", Name: " + cert.internalName +
-        ", CN: " + cert.commonName +
-        ", Expiration: " + cert.expiration
+    LOG_INFO("buildStoredCert() -> Parsed cert line -"
+        " Type: %s, Name: %s, CN: %s, Expiration: %s",
+        cert.type.c_str(),
+        cert.internalName.c_str(),
+        cert.commonName.c_str(),
+        cert.expiration.c_str()
     );
 
     return cert;
@@ -123,30 +124,32 @@ StoredCert buildStoredCert(const std::string& input){
 bool UBlox201_GSMSSLClient::updateCerts(
     const GSMRootCert* rootCerts, const size_t rootCertsSize, const std::string& testBroker /* = "google.com" */
 ){
-    Logger::logInfo(getClassNameString() + " -> Loading new trusted root CAs...");
+    LOG_CLASS_INFO(" -> Loading new trusted root CAs...");
+    LOG_CLASS_INFO("updateCerts() -> Number of root certs to load: %zu", rootCertsSize);
     this->eraseTrustedRoot(); // Erase the currently existing roots
     this->setUserRoots(rootCerts, rootCertsSize);
     for (size_t i = 0; i < rootCertsSize; i++){
         const GSMRootCert& rootCert = rootCerts[i];
         this->importTrustedRoot(rootCert.data, rootCert.name, rootCert.size);
         this->setTrustedRoot(rootCert.name);
-        Logger::logInfo(getClassNameString() + " -> Trusted root CA added: " + rootCert.name
-        );
+        LOG_CLASS_INFO(" -> Trusted root CA added: %s", rootCert.name);
+
     }
 
-    Logger::logInfo(getClassNameString() + " -> Verifying by connecting to " + testBroker + ":443");
+    LOG_CLASS_INFO(" -> Verifying by connecting to %s:443", testBroker.c_str());
     if (!this->connect(testBroker.c_str(), 443)){
-        Logger::logError(getClassNameString() + "updateCerts()  CERTIFICATES NOT UPDATED. SSL connect() failed");
+        LOG_CLASS_ERROR("updateCerts()  CERTIFICATES NOT UPDATED. SSL connect() failed");
+
         this->stop();
         return false;
     }
-    Logger::logInfo(getClassNameString() + "updateCerts() -> CERTIFICATES UPDATED");
+    LOG_CLASS_INFO("updateCerts() -> CERTIFICATES UPDATED");
     return true;
 }
 
 
 std::vector<StoredCert> UBlox201_GSMSSLClient::listCertificates(CertType type){
-    Logger::logInfo(getClassNameString() + "listCertificates() -> Listing certificates of type: " +
+    LOG_CLASS_INFO("listCertificates() -> Listing certificates of type: %s",
         (type == CertType::All
              ? "All"
              : type == CertType::RootCA
@@ -168,49 +171,44 @@ std::vector<StoredCert> UBlox201_GSMSSLClient::listCertificates(CertType type){
 
     String modemOutput;
     if (MODEM.waitForResponse(5000, &modemOutput) != 1){
-        Logger::logError(getClassNameString() + "listCertificates() -> No response from modem");
+        LOG_CLASS_ERROR("listCertificates() -> No response from modem");
         return {}; // vacío
     }
 
-    Logger::logInfo(
-        getClassNameString() + "listCertificates() -> Modem output length: " + std::to_string(modemOutput.length()));
+    LOG_CLASS_INFO("listCertificates() -> Modem output length: %d", modemOutput.length());
+    // LOG_CLASS_INFO("listCertificates() -> %s", modemOutput.c_str());
 
     std::string response(modemOutput.c_str());
 
-    Logger::logInfo(getClassNameString() + "listCertificates() -> Modem output copied to std::string, length: " +
-        std::to_string(response.length())
+    LOG_CLASS_INFO("listCertificates() -> Modem output copied to std::string, length: %zu",
+        response.size()
     );
 
+
     // FIXME: [WARNING] Do not print the following line in full, it may overflow the log buffer depending on the display
-    Logger::logInfo(getClassNameString() + "listCertificates() -> MODEM Response: " + response);
+    LOG_CLASS_INFO("listCertificates() -> MODEM Response (truncated): %.100s", response.c_str());
 
     // saltar líneas vacías
     if (modemOutput.length() == 0){
-        Logger::logWarning(getClassNameString() + "listCertificates() -> Empty response");
+        LOG_CLASS_WARNING("listCertificates() -> Empty response");
         return {};
     }
 
     const auto normalizedCleanResponse = normalizeOutputCrlfAndQuotationMarks(response);
 
-    Logger::logInfo(getClassNameString() +
-        "listCertificates() -> Cleaned input size: " + std::to_string(normalizedCleanResponse.size())
-    );
+    LOG_CLASS_INFO( "listCertificates() -> Cleaned input size: %zu", normalizedCleanResponse.size());
 
     const std::vector<std::string> certStrLines = splitByNewlines(normalizedCleanResponse);
-    Logger::logInfo(getClassNameString() + "listCertificates() -> Found " + std::to_string(certStrLines.size()) +
-        " certificate lines"
-    );
+    LOG_CLASS_INFO("listCertificates() -> Found ""%zu" " certificate lines", certStrLines.size());
 
     std::vector<StoredCert> certs = {};
     for (const auto& line : certStrLines){
-        Logger::logInfo(getClassNameString() + "listCertificates() -> Line: " + line);
+        LOG_CLASS_INFO("listCertificates() -> Line: %s", line.c_str());
         StoredCert cert = buildStoredCert(line);
         certs.push_back(cert);
     }
 
-    Logger::logInfo(
-        getClassNameString() + "listCertificates() -> Total certificates parsed: " + std::to_string(certs.size()));
-
+    LOG_CLASS_INFO("listCertificates() -> Total certificates parsed: %zu", certs.size());
 
     return certs;
 }
@@ -277,7 +275,7 @@ void UBlox201_GSMSSLClient::importTrustedRoots(const GSMRootCert* certs, size_t 
 void UBlox201_GSMSSLClient::setTrustedRoots(const GSMRootCert* gsm_root_cert, const size_t size){
     for (size_t i = 0; i < size; ++i){
         this->setTrustedRoot(gsm_root_cert[i].name);
-        Logger::logInfo(getClassNameString() + " -> Trusted root set: " + std::string(gsm_root_cert[i].name));
+        LOG_CLASS_INFO(" -> Trusted root set: %s", gsm_root_cert[i].name);
     }
 }
 

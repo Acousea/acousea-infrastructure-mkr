@@ -13,27 +13,25 @@ NodeConfigurationRepository::NodeConfigurationRepository(StorageManager& sdManag
 void NodeConfigurationRepository::init()
 {
     const std::string content = storageManager.readFile(configFilePath);
-    Logger::logInfo(
-        "NodeConfigurationRepository::init() -> Reading configuration from file " + std::string(configFilePath));
+    LOG_CLASS_INFO("::init() -> Reading configuration from file %s", configFilePath);
 
     if (content.empty())
     {
-        Logger::logError(
-            "NodeConfigurationRepository::init() -> No configuration file found. Creating default configuration.");
+        LOG_CLASS_ERROR("::init() -> No configuration file found. Creating default configuration.");
         if (!saveConfiguration(makeDefault()))
         {
-            ErrorHandler::handleError("NodeConfigurationRepository::begin() -> Error saving default configuration.");
+            ERROR_HANDLE_CLASS("NodeConfigurationRepository::begin() -> Error saving default configuration.");
         }
     }
-    Logger::logInfo("NodeConfigurationRepository initialized.");
+    LOG_CLASS_INFO("NodeConfigurationRepository initialized.");
 }
 
 void NodeConfigurationRepository::reset()
 {
-    Logger::logInfo("NodeConfigurationRepository::reset() -> Resetting to default configuration.");
+    LOG_CLASS_INFO("NodeConfigurationRepository::reset() -> Resetting to default configuration.");
     if (!saveConfiguration(makeDefault()))
     {
-        ErrorHandler::handleError("NodeConfigurationRepository::reset() -> Error saving default configuration.");
+        ERROR_HANDLE_CLASS("NodeConfigurationRepository::reset() -> Error saving default configuration.");
     }
 }
 
@@ -42,7 +40,8 @@ void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfi
 {
     std::string line;
     line.reserve(256);
-    line += getClassNameString() + "Node Configuration ### LocalAddress=" + std::to_string(cfg.localAddress);
+    line += std::string(getClassNameCString()) + "Node Configuration ### LocalAddress=" + std::to_string(
+        cfg.localAddress);
 
     if (cfg.has_operationModesModule)
     {
@@ -140,7 +139,7 @@ void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfi
             + " ClientId=" + std::string(cfg.gsmMqttModule.clientId);
     }
 
-    Logger::logInfo(line);
+    LOG_CLASS_INFO("%s", line.c_str());
 }
 
 
@@ -148,14 +147,18 @@ Result<std::vector<uint8_t>> NodeConfigurationRepository::encodeProto(const acou
 {
     pb_ostream_t s1 = PB_OSTREAM_SIZING;
     if (!pb_encode(&s1, acousea_NodeConfiguration_fields, &m))
-        return Result<std::vector<uint8_t>>::failure(PB_GET_ERROR(&s1));
+    {
+        return RESULT_FAILUREF(std::vector<uint8_t>, "encodeProto (size): pb_encode failed: %s", PB_GET_ERROR(&s1));
+    }
 
     std::vector<uint8_t> buf(s1.bytes_written);
     pb_ostream_t s2 = pb_ostream_from_buffer(buf.data(), buf.size());
     if (!pb_encode(&s2, acousea_NodeConfiguration_fields, &m))
-        return Result<std::vector<uint8_t>>::failure(PB_GET_ERROR(&s2));
+    {
+        return RESULT_FAILUREF(std::vector<uint8_t>, "encodeProto (write): pb_encode failed: %s", PB_GET_ERROR(&s2));
+    }
 
-    return Result<std::vector<uint8_t>>::success(std::move(buf));
+    return RESULT_SUCCESS(std::vector<uint8_t>, std::move(buf));
 }
 
 // ------------------------------------------------------------------
@@ -168,10 +171,10 @@ Result<acousea_NodeConfiguration> NodeConfigurationRepository::decodeProto(const
     pb_istream_t is = pb_istream_from_buffer(bytes.data(), bytes.size());
     if (!pb_decode(&is, acousea_NodeConfiguration_fields, &m))
     {
-        return Result<acousea_NodeConfiguration>::failure(PB_GET_ERROR(&is));
+        return RESULT_FAILUREF(acousea_NodeConfiguration, "decodeProto: pb_decode failed: %s", PB_GET_ERROR(&is));
     }
 
-    return Result<acousea_NodeConfiguration>::success(m);
+    return RESULT_SUCCESS(acousea_NodeConfiguration, std::move(m));
 }
 
 
@@ -200,8 +203,7 @@ bool NodeConfigurationRepository::saveConfiguration(const acousea_NodeConfigurat
     auto enc = encodeProto(cfg);
     if (!enc.isSuccess())
     {
-        Logger::logError(
-            "NodeConfigurationRepository::saveConfiguration() -> Error encoding configuration: " + enc.getError());
+        LOG_CLASS_ERROR("NodeConfigurationRepository::saveConfiguration() -> Error encoding configuration: %s", enc.getError());
         return false;
     }
     return storageManager.writeFileBytes(configFilePath, enc.getValue().data(), enc.getValue().size());

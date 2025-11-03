@@ -7,7 +7,7 @@ MockGPS::MockGPS(float startLat, float startLon, float moveRate)
 }
 
 bool MockGPS::init(){
-    Logger::logInfo("MockGPS: GPS initialized");
+    LOG_CLASS_INFO("MockGPS: GPS initialized");
     return true;
 }
 
@@ -41,5 +41,5 @@ void MockGPS::calculateTrajectory(float targetLat, float targetLon, float& dista
 
 void MockGPS::wakeup(){
     // No es necesario implementar para MockGPS
-    Logger::logInfo("MockGPS: Wakeup called (no action taken)");
+    LOG_CLASS_INFO("MockGPS: Wakeup called (no action taken)");
 }

@@ -9,7 +9,7 @@ CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationReposi
                                                          IBatteryController* battery,
                                                          RTCController* rtc
 )
-    : IRoutine(getClassNameString()),
+    : IRoutine(getClassNameCString()),
       nodeConfigurationRepository(nodeConfigurationRepository),
       moduleProxy(moduleProxy),
       gps(gps),
@@ -27,9 +27,8 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
     const auto reportTypeResult = getCurrentReportingConfiguration(nodeConfig);
     if (reportTypeResult.isError())
     {
-        return Result<acousea_CommunicationPacket>::failure(
-            getClassNameString() + "Cannot get current reporting configuration: " + reportTypeResult.getError()
-        );
+        return RESULT_FAILUREF(acousea_CommunicationPacket, "Cannot get current reporting configuration: %s",
+                               reportTypeResult.getError());
     }
     const acousea_ReportType& reportType = reportTypeResult.getValueConst();
 
@@ -46,9 +45,7 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
     }
     moduleIds += "]";
 
-    Logger::logInfo("Building report packet with " +
-        std::to_string(reportType.includedModules_count) +
-        " modules: " + moduleIds);
+    LOG_CLASS_INFO("Building report packet with %d modules: %s", reportType.includedModules_count, moduleIds.c_str());
 
     // --- Fill modules ---
     for (pb_size_t i = 0; i < reportType.includedModules_count; i++)
@@ -88,9 +85,7 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
                 // Si no está fresco → la rutina queda en estado pending
                 if (!optHF)
                 {
-                    return Result<acousea_CommunicationPacket>::pending(
-                        getClassNameString() + ": ICListenHF configuration not fresh"
-                    );
+                    return RESULT_PENDINGF(acousea_CommunicationPacket, ": ICListenHF module data not fresh");
                 }
 
 
@@ -104,8 +99,7 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
                 break;
             }
         default:
-            Logger::logWarning(getClassNameString() + ": Module " + std::to_string(moduleCode) +
-                " in ReportType not supported yet");
+            LOG_CLASS_WARNING(": Module %d in ReportType not supported yet", moduleCode);
             break;
         }
     }
@@ -127,7 +121,7 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
     pkt.which_body = acousea_CommunicationPacket_report_tag;
     pkt.body.report = reportBody;
 
-    return Result<acousea_CommunicationPacket>::success(pkt);
+    return RESULT_SUCCESS(acousea_CommunicationPacket, pkt);
 }
 
 
@@ -137,13 +131,12 @@ Result<acousea_ReportType> CompleteStatusReportRoutine::getCurrentReportingConfi
     // Get the current operation mode
     if (!nodeConfig.has_operationModesModule)
     {
-        return Result<
-            acousea_ReportType>::failure(getClassNameString() + "No operation modes module in configuration.");
+        return RESULT_FAILUREF(acousea_ReportType, "No operation modes module in configuration.");
     }
 
     if (!nodeConfig.has_reportTypesModule)
     {
-        return Result<acousea_ReportType>::failure(getClassNameString() + "No report types module in configuration.");
+        return RESULT_FAILUREF(acousea_ReportType, "No report types module in configuration.");
     }
 
     const auto currentOperationModeId = nodeConfig.operationModesModule.activeModeId;
@@ -158,10 +151,8 @@ Result<acousea_ReportType> CompleteStatusReportRoutine::getCurrentReportingConfi
 
     if (currentOperationModeIt == nodeConfig.operationModesModule.modes + nodeConfig.operationModesModule.modes_count)
     {
-        return Result<acousea_ReportType>::failure(
-            getClassNameString() + "Current operation mode ID " + std::to_string(currentOperationModeId) +
-            " not found in configuration."
-        );
+        return RESULT_FAILUREF(acousea_ReportType, "Current operation mode ID %ld not found in configuration.",
+                               currentOperationModeId);
     }
 
     const auto currentReportTypeId = currentOperationModeIt->reportTypeId;
@@ -178,11 +169,9 @@ Result<acousea_ReportType> CompleteStatusReportRoutine::getCurrentReportingConfi
 
     if (reportType == nodeConfig.reportTypesModule.reportTypes + nodeConfig.reportTypesModule.reportTypes_count)
     {
-        return Result<acousea_ReportType>::failure(
-            getClassNameString() + "Report type ID " + std::to_string(currentReportTypeId) +
-            " not found in configuration."
-        );
+        return RESULT_FAILUREF(acousea_ReportType, "Report type ID %ld not found in configuration.",
+                               currentReportTypeId);
     }
 
-    return Result<acousea_ReportType>::success(*reportType);
+    return RESULT_SUCCESS(acousea_ReportType, *reportType);
 }

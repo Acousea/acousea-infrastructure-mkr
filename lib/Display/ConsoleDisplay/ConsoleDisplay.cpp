@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <cstddef>
 
-static inline void print_hex_line(const uint8_t* data, size_t length)
+static void print_hex_line(const uint8_t* data, size_t length)
 {
     for (size_t i = 0; i < length; ++i)
     {
@@ -23,12 +23,6 @@ void ConsoleDisplay::print(const uint8_t* data, size_t length)
     std::fflush(stdout);
 }
 
-void ConsoleDisplay::print(const std::vector<uint8_t>& data)
-{
-    if (data.empty()) return;
-    print(data.data(), data.size());
-}
-
 void ConsoleDisplay::print(const char* message)
 {
     if (!message) return;
@@ -36,12 +30,6 @@ void ConsoleDisplay::print(const char* message)
     std::printf("%s\n", message);
     std::printf("%s", ColorUtils::getAnsiCode(Color::DEFAULT));
     std::fflush(stdout);
-}
-
-void ConsoleDisplay::print(const std::string& message)
-{
-    if (message.empty()) return;
-    print(message.c_str());
 }
 
 void ConsoleDisplay::clear()

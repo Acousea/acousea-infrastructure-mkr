@@ -25,24 +25,6 @@ void SerialArduinoDisplay::print(const uint8_t *data, size_t length) {
     serialPort->flush();
 }
 
-void SerialArduinoDisplay::print(const std::string &message) {
-    // serialPrintAnsiPrefix(serialPort, activeColor);
-    serialPort->print(message.c_str());
-    // serialPrintAnsiPrefix(serialPort, Color::RESET);
-    serialPort->println();
-    serialPort->flush();
-}
-
-void SerialArduinoDisplay::print(const std::vector<uint8_t> &data) {
-    // serialPrintAnsiPrefix(serialPort, activeColor);
-    for (size_t i = 0; i < data.size(); i++) {
-        serialPort->print(data[i], HEX);
-        serialPort->print(" ");
-    }
-    // serialPrintAnsiPrefix(serialPort, Color::RESET);
-    serialPort->println();
-    serialPort->flush();
-}
 
 void SerialArduinoDisplay::print(const char *message) {
     // serialPrintAnsiPrefix(serialPort, activeColor);

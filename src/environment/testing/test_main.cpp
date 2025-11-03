@@ -1,9 +1,13 @@
 #include "test_main.h"
+
+#include <string>
+
 #include "wiring_private.h"
 // #include "WVariant.h"
 
 
-void test_solar_x_battery_controller() {
+void test_solar_x_battery_controller()
+{
     // Actualiza cálculos internos
     // solarXBatteryController.sync();
 
@@ -25,31 +29,31 @@ void test_solar_x_battery_controller() {
 
     const auto batteryStatus = solarXBatteryController.status();
 
-    Logger::logInfo(
-        "[TEST_SOLARX_BATTERY_CONTROLLER_CC]," +
-        std::to_string(batteryVoltageVolts) + "," +
-        std::to_string(panelVoltageVolts) + "," +
-        std::to_string(batteryCurrentAmps) + "," +
-        std::to_string(panelCurrentAmps) + "," +
-        std::to_string(netPowerWatts) + "," +
-        std::to_string(voltageSOCRnd) + "," +
-        std::to_string(coulombSOCRnd) + "," +
-        std::to_string(combinedSOCRnd) + "," +
-        std::to_string(voltageSOCAcc) + "," +
-        std::to_string(coulombSOCAcc) + "," +
-        std::to_string(combinedSOCAcc) + "," +
-        std::to_string(static_cast<int>(batteryStatus))
-    );
+    LOG_INFO("[TEST_SOLARX_BATTERY_CONTROLLER_CC],%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%.d,%.2f,%.2f,%.2f,%d",
+             batteryVoltageVolts,
+             panelVoltageVolts,
+             batteryCurrentAmps,
+             panelCurrentAmps,
+             netPowerWatts,
+             voltageSOCRnd,
+             coulombSOCRnd,
+             combinedSOCRnd,
+             voltageSOCAcc,
+             coulombSOCAcc,
+             combinedSOCAcc,
+             static_cast<int>(batteryStatus));
 
-    Logger::logFreeMemory("[FREEMEM]");
+
+    LOG_FREE_MEMORY("[FREEMEM]");
 }
 
 
-void test_gsm_initialization() {
+void test_gsm_initialization()
+{
 #ifdef PLATFORM_HAS_GSM
     // ------------------------ Test GSM Connection ------------------------
     // gsmPort.init();
-    Logger::logFreeMemory("[MAIN] After GSM init");
+    LOG_FREE_MEMORY("[MAIN] After GSM init");
     ConsoleSerial.println("Preparing to send packet using GSM...");
     // MyGSMSSLClient myGsmSslClient;
     // myGsmSslClient.updateCerts(GSM_ROOT_CERTS, std::size(GSM_ROOT_CERTS));
@@ -84,28 +88,31 @@ void test_gsm_initialization() {
 #endif
 }
 
-void test_battery_usage() {
+void test_battery_usage()
+{
     // nodeOperationRunner.init();
     // nodeOperationRunner.run();
     const auto percentage = batteryController->voltageSOC_rounded();
     const auto status = batteryController->status();
-    Logger::logInfo(
-        "Battery: " + std::to_string(percentage) + "%, Status: " + std::to_string(
-            static_cast<int>(status))
+    LOG_INFO("[TEST_BATTERY_USAGE] Percentage: %d%%, Status: %d", percentage, static_cast<int>(status)
     );
 }
 
-void test_rockpi_power_controller() {
+void test_rockpi_power_controller()
+{
     ConsoleSerial.println("[Rockpi Power Controller Test]");
     bool is_rockpi_up = piPowerController.isRockPiUp();
     ConsoleSerial.print("[BEGIN] Rockpi is up? ");
     ConsoleSerial.println(is_rockpi_up ? "true" : "false");
 
 
-    if (is_rockpi_up) {
+    if (is_rockpi_up)
+    {
         ConsoleSerial.println("[UP]: Rockpi is Up -> Shutting down");
         piPowerController.commandShutdown();
-    } else {
+    }
+    else
+    {
         ConsoleSerial.println("[DOWN]: Rockpi is Down -> Starting up");
         piPowerController.commandStartup();
     }
@@ -115,15 +122,20 @@ void test_rockpi_power_controller() {
 }
 
 
-void test_gsm_sending_packets() {
+void test_gsm_sending_packets()
+{
     // Try to send a packet
     const auto packets = gsmPort.read();
-    if (packets.empty()) {
+    if (packets.empty())
+    {
         ConsoleSerial.println("No packets received.");
-    } else {
+    }
+    else
+    {
         ConsoleSerial.println("Received packets:");
-        for (const auto &packet: packets) {
-            const auto hexString = Logger::vectorToHexString(packet);
+        for (const auto& packet : packets)
+        {
+            const auto hexString = Logger::vectorToHexString(packet.data(), packet.size());
             ConsoleSerial.println(hexString.c_str());
         }
     }
@@ -135,13 +147,15 @@ void test_gsm_sending_packets() {
     ConsoleSerial.println("Looping...");
 }
 
-void test_sleep_and_wake() {
+void test_sleep_and_wake()
+{
     ConsoleSerial.println("Sleeping for 10 seconds...");
     // systemMonitor.sleepFor(10000);
     ConsoleSerial.println("Woke up!");
 }
 
-void test_setup() {
+void test_setup()
+{
 #ifdef ARDUINO
     ConsoleSerial.begin(9600);
     delay(1000);
@@ -237,8 +251,8 @@ void test_setup() {
     static FunctionTask watchDogTask(5000, &SystemMonitor::reset);
 
     static MethodTask<SystemMonitor> systemMonitorTask(10000, // This must be less than watchdog timeout (10s)
-                                                  &systemMonitor,
-                                                  &SystemMonitor::protectBattery);
+                                                       &systemMonitor,
+                                                       &SystemMonitor::protectBattery);
     static FunctionTask batteryTestTask(
         30000,
         [] { withLedIndicator(test_solar_x_battery_controller); }
@@ -247,17 +261,17 @@ void test_setup() {
     scheduler.addTask(&systemMonitorTask);
     scheduler.addTask(&solarXBatterySyncTask);
     scheduler.addTask(&batteryTestTask);
-
 }
 
 
-void test_loop() {
+void test_loop()
+{
     scheduler.run();
 
     // executeEvery(15000, [] {
-        // withLedIndicator([] {
-            // test_sleep_and_wake();
-        // });
+    // withLedIndicator([] {
+    // test_sleep_and_wake();
+    // });
     // });
 
     // executeEvery(
@@ -288,23 +302,27 @@ void test_loop() {
 #ifdef ARDUINO
 
 #if defined(PLATFORM_HAS_LORA)
-void test_onReceiveWrapper(int packetSize) {
+void test_onReceiveWrapper(int packetSize)
+{
     SerialUSB.println("OnReceiveWrapper Callback");
     realLoraPort.onReceive(packetSize);
 }
 #endif
 
 // Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)
-void test_SERCOM3_Handler() {
+void test_SERCOM3_Handler()
+{
     // mySerial3.IrqHandler();
 }
 
-void test_SERCOM1_Handler() {
+void test_SERCOM1_Handler()
+{
     // SerialUSB.println("INTERRUPT SERCOM0");
     softwareSerialSercom1.IrqHandler();
 }
 
-void test_SERCOM0_Handler() {
+void test_SERCOM0_Handler()
+{
     // SerialUSB.println("INTERRUPT SERCOM0");
     softwareSerialSercom0.IrqHandler();
 }

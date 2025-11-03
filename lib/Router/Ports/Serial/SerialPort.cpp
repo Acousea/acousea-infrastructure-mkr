@@ -14,7 +14,7 @@ void SerialPort::init()
     serialPort->begin(baudRate);
     serialPort->setTimeout(10000); // Set a timeout of 5000ms
     serialPort->flush();
-    Logger::logInfo("SerialPort::init() -> Serial port initialized");
+    LOG_CLASS_INFO("SerialPort::init() -> Serial port initialized");
 }
 
 
@@ -27,11 +27,11 @@ bool SerialPort::send(const std::vector<uint8_t>& data)
 {
     if (data.size() > 255)
     {
-        Logger::logError("SerialPort::send() -> packet > 255 bytes");
+        LOG_CLASS_ERROR("SerialPort::send() -> packet > 255 bytes");
         return false;
     }
     const auto len = static_cast<uint8_t>(data.size());
-    Logger::logInfo("SerialPort::send() -> " + Logger::vectorToHexString(data));
+    LOG_CLASS_INFO("SerialPort::send() -> %s", Logger::vectorToHexString(data.data(), data.size()).c_str());
     serialPort->write(&kSOF, 1);
     serialPort->write(&len, 1);
     serialPort->write(data.data(), data.size());
@@ -53,7 +53,7 @@ std::vector<std::vector<uint8_t>> SerialPort::read()
         // Cota de seguridad: conservar solo los últimos kMaxBuf bytes
         if (rxBuffer.size() > kMaxBuf)
         {
-            Logger::logError("SerialPort::read() -> RX overflow, trimming");
+            LOG_CLASS_ERROR("SerialPort::read() -> RX overflow, trimming");
             using diff_t = std::vector<uint8_t>::difference_type;
             rxBuffer.erase(rxBuffer.begin(), rxBuffer.end() - static_cast<diff_t>(kMaxBuf));
         }
@@ -73,7 +73,7 @@ std::vector<std::vector<uint8_t>> SerialPort::read()
 
         if (sofIt == rxBuffer.end())
         {
-            Logger::logInfo("SerialPort::read() -> No SOF found, clearing buffer");
+            LOG_CLASS_INFO("SerialPort::read() -> No SOF found, clearing buffer");
             break; // no hay SOF -> esperar más datos
         }
 
@@ -87,7 +87,7 @@ std::vector<std::vector<uint8_t>> SerialPort::read()
         if (len == 0 || len > 255 || len > MAX_RECEIVED_PACKET_SIZE)
         {
             // Longitud inválida: avanza 1 byte y reintenta
-            Logger::logError("SerialPort::read() -> invalid length: " + std::to_string(len));
+            LOG_CLASS_ERROR("SerialPort::read() -> invalid length: %d", len);
             consume = sofPos + 1;
             continue;
         }
@@ -95,7 +95,7 @@ std::vector<std::vector<uint8_t>> SerialPort::read()
         // ¿Tenemos el payload completo?
         if (rxBuffer.size() < sofPos + 2 + len)
         {
-            Logger::logInfo("SerialPort::read() -> Incomplete frame, waiting for more data");
+            LOG_CLASS_INFO("SerialPort::read() -> Incomplete frame, waiting for more data");
             break; // frame incompleto
         }
 

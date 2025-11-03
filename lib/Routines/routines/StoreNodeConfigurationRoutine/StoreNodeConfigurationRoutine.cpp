@@ -1,5 +1,7 @@
 #include "StoreNodeConfigurationRoutine.h"
 
+#include <inttypes.h>
+
 #include "Logger/Logger.h"
 
 // Plantilla genérica oculta en este fichero (no exportada)
@@ -15,7 +17,7 @@ StoreNodeConfigurationRoutine::StoreNodeConfigurationRoutine(
     NodeConfigurationRepository& nodeConfigurationRepository,
     ModuleProxy& moduleProxy
 )
-    : IRoutine(getClassNameString()),
+    : IRoutine(getClassNameCString()),
       nodeConfigurationRepository(nodeConfigurationRepository),
       moduleProxy(moduleProxy)
 {
@@ -25,11 +27,15 @@ Result<acousea_CommunicationPacket> StoreNodeConfigurationRoutine::execute(
     const std::optional<acousea_CommunicationPacket>& optPacket)
 {
     if (!optPacket.has_value())
-        return Result<acousea_CommunicationPacket>::failure(getClassNameString() + ": No packet provided");
+    {
+        return RESULT_FAILUREF(acousea_CommunicationPacket, "No packet provided");
+    }
 
     const acousea_CommunicationPacket& packet = optPacket.value();
     if (packet.which_body != acousea_CommunicationPacket_response_tag)
-        return Result<acousea_CommunicationPacket>::failure(getClassNameString() + ": Packet is not a response");
+    {
+        return RESULT_FAILUREF(acousea_CommunicationPacket, "Packet is not a response");
+    }
 
     switch (packet.body.response.which_response)
     {
@@ -44,12 +50,12 @@ Result<acousea_CommunicationPacket> StoreNodeConfigurationRoutine::execute(
         break;
 
     default:
-        return Result<acousea_CommunicationPacket>::failure(
-            getClassNameString() + ": Packet response does not contain configuration modules. Type=" +
-            std::to_string(packet.body.response.which_response));
+        return RESULT_FAILUREF(acousea_CommunicationPacket,
+                               "Packet response does not contain configuration modules. Type=%d",
+                               packet.body.response.which_response);
     }
 
-    return Result<acousea_CommunicationPacket>::success(packet);
+    return RESULT_SUCCESS(acousea_CommunicationPacket, packet);
 }
 
 
@@ -57,8 +63,7 @@ void StoreNodeConfigurationRoutine::handleModule(int32_t key, bool hasValue, con
 {
     if (!hasValue)
     {
-        Logger::logError(
-            getClassNameString() + ": Module with key " + std::to_string(key) + " has no value. Skipping.");
+        LOG_CLASS_ERROR(": Module with key %" PRId32 " has no value. Skipping.", key);
         return;
     }
 
@@ -67,8 +72,7 @@ void StoreNodeConfigurationRoutine::handleModule(int32_t key, bool hasValue, con
     // Almacenar el módulo genéricamente en la caché
     moduleProxy.getCache().store(code, *value);
 
-    Logger::logInfo(getClassNameString() + ": Stored module " + std::to_string(key) + " (" +
-        std::to_string(value->which_module) + ") in cache.");
+    LOG_CLASS_INFO(": Stored module %" PRId32 "(%d) in cache.", key, value->which_module);
 }
 
 template void StoreNodeConfigurationRoutine::processModules(const acousea_SetNodeConfigurationPayload_ModulesEntry*,

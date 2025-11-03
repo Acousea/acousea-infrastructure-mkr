@@ -12,10 +12,12 @@
 #include <sys/ioctl.h>
 
 #include "Ports/IPort.h"
-#include "Logger/Logger.h"
+#include "ClassName.h"
 
 class NativeSerialPort final : public IPort
 {
+    CLASS_NAME(NativeSerialPort)
+
 private:
     std::string devicePath;
     int baudRate;

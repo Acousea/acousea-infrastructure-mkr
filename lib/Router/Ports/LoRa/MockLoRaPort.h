@@ -2,9 +2,11 @@
 #define MOCK_LORA_PORT_H
 
 
+#include "ClassName.h"
 #include "Ports/IPort.h"
 
 class MockLoRaPort : public IPort {
+    CLASS_NAME(MockLoRaPort)
 public:
     MockLoRaPort();
 

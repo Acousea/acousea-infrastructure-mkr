@@ -6,24 +6,23 @@ void SystemMonitor::init(const int timeoutMs)
 {
     if (timeoutMs >= 16000)
     {
-        Logger::logWarning(getClassNameString() + " -> Watchdog timeout too high (" + std::to_string(timeoutMs) +
-            " ms). Setting to maximum allowed (16000 ms)."
-        );
+        LOG_CLASS_WARNING(" -> Watchdog timeout too high (%d ms). Setting to maximum allowed (16000 ms).", timeoutMs);
     }
     this->watchDogTimeoutMs = timeoutMs >= 16000 ? 16000 : timeoutMs;
     Watchdog.enable(watchDogTimeoutMs);
-    Logger::logInfo(getClassNameString() + " -> Watchdog enabled with timeout " +
-        std::to_string(watchDogTimeoutMs) + " ms."
-    );
+
+    LOG_CLASS_INFO(" -> Watchdog enabled with timeout %d ms.", watchDogTimeoutMs);
+
+
     logResetCause();
     // LowPower.attachInterruptWakeup(RTC_ALARM_WAKEUP, rtcWakeup, CHANGE); // Dummy handler for wakeup
     LowPower.attachInterruptWakeup(RTC_ALARM_WAKEUP, []
     {
     }, CHANGE); // Dummy handler for wakeup
-    Logger::logInfo(getClassNameString() + " -> RTC Alarm wakeup interrupt attached.");
+    LOG_CLASS_INFO(" -> RTC Alarm wakeup interrupt attached.");
     if (!batteryController)
     {
-        Logger::logWarning(getClassNameString() + " -> No battery Controller provided");
+        LOG_CLASS_WARNING(" -> No battery Controller provided");
         return;
     }
     protectBattery();
@@ -31,7 +30,7 @@ void SystemMonitor::init(const int timeoutMs)
 
 void SystemMonitor::reset()
 {
-    Logger::logInfo(getClassNameString() + " -> reset()");
+    LOG_CLASS_INFO(" -> reset()");
     Watchdog.reset();
 }
 
@@ -58,7 +57,7 @@ void SystemMonitor::logResetCause()
         break;
     }
 
-    Logger::logWarning(msg);
+    LOG_CLASS_WARNING("%s", msg.c_str());
 }
 
 
@@ -66,8 +65,8 @@ void SystemMonitor::sleepFor(const uint32_t ms) const
 {
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH); // LED ON mientras se ejecuta
-    Logger::logWarning(
-        getClassNameString() + " -> sleeping for " + (ms == 0 ? "indefinite" : std::to_string(ms) + " ms") + "...");
+    const auto warnMsg = " -> sleeping for " + (ms == 0 ? "indefinite" : std::to_string(ms) + " ms") + "...";
+    LOG_CLASS_WARNING("%s", warnMsg.c_str());
     Watchdog.reset();
     Watchdog.disable();
     USBDevice.detach();
@@ -75,8 +74,8 @@ void SystemMonitor::sleepFor(const uint32_t ms) const
     ms == 0 ? LowPower.sleep() : LowPower.sleep(ms); // indefinite sleep
 
     USBDevice.attach();
-    Logger::logInfo(
-        getClassNameString() + " -> woke up from " + (ms == 0 ? "indefinite" : std::to_string(ms) + " ms") + " sleep.");
+    const auto infoMsg = " -> woke up from " + (ms == 0 ? "indefinite" : std::to_string(ms) + " ms") + " sleep.";
+    LOG_CLASS_INFO("%s", infoMsg.c_str());
     Watchdog.enable(watchDogTimeoutMs); // re-enable watchdog on wake-up
     digitalWrite(LED_BUILTIN, LOW); // LED OFF al despertar
 }
@@ -89,16 +88,13 @@ void SystemMonitor::manageRockPiAction(const unsigned long cooldownMs,
 
     if (now - lastActionTime < cooldownMs)
     {
-        Logger::logWarning(
-            getClassNameString() + "manageRockPiAction() -> Cooldown active (" + std::to_string(now - lastActionTime) +
-            "/" + std::to_string(cooldownMs) + " ms)"
-        );
+        LOG_CLASS_WARNING("manageRockPiAction() -> Cooldown active (%lu/%lu ms)", now - lastActionTime, cooldownMs);
         return;
     }
 
     if (!rockpiController)
     {
-        Logger::logError(getClassNameString() + "manageRockPiAction() -> No RockPi controller available.");
+        LOG_CLASS_ERROR("manageRockPiAction() -> No RockPi controller available.");
         return;
     }
 
@@ -111,7 +107,7 @@ void SystemMonitor::protectBattery() const
 {
     if (!batteryController)
     {
-        Logger::logWarning(getClassNameString() + " -> No battery controller provided.");
+        LOG_CLASS_WARNING(" -> No battery controller provided.");
         return;
     }
     const uint8_t soc = batteryController->voltageSOC_rounded();
@@ -146,16 +142,14 @@ void SystemMonitor::protectBattery() const
     {
         if (rule.cmp(soc, rule.threshold))
         {
-            Logger::logInfo(getClassNameString() + std::string(" -> Battery rule triggered (SOC=")
-                + std::to_string(soc) + "%, threshold=" + std::to_string(rule.threshold) + ")");
-
+            LOG_CLASS_INFO(" -> Battery rule triggered (SOC=%d%%, threshold=%d)", soc, rule.threshold);
 
             if (rockpiController && rule.action) manageRockPiAction(rule.actionCooldownMs, rule.action);
             if (rule.sleepMs >= 0) SystemMonitor::sleepFor(rule.sleepMs);
         }
     }
 
-    Logger::logInfo(getClassNameString() + " -> Battery normal (" + std::to_string(soc) + "%).");
+    LOG_CLASS_INFO(" -> Battery normal (SOC=%d%%).", soc);
 }
 
 

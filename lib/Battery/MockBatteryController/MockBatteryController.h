@@ -5,8 +5,11 @@
 #include "IBatteryController.h"
 #include "Logger/Logger.h"
 #include <string>
+#include "ClassName.h"
 
 class MockBatteryController final : public IBatteryController{
+    CLASS_NAME(MockBatteryController)
+
 private:
     uint8_t mockPercentage;
     acousea_BatteryStatus mockStatus;
@@ -17,7 +20,7 @@ public:
     }
 
     bool init() override{
-        Logger::logInfo("MockBatteryController: Initializing battery controller...");
+        LOG_CLASS_INFO("Initializing battery controller...");
         return true; // Always returns true in the mock implementation
     }
 

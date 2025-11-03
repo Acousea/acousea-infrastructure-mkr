@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 
     // 🔧 Inicialización global del logger antes de correr todos los tests
     Logger::initialize(&disp, nullptr, nullptr, "LOG.TXT", Logger::Mode::SerialOnly);
-    Logger::logInfo("Logger initialized for tests");
+    LOG_INFO("Logger initialized for tests");
 
     return RUN_ALL_TESTS();
 }

@@ -2,6 +2,7 @@
 
 #include "AdafruitLCBatteryController.h"
 #include "Adafruit_LC709203F.h"
+#include "Logger/Logger.h"
 
 static Adafruit_LC709203F adafruitLC; // Battery controller
 
@@ -9,24 +10,23 @@ bool AdafruitLCBatteryController::init()
 {
     if (!adafruitLC.begin())
     {
-        SerialUSB.println(F("Could not find Adafruit LC709203F?\nMake sure a battery is plugged in!"));
+        LOG_CLASS_ERROR("Could not find Adafruit LC709203F — make sure a battery is plugged in!");
         return false;
     }
-    SerialUSB.println(F("Found LC709203F"));
-    SerialUSB.print("Version: 0x");
-    SerialUSB.println(adafruitLC.getICversion(), HEX);
+
+    LOG_CLASS_INFO("Found LC709203F");
+    LOG_CLASS_INFO("Version: 0x%X", adafruitLC.getICversion());
 
     adafruitLC.setThermistorB(3950);
-    SerialUSB.print("Thermistor B = ");
-    SerialUSB.println(adafruitLC.getThermistorB());
+    LOG_CLASS_INFO("Thermistor B = %d", adafruitLC.getThermistorB());
 
     // Real battery cell is 2200 mAh
     adafruitLC.setPackSize(LC709203F_APA_2000MAH);
 
     // FIXME: articulate a procedure for servicing this alarm
     adafruitLC.setAlarmVoltage(3.8);
+    LOG_CLASS_WARNING("Alarm voltage set to 3.8V — service procedure not defined");
 
-    // Esperar un segundo antes de verificar el estado
     delay(1000);
 
     return true;

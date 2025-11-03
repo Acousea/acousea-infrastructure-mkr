@@ -19,9 +19,9 @@ protected:
     void SetUp() override
     {
         // Evitar aborts durante los tests
-        ErrorHandler::setHandler([](const std::string& msg)
+        ErrorHandler::setHandler([](const char* msg)
         {
-            fprintf(stderr, "[TEST_ERROR_HANDLER] %s\n", msg.c_str());
+            fprintf(stderr, "[TEST_ERROR_HANDLER] %s\n", msg);
         });
 
         Logger::initialize(&display, nullptr, nullptr, "LOG.TXT", Logger::Mode::SerialOnly);

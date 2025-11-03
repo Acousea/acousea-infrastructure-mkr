@@ -6,7 +6,6 @@
 #include "SparkFun_u-blox_GNSS_Arduino_Library.h"
 
 
-
 static SFE_UBLOX_GNSS myGNSS;
 
 // Definición de los posibles tipos de fix GNSS
@@ -39,7 +38,7 @@ const char* fixTypeToString(GNSSFixType fixType)
 // ---------------------------
 bool UBloxGNSS::config()
 {
-    Logger::logInfo(getClassNameString() + "Configuring GNSS ...");
+    LOG_CLASS_INFO("Configuring GNSS ...");
 
     // Salida solo UBX en I2C (interno a tu micro)
     myGNSS.setI2COutput(COM_TYPE_UBX);
@@ -71,61 +70,46 @@ bool UBloxGNSS::config()
     // Modelo dinámico: PORTABLE es versátil, STATIONARY si es una boya fija
     if (!myGNSS.setDynamicModel(DYN_MODEL_PORTABLE))
     {
-        Logger::logError(getClassNameString() + "Failed to set dynamic model");
+        LOG_CLASS_ERROR("Failed to set dynamic model");
         return false;
     }
 
     // Tasa de actualización (Hz). 1 Hz ahorra energía, 5 Hz es más rápido.
     if (!myGNSS.setNavigationFrequency(1))
     {
-        Logger::logError(getClassNameString() + "Failed to set navigation frequency");
+        LOG_CLASS_ERROR("Failed to set navigation frequency");
         return false;
     }
 
     // Power save mode (si tu módulo lo soporta)
-    if (myGNSS.powerSaveMode())
-    {
-        Logger::logInfo(getClassNameString() + "Power Save Mode enabled");
-    }
-    else
-    {
-        Logger::logError(getClassNameString() + "Power Save Mode not supported / failed");
-    }
-
+    myGNSS.powerSaveMode();
+    LOG_CLASS_INFO("Current Power Save Mode: %s", myGNSS.getPowerSaveMode() ? "ENABLED" : "DISABLED");
     // Guardar config en memoria
     const bool saved = myGNSS.saveConfigSelective(VAL_CFG_SUBSEC_IOPORT) &&
         myGNSS.saveConfigSelective(VAL_CFG_SUBSEC_NAVCONF);
 
-    if (saved)
-    {
-        Logger::logInfo(getClassNameString() + "Configuration saved");
-    }
-    else
-    {
-        Logger::logError(getClassNameString() + "Configuration save failed");
-    }
+    saved ? LOG_CLASS_INFO("Configuration saved") : LOG_CLASS_ERROR("Configuration save failed");
 
     return saved;
 }
 
 bool UBloxGNSS::init()
 {
-    Logger::logInfo(getClassNameString() + "Initializing GNSS ...");
+    LOG_CLASS_INFO("Initializing GNSS ...");
 
     if (myGNSS.begin() == false)
     {
-        Logger::logError(getClassNameString() +
-            "GNSS Failed! => u-blox GNSS not detected at default I2C address. Please check wiring");
+        LOG_CLASS_ERROR("GNSS Failed! => u-blox GNSS not detected at default I2C address. Please check wiring");
         return false;
     }
 
     if (!config())
     {
-        Logger::logError(getClassNameString() + "GNSS configuration failed");
+        LOG_CLASS_ERROR("GNSS configuration failed");
         return false;
     }
-    Logger::logInfo(getClassNameString() + "GNSS initialized");
-    Logger::logInfo(getClassNameString() + "Awaiting first GNSS fix ...");
+    LOG_CLASS_INFO("GNSS initialized");
+    LOG_CLASS_INFO("Awaiting first GNSS fix ...");
 
     bool fixed = false;
     const uint32_t beginFix_ms = millis();
@@ -146,17 +130,12 @@ bool UBloxGNSS::init()
 
     if (!fixed)
     {
-        char buffer[50];
-        snprintf(buffer, sizeof(buffer), "ERROR: NO GNSS fix after %lu sec\n", (millis() - beginFix_ms) / 1000);
-        Logger::logError(getClassNameString() + buffer);
+        LOG_CLASS_ERROR("ERROR: NO GNSS fix after %lu sec\n",
+                        static_cast<unsigned long>((millis() - beginFix_ms) / 1000));
         return false;
     }
-    Logger::logInfo(getClassNameString() + "Fix type: " + fixTypeToString(fixType));
-
-
-    char buffer[50];
-    snprintf(buffer, sizeof(buffer), "GNSS fix took %lu sec\n", (millis() - beginFix_ms) / 1000);
-    Logger::logInfo(getClassNameString() + buffer);
+    LOG_CLASS_INFO("Fix type: %s", fixTypeToString(fixType));
+    LOG_CLASS_INFO("GNSS fix took %lu sec\n", (millis() - beginFix_ms) / 1000);
     return true;
 }
 

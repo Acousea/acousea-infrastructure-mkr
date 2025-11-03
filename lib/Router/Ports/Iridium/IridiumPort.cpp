@@ -48,18 +48,22 @@ void IridiumPort::init()
     // WARNING: FIXME: Must check if its really necessary to call pinPeripheral, and if so, if this call should
     // be done before or after sbd_modem.begin(), most likely after, due to the internal Uart.begin() implementation
     IridiumSerial.begin(SBD_MODEM_BAUDS);
-    Logger::logInfo("IridiumPort::init() -> Initializing Iridium modem...");
+
+    LOG_CLASS_INFO("IridiumPort::init() -> Initializing Iridium modem...");
+
     if (const int err = sbd_modem.begin(); err != ISBD_SUCCESS)
     {
         handleError(err);
     }
     sbd_modem.enableRingAlerts(true); // Documentations says this should go before begin(), but not sure if it works
-    Logger::logInfo("IridiumPort::init() -> Iridium modem initialized");
+    LOG_CLASS_INFO("IridiumPort::init() -> Iridium modem initialized");
 }
 
 bool IridiumPort::send(const std::vector<uint8_t>& data)
 {
-    Logger::logInfo("IridiumPort::send() -> Sending packet... " + Logger::vectorToHexString(data));
+    LOG_CLASS_INFO("IridiumPort::send() -> Sending packet... Data: %s, Size: %zu bytes",
+                   Logger::vectorToHexString(data.data(), data.size()).c_str(), data.size()
+    );
 
     uint8_t rxBuffer[MAX_RECEIVED_PACKET_SIZE];
     size_t rxBufferSize = sizeof(rxBuffer);
@@ -154,17 +158,19 @@ void IridiumPort::handleError(const int err)
         errorMessage += "Unknown failure";
         break;
     }
-    Logger::logError(errorMessage);
+    LOG_CLASS_ERROR("%s", errorMessage.c_str());
 }
 
 void IridiumPort::storeReceivedPacket(const uint8_t* data, size_t length)
 {
     // Print the received data
     const auto packet = std::vector<uint8_t>(data, data + length);
-    Logger::logInfo("IridiumPort::storeReceivedPacket() -> Received data: " + Logger::vectorToHexString(packet));
+    LOG_CLASS_INFO("IridiumPort::storeReceivedPacket() -> Received data: %s",
+                   Logger::vectorToHexString(packet.data(), packet.size()).c_str()
+    );
     if (receivedRawPackets.size() >= MAX_QUEUE_SIZE)
     {
-        Logger::logInfo(
+        LOG_CLASS_INFO(
             "IridiumPort::storeReceivedPacket() -> Received packet queue is full. Dropping the oldest packet.");
         receivedRawPackets.pop_front();
     }
@@ -173,7 +179,7 @@ void IridiumPort::storeReceivedPacket(const uint8_t* data, size_t length)
 
 void IridiumPort::receiveIncomingMessages()
 {
-    Logger::logInfo("IridiumPort::receiveIncomingMessages() -> Checking for incoming messages...");
+    LOG_CLASS_INFO("IridiumPort::receiveIncomingMessages() -> Checking for incoming messages...");
     uint8_t rxBuffer[MAX_RECEIVED_PACKET_SIZE];
     do
     {
@@ -189,7 +195,7 @@ void IridiumPort::receiveIncomingMessages()
         }
         else
         {
-            Logger::logInfo("IridiumPort::receiveIncomingMessages() -> No data read.");
+            LOG_CLASS_INFO("IridiumPort::receiveIncomingMessages() -> No data read.");
         }
     }
     while (sbd_modem.getWaitingMessageCount() > 0);
@@ -200,26 +206,32 @@ void IridiumPort::checkRingAlertsAndWaitingMsgCount()
     const bool ringAlert = sbd_modem.hasRingAsserted();
     const int incomingMessages = sbd_modem.getWaitingMessageCount();
 
-    Logger::logInfo("IridiumPort::checkRingAlerts() -> Ring alert: " + std::to_string(ringAlert) +
-        ", Incoming messages: " + std::to_string(incomingMessages));
+    LOG_CLASS_INFO(
+        "IridiumPort::checkRingAlerts() -> hasRingAsserted(): %s, getWaitingMessageCount(): %d",
+        ringAlert ? "true" : "false",
+        incomingMessages
+    );
 
     if (ringAlert || incomingMessages > 0)
     {
-        Logger::logInfo("IridiumPort::checkRingAlerts() -> Checking for incoming messages.");
+        LOG_CLASS_INFO("IridiumPort::checkRingAlerts() -> Checking for incoming messages.");
         receiveIncomingMessages();
     }
 }
 
 void IridiumPort::checkSignalQuality()
 {
-    Logger::logInfo("IridiumPort::checkSignalQuality() -> Checking signal quality...");
+    LOG_CLASS_INFO("IridiumPort::checkSignalQuality() -> Checking signal quality...");
     int signalQuality = -1;
     if (const int err = sbd_modem.getSignalQuality(signalQuality); err != ISBD_SUCCESS)
     {
         handleError(err);
         return;
     }
-    Logger::logInfo("IridiumPort::checkSignalQuality() -> Signal quality: " + std::to_string(signalQuality));
+    LOG_CLASS_INFO(
+        "IridiumPort::checkSignalQuality() -> Signal quality: %d",
+        signalQuality
+    );
 }
 
 #endif // ARDUINO

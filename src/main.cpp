@@ -8,16 +8,22 @@
 #include "environment/production/prod_main.h"
 #define ENV_SETUP() prod_setup()
 #define ENV_LOOP()  prod_loop()
+#define LOOP_PREFIX_START "[🚀 PROD LOOP START]"
+#define LOOP_PREFIX_END   "[🚀 PROD LOOP END]"
 
 #elif ENVIRONMENT == ENV_DEV
 #include "environment/development/dev_main.h"
 #define ENV_SETUP() dev_setup()
 #define ENV_LOOP()  dev_loop()
+#define LOOP_PREFIX_START "[🛠️ DEV LOOP START]"
+#define LOOP_PREFIX_END   "[🛠️ DEV LOOP END]"
 
 #elif ENVIRONMENT == ENV_TEST
 #include "environment/testing/test_main.h"
 #define ENV_SETUP() test_setup()
 #define ENV_LOOP()  test_loop()
+#define LOOP_PREFIX_START "[🧪 TEST LOOP START]"
+#define LOOP_PREFIX_END   "[🧪 TEST LOOP END]"
 
 #else
 #error "No valid ENVIRONMENT defined. Please define ENVIRONMENT as ENV_PROD, ENV_DEV, or ENV_TEST."
@@ -29,8 +35,9 @@ void setup() {
 }
 
 void loop() {
-
+    LOG_FREE_MEMORY(LOOP_PREFIX_START);
     ENV_LOOP();
+    LOG_FREE_MEMORY(LOOP_PREFIX_END);
 }
 
 

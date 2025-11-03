@@ -1,5 +1,7 @@
 #include "dev_main.h"
 
+#include "../../../lib/shared/ErrorHandler/ErrorHandler.h"
+
 void dev_saveLocalizerConfig(){
     acousea_NodeConfiguration localizerConfig = acousea_NodeConfiguration_init_default;
 
@@ -139,7 +141,7 @@ void dev_setup(){
 
     // Inicializa el administrador de la tarjeta SD
     if (!storageManager->begin()){
-        ErrorHandler::handleError("Failed to initialize SD card.");
+        ERROR_HANDLE("Failed to initialize SD card.");
     }
 
 #if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)

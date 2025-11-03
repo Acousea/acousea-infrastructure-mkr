@@ -2,25 +2,29 @@
 
 #include <Logger/Logger.h>
 
-MockLoRaPort::MockLoRaPort() : IPort(PortType::LoraPort) {}
-
-void MockLoRaPort::init() {
-    // Print through serial monitor
-    Logger::logInfo("MockLoRaPort: Initializing LoRa port...");
+MockLoRaPort::MockLoRaPort() : IPort(PortType::LoraPort)
+{
 }
 
-bool MockLoRaPort::send(const std::vector<uint8_t>& data) {
+void MockLoRaPort::init()
+{
+    // Print through serial monitor
+    LOG_CLASS_INFO("MockLoRaPort: Initializing LoRa port...");
+}
+
+bool MockLoRaPort::send(const std::vector<uint8_t>& data)
+{
     // Print packet through serial monitor for debugging
-    Logger::logInfo("MockLoRaPort: Sending packet... " + Logger::vectorToHexString(data));
+    LOG_CLASS_INFO("MockLoRaPort: Sending packet... %s", Logger::vectorToHexString(data.data(), data.size()).c_str());
     return true;
 }
 
-bool MockLoRaPort::available() {
+bool MockLoRaPort::available()
+{
     return false;
 }
 
-std::vector<std::vector<uint8_t>> MockLoRaPort::read() {
+std::vector<std::vector<uint8_t>> MockLoRaPort::read()
+{
     return std::vector<std::vector<uint8_t>>();
-
-
 }

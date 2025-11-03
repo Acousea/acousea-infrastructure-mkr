@@ -2,9 +2,12 @@
 #define MOCK_IRIDIUM_PORT_H
 
 
+#include "ClassName.h"
 #include "Ports/IPort.h"
 
-class MockIridiumPort : public IPort {
+class MockIridiumPort : public IPort
+{
+    CLASS_NAME(MockIridiumPort)
 
 public:
     MockIridiumPort();

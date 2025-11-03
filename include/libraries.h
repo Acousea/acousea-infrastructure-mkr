@@ -7,7 +7,6 @@
 
 // ------------------------- SHARED LIBRARIES -------------------------
 #include <Result.h>
-#include <CRC/CRCUtils.h>
 #include "Logger/Logger.h"
 #include <ErrorHandler/ErrorHandler.h>
 #include <ClassName.h>

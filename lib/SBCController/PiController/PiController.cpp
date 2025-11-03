@@ -3,7 +3,7 @@
 #include "wait/WaitFor.hpp"
 
 PiController::PiController(const int mosfetControlPin, const int rockPiShutdownPin,
-                                             const int rockPiMonitorPin) :
+                           const int rockPiMonitorPin) :
     rockPiShutdownPin(rockPiShutdownPin), rockPiMonitorPin(rockPiMonitorPin), mosfetController(mosfetControlPin)
 {
     pinMode(rockPiMonitorPin, INPUT_PULLDOWN);
@@ -30,12 +30,12 @@ void PiController::commandStartup() const
 {
     if (isRockPiUp())
     {
-        Logger::logInfo(getClassNameString() + "::commandStartup() -> Rock Pi already on.");
+        LOG_CLASS_INFO("::commandStartup() -> Rock Pi already on.");
         mosfetController.switchOnMOSFET();
         return;
     }
 
-    Logger::logInfo(getClassNameString() + "::commandStartup() -> Power cycling MOSFET to start Rock Pi...");
+    LOG_CLASS_INFO("::commandStartup() -> Power cycling MOSFET to start Rock Pi...");
     mosfetController.switchOffMOSFET();
     waitFor(2000); // asegurar corte total
     mosfetController.switchOnMOSFET();
@@ -45,21 +45,21 @@ void PiController::commandStartup() const
 
     if (!isRockPiUp())
     {
-        Logger::logError(getClassNameString() + "::commandStartup() -> Timeout: Rock Pi did not start.");
+        LOG_CLASS_ERROR("::commandStartup() -> Timeout: Rock Pi did not start.");
         return;
     }
-    Logger::logInfo(getClassNameString() + "::commandStartup() -> Rock Pi is on.");
+    LOG_CLASS_INFO("::commandStartup() -> Rock Pi is on.");
 }
 
 void PiController::commandShutdown() const
 {
     if (!isRockPiUp())
     {
-        Logger::logInfo(getClassNameString() + "::commandShutdown() -> Rock Pi already off.");
+        LOG_CLASS_INFO("::commandShutdown() -> Rock Pi already off.");
         return;
     }
 
-    Logger::logInfo(getClassNameString() + "commandShutdown() -> Sending shutdown signal to Rock Pi...");
+    LOG_CLASS_INFO("commandShutdown() -> Sending shutdown signal to Rock Pi...");
     digitalWrite(rockPiShutdownPin, HIGH);
 
     // Esperar a que se apague
@@ -67,36 +67,30 @@ void PiController::commandShutdown() const
 
     if (isRockPiUp())
     {
-        Logger::logError(
-            getClassNameString() + "commandShutdown() -> Timeout: Rock Pi did not receive shut down signal.");
+        LOG_CLASS_ERROR("commandShutdown() -> Timeout: Rock Pi did not receive shut down signal.");
         return;
     }
-    Logger::logInfo(
-        getClassNameString() +
+    LOG_CLASS_INFO(
         "commandShutdown() -> Rock Pi has received shut down signal. Waiting 60 sec period before cutting MOSFET...");
 
     digitalWrite(rockPiShutdownPin, LOW);
     waitFor(FULL_SHUTDOWN_GRACE_PERIOD, 10000, [&](unsigned long elapsed)
     {
-        Logger::logInfo(
-            getClassNameString() + "commandShutdown() -> Grace period... " + std::to_string(elapsed / 1000) +
-            "s elapsed"
-        );
+        LOG_CLASS_INFO("commandShutdown() -> Grace period... %lus elapsed", elapsed / 1000);
     });
     if (isRockPiUp())
     {
-        Logger::logError(
-            getClassNameString() + "commandShutdown() -> Timeout: Rock Pi did not shut down in grace period.");
+        LOG_CLASS_ERROR("commandShutdown() -> Timeout: Rock Pi did not shut down in grace period.");
         return;
     }
 
-    Logger::logInfo(getClassNameString() + "commandShutdown() -> Rockpi is down. Cutting MOSFET power...");
+    LOG_CLASS_INFO("commandShutdown() -> Rockpi is down. Cutting MOSFET power...");
     mosfetController.switchOffMOSFET();
 }
 
 void PiController::forceRestart() const
 {
-    Logger::logWarning(getClassNameString() + "::forceRestart() -> Forcing power cycle of Rock Pi...");
+    LOG_CLASS_WARNING("::forceRestart() -> Forcing power cycle of Rock Pi...");
     mosfetController.switchOffMOSFET();
     waitFor(2000); // asegurar corte total
     mosfetController.switchOnMOSFET();

@@ -4,6 +4,8 @@
 #ifdef ARDUINO
 
 #include <Arduino.h>
+
+#include "ClassName.h"
 #include "wiring_private.h"
 #include "Ports/IPort.h"
 #include "IridiumSBD.h"
@@ -22,6 +24,7 @@ extern Uart mySerial3;
 extern IridiumSBD sbd_modem;
 
 class IridiumPort : public IPort {
+    CLASS_NAME(IridiumPort)
 
 public:
     IridiumPort();

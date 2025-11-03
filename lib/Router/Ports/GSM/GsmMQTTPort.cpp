@@ -3,22 +3,27 @@
 
 GsmMQTTPort* GsmMQTTPort::instance = nullptr;
 
-unsigned long GsmMQTTPort::getTime(){
+unsigned long GsmMQTTPort::getTime()
+{
     // get the current time from the GSM module
     return instance->gsmAccess.getTime();
 }
 
-void GsmMQTTPort::mqttMessageHandler(int messageSize){
+void GsmMQTTPort::mqttMessageHandler(int messageSize)
+{
     std::vector<uint8_t> packet;
     packet.reserve(messageSize);
 
-    while (instance->mqttClient.available()){
+    while (instance->mqttClient.available())
+    {
         const char c = static_cast<char>(instance->mqttClient.read());
         packet.push_back(static_cast<uint8_t>(c));
     }
 
-    if (!packet.empty()){
-        if (instance->receivedRawPackets.size() >= GsmMQTTPort::MAX_QUEUE_SIZE){
+    if (!packet.empty())
+    {
+        if (instance->receivedRawPackets.size() >= GsmMQTTPort::MAX_QUEUE_SIZE)
+        {
             instance->receivedRawPackets.pop_front();
         }
         instance->receivedRawPackets.push_back(packet);
@@ -27,194 +32,206 @@ void GsmMQTTPort::mqttMessageHandler(int messageSize){
 
 GsmMQTTPort::GsmMQTTPort(const GsmConfig& cfg)
 // : IPort(PortType::GsmPort), config(cfg), sslClient(gsmClient), mqttClient(sslClient){
-    : IPort(PortType::GsmMqttPort), config(cfg), mqttClient(ublox_gsmSslClient){
+    : IPort(PortType::GsmMqttPort), config(cfg), mqttClient(ublox_gsmSslClient)
+{
 }
 
-void GsmMQTTPort::printCertificates(const std::vector<StoredCert>& currentCerts){
-    if (currentCerts.empty()){
-        Logger::logWarning(getClassNameString() + " -> There are no existing certificates.");
+void GsmMQTTPort::printCertificates(const std::vector<StoredCert>& currentCerts)
+{
+    if (currentCerts.empty())
+    {
+        LOG_CLASS_WARNING(" -> There are no existing certificates.");
     }
-    else{
-        Logger::logInfo(
-            getClassNameString() + " -> Found " + std::to_string(currentCerts.size()) + " existing certificates:"
+    else
+    {
+        LOG_CLASS_INFO(" -> Found %d existing certificates:", currentCerts.size());
+    }
+    for (const auto& cert : currentCerts)
+    {
+        LOG_CLASS_WARNING(
+            "Existing Cert - Type: %s, Name: %s, Expiration: %s",
+            cert.type.c_str(),
+            cert.internalName.c_str(),
+            cert.expiration.c_str()
         );
     }
-    for (const auto& cert : currentCerts){
-        Logger::logWarning(
-            getClassNameString() + " -> Existing Cert - Type: " + cert.type +
-            ", Name: " + cert.internalName +
-            ", Expiration: " + cert.expiration);
-    }
 }
 
-void GsmMQTTPort::init(){
-    Logger::logFreeMemory(getClassNameString() + " -> Initializing...");
+void GsmMQTTPort::init()
+{
+#ifdef ARDUINO
+    LOG_FREE_MEMORY("%s -> Initializing...", getClassNameCString());
+#endif
+
 
     instance = this; // Store the active instance
 
-    Logger::logInfo(getClassNameString() + " -> Connecting to GSM network...");
+
+    LOG_CLASS_INFO(" -> Connecting to GSM network...");
     while ((gsmAccess.begin(config.pin) != GSM_READY) ||
-        (gprs.attachGPRS(config.apn, config.user, config.pass) != GPRS_READY)){
-        Logger::logWarning(getClassNameString() + " -> GSM/GPRS not available, retrying...");
+        (gprs.attachGPRS(config.apn, config.user, config.pass) != GPRS_READY))
+    {
+        LOG_CLASS_WARNING(" -> GSM/GPRS not available, retrying...");
         delay(2000);
     }
-    Logger::logInfo(getClassNameString() + " -> GSM/GPRS connected");
+    LOG_CLASS_INFO(" -> GSM/GPRS connected");
 
     // ========= Initialize SSL/TLS ==========
     // ublox_gsmSslClient.setModemDebug();
     // auto result = ublox_gsmSslClient.removeTrustedRootCertificates(reinterpret_cast<const GSMRootCert*>(trust_anchors), trust_anchors_num);
     // if (result){
-    //     Logger::logInfo(getClassNameString() + " -> Default trusted root CAs removed successfully.");
+    //      LOG_CLASS_INFO(" -> Default trusted root CAs removed successfully.");
     // }
     // else{
-    //     Logger::logWarning(getClassNameString() + " -> No default trusted root CAs to remove or error occurred.");
+    //      LOG_CLASS_WARNING(" -> No default trusted root CAs to remove or error occurred.");
     // }
-    Logger::logFreeMemory(getClassNameString() + " -> Pre-loading root CAs...");
+    LOG_FREE_MEMORY("%s -> Pre-loading root CAs...", getClassNameCString());
     ublox_gsmSslClient.setUserRoots(reinterpret_cast<const GSMRootCert*>(trust_anchors), trust_anchors_num);
     // ublox_gsmSslClient.importTrustedRoots(reinterpret_cast<const GSMRootCert*>(trust_anchors), trust_anchors_num);
     // ublox_gsmSslClient.setTrustedRoots(reinterpret_cast<const GSMRootCert*>(trust_anchors), trust_anchors_num);
 
-    Logger::logFreeMemory(getClassNameString() + " -> Pre-Listing current certificates...");
+
+    LOG_FREE_MEMORY("%s -> Pre-Listing current certificates...", getClassNameCString());
     {
         const std::vector<StoredCert> currentCerts = ublox_gsmSslClient.listCertificates(CertType::All);
         GsmMQTTPort::printCertificates(currentCerts);
-        Logger::logFreeMemory(getClassNameString() + " -> Post-Listing current certificates...");
+        LOG_FREE_MEMORY("%s ->  Post-Listing current certificates...", getClassNameCString());
     }
-    Logger::logFreeMemory(getClassNameString() + " -> Post-Bracket current certificates...");
+    LOG_FREE_MEMORY("%s -> Post-Bracket current certificates...", getClassNameCString());
 
 
     // ublox_gsmSslClient.setModemNoDebug();
 
     // --------------------------- TRUST ANCHORS ---------------------------
     // ublox_gsmSslClient.updateCerts(reinterpret_cast<const GSMRootCert*>(trust_anchors), trust_anchors_num);
-    Logger::logInfo(getClassNameString() + " -> Loading device private key...");
+    LOG_CLASS_INFO(" -> Loading device private key...");
     ublox_gsmSslClient.setPrivateKey(private_key_pkcs1_pem, "my_device_key", private_key_pkcs1_pem_len);
 
-    Logger::logInfo(getClassNameString() + " -> Loading device certificate...");
+    LOG_CLASS_INFO(" -> Loading device certificate...");
     ublox_gsmSslClient.setSignedCertificate(certificate_mkr1400_pem, "my_device_cert", certificate_mkr1400_pem_len);
 
-    Logger::logInfo(getClassNameString() + " -> Using device private key for TLS...");
+    LOG_CLASS_INFO(" -> Using device private key for TLS...");
     ublox_gsmSslClient.usePrivateKey("my_device_key");
 
-    Logger::logInfo(getClassNameString() + " -> Using device certificate for TLS...");
+    LOG_CLASS_INFO(" -> Using device certificate for TLS...");
     ublox_gsmSslClient.useSignedCertificate("my_device_cert");
 
     // ublox_gsmSslClient.setModemNoDebug();
 
-    Logger::logInfo(getClassNameString() +
-        " -> Credentials loaded: Certificate 'device_cert', Private Key 'device_key'"
-    );
+    LOG_CLASS_INFO(" -> Credentials loaded: Certificate 'device_cert', Private Key 'device_key'");
 
-    Logger::logFreeMemory(getClassNameString() + " -> Post-initializing GSM SSL client...");
+    LOG_FREE_MEMORY("%s -> Post-initializing GSM SSL client...", getClassNameCString());
+
 
     // ========== Initialize MQTT broker ==========
     mqttClient.onMessage(GsmMQTTPort::mqttMessageHandler);
     mqttClient.setId(config.clientId);
 
-    Logger::logInfo(getClassNameString() + " -> Connecting to MQTT broker...");
+    LOG_CLASS_INFO(" -> Connecting to MQTT broker...");
     while (!mqttClient.connect(config.broker, config.port)
-    ){
-        Logger::logWarning(getClassNameString() + " -> MQTT connection failed, retrying...");
+    )
+    {
+        LOG_CLASS_WARNING(" -> MQTT connection failed, retrying...");
         delay(5000);
     }
-    Logger::logInfo(getClassNameString() + " -> Successfully connected to MQTT broker");
+    LOG_CLASS_INFO(" -> Successfully connected to MQTT broker");
 
     // Automatically subscribe to input topic
     mqttSubscribeToTopic(config.getInputTopic().c_str());
 
-    Logger::logInfo(getClassNameString() + " -> Finished initialization.");
+    LOG_CLASS_INFO(" -> Finished initialization.");
 }
 
 
-bool GsmMQTTPort::send(const std::vector<uint8_t>& data){
+bool GsmMQTTPort::send(const std::vector<uint8_t>& data)
+{
     const std::string topic = config.getOutputTopic();
     return mqttPublishToTopic(data, topic);
 }
 
-bool GsmMQTTPort::available(){
+bool GsmMQTTPort::available()
+{
     return !receivedRawPackets.empty();
 }
 
-std::vector<std::vector<uint8_t>> GsmMQTTPort::read(){
+std::vector<std::vector<uint8_t>> GsmMQTTPort::read()
+{
     mqttLoop();
     std::vector<std::vector<uint8_t>> packets(receivedRawPackets.begin(), receivedRawPackets.end());
     receivedRawPackets.clear();
     return packets;
 }
 
-bool GsmMQTTPort::mqttPublishToTopic(const std::vector<uint8_t>& data, const std::string topic){
-    const std::string prefix = getClassNameString() + " -> ";
-
-    if (!mqttClient.beginMessage(topic.c_str())){
-        Logger::logError(prefix + "Failed to begin MQTT message on topic " + topic);
+bool GsmMQTTPort::mqttPublishToTopic(const std::vector<uint8_t>& data, const std::string topic)
+{
+    if (!mqttClient.beginMessage(topic.c_str()))
+    {
+        LOG_CLASS_ERROR("Failed to begin MQTT message on topic %s", topic.c_str());
         return true;
     }
 
     const size_t written = mqttClient.write(data.data(), data.size());
-    if (written != data.size()){
-        Logger::logWarning(prefix + "Partial write while publishing to " + topic +
-            " (expected " + std::to_string(data.size()) +
-            " bytes, wrote " + std::to_string(written) + ")");
+    if (written != data.size())
+    {
+        LOG_CLASS_WARNING("Partial write while publishing to %s (expected %zu bytes, wrote %zu)",
+                          topic.c_str(), data.size(), written);
     }
 
-    if (!mqttClient.endMessage()){
-        Logger::logError(prefix + "Failed to finalize MQTT message to " + topic +
-            " (only wrote " + std::to_string(written) + " bytes from " +
-            std::to_string(data.size()) + ")");
+    if (!mqttClient.endMessage())
+    {
+        LOG_CLASS_ERROR("Failed to finalize MQTT message on topic %s (only wrote %zu bytes from %zu)",
+                        topic.c_str(), written, data.size());
         return true;
     }
 
-    Logger::logInfo(prefix + "Published " + std::to_string(written) +
-        " bytes to topic " + topic);
+    LOG_CLASS_INFO("Published %zu bytes to topic %s", written, topic.c_str());
     return false;
 }
 
 
-void GsmMQTTPort::mqttSubscribeToTopic(const char* topic){
-    const std::string prefix = getClassNameString() + " -> ";
+void GsmMQTTPort::mqttSubscribeToTopic(const char* topic)
+{
     const int result = mqttClient.subscribe(topic);
 
-    switch (result){
+    switch (result)
+    {
     case 0:
-        Logger::logError(prefix + "Failed to subscribe to topic: " + std::string(topic));
+        LOG_CLASS_ERROR("Failed to subscribe to topic: %s", topic);
         break;
-
     case 1:
-        Logger::logInfo(prefix + "Successfully subscribed to topic " + std::string(topic) + " with QoS 0");
+        LOG_CLASS_INFO("Successfully subscribed to topic %s with QoS 0", topic);
         break;
-
     case 2:
-        Logger::logInfo(prefix + "Successfully subscribed to topic " + std::string(topic) + " with QoS 1");
+        LOG_CLASS_INFO("Successfully subscribed to topic %s with QoS 1", topic);
         break;
-
     case 3:
-        Logger::logInfo(prefix + "Successfully subscribed to topic " + std::string(topic) + " with QoS 2");
+        LOG_CLASS_INFO("Successfully subscribed to topic %s with QoS 2", topic);
         break;
-
     default:
-        Logger::logWarning(prefix + "Unexpected subscribe return code (" +
-            std::to_string(result) + ") for topic " + std::string(topic));
+        LOG_CLASS_WARNING("Unexpected subscribe return code (%d) for topic %s", result, topic);
         break;
     }
 }
 
 
-void GsmMQTTPort::mqttLoop(){
+void GsmMQTTPort::mqttLoop()
+{
     mqttClient.poll();
 }
 
 
-void GsmMQTTPort::testConnection(const char* host, int port, const char* path){
-    Logger::logInfo(
-        getClassNameString() + " -> Testing connection to " + std::string(host) + ":" + std::to_string(port));
+void GsmMQTTPort::testConnection(const char* host, int port, const char* path)
+{
+    LOG_CLASS_INFO(" -> Testing connection to %s:%d", host, port);
 
-    Logger::logInfo(getClassNameString() + " -> Using TLS (ublox_gsmSslClient)");
-    if (!ublox_gsmSslClient.connect(host, port)){
-        Logger::logError(getClassNameString() + " -> TLS connection FAILED");
+    LOG_CLASS_INFO(" -> Using TLS (ublox_gsmSslClient)");
+    if (!ublox_gsmSslClient.connect(host, port))
+    {
+        LOG_CLASS_ERROR(" -> TLS connection FAILED");
         return;
     }
 
-    Logger::logInfo(getClassNameString() + " -> TLS connection SUCCESS");
+    LOG_CLASS_INFO(" -> TLS connection SUCCESS");
 
     // Example: send a simple HTTP GET
     ublox_gsmSslClient.print(String("GET ") + path + " HTTP/1.1\r\n" +
@@ -223,14 +240,16 @@ void GsmMQTTPort::testConnection(const char* host, int port, const char* path){
 
     // Read response
     std::string response;
-    while (ublox_gsmSslClient.connected()){
-        while (ublox_gsmSslClient.available()){
+    while (ublox_gsmSslClient.connected())
+    {
+        while (ublox_gsmSslClient.available())
+        {
             char c = ublox_gsmSslClient.read();
             response += c;
         }
     }
     ublox_gsmSslClient.stop();
-    Logger::logInfo(getClassNameString() + " -> Response:\n" + response);
+    LOG_CLASS_INFO(" -> Response:\n%s", response.c_str());
 }
 
 #endif // ARDUINO && PLATFORM_HAS_GSM
