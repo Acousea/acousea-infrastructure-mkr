@@ -7,20 +7,19 @@
 #ifdef ARDUINO
 #include <Arduino.h>
 
-extern "C" char *sbrk(int incr);
+extern "C" char* sbrk(int incr);
 
 int freeMemoryStackVsHeap()
 {
     char top;
-    return &top - reinterpret_cast<char *>(sbrk(0));
+    return &top - reinterpret_cast<char*>(sbrk(0));
 }
 
-void Logger::logfFreeMemory(const char *fmt, ...)
+void Logger::logfFreeMemory(const char* fmt, ...)
 {
     struct mallinfo mi = mallinfo();
     const int freeMem = freeMemoryStackVsHeap();
 
-    // Formatea prefijo opcional
     char prefix[128];
     if (fmt && *fmt)
     {
@@ -39,7 +38,7 @@ void Logger::logfFreeMemory(const char *fmt, ...)
 }
 #endif
 
-void Logger::initialize(IDisplay *display_, StorageManager *sdManager_, RTCController *rtc_, const char *logFilePath_,
+void Logger::initialize(IDisplay* display_, StorageManager* sdManager_, RTCController* rtc_, const char* logFilePath_,
                         Mode mode_)
 {
     Logger::display = display_;
@@ -68,67 +67,68 @@ void Logger::initialize(IDisplay *display_, StorageManager *sdManager_, RTCContr
 #endif
 }
 
-void Logger::logError(const char *message)
+void Logger::logError(const char* message)
 {
     if (display)
         display->setColor(IDisplay::Color::RED);
     log("ERROR", message);
 }
 
-void Logger::logWarning(const char *message)
+void Logger::logWarning(const char* message)
 {
     if (display)
         display->setColor(IDisplay::Color::ORANGE);
     log("WARNING", message);
 }
 
-void Logger::logInfo(const char *message)
+void Logger::logInfo(const char* message)
 {
     if (display)
         display->setColor(IDisplay::Color::DEFAULT);
     log("INFO", message);
 }
 
-void Logger::logfError(const char *fmt, ...)
+void Logger::logfError(const char* fmt, ...)
 {
-    display->setColor(IDisplay::Color::RED);
+    if (display)
+        display->setColor(IDisplay::Color::RED);
 
-    char buffer[256]; // ajusta según tu RAM disponible
     va_list args;
     va_start(args, fmt);
-    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    vsnprintf(sharedBuffer, sizeof(sharedBuffer), fmt, args);
     va_end(args);
 
-    log("ERROR", buffer);
+    log("ERROR", sharedBuffer);
 }
 
-void Logger::logfWarning(const char *fmt, ...)
+void Logger::logfWarning(const char* fmt, ...)
 {
-    display->setColor(IDisplay::Color::ORANGE);
+    if (display)
+        display->setColor(IDisplay::Color::ORANGE);
 
-    char buffer[256];
     va_list args;
     va_start(args, fmt);
-    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    vsnprintf(sharedBuffer, sizeof(sharedBuffer), fmt, args);
     va_end(args);
 
-    log("WARNING", buffer);
+    log("WARNING", sharedBuffer);
 }
 
-void Logger::logfInfo(const char *fmt, ...)
+void Logger::logfInfo(const char* fmt, ...)
 {
-    display->setColor(IDisplay::Color::DEFAULT);
+    if (display)
+        display->setColor(IDisplay::Color::DEFAULT);
 
-    char buffer[256];
     va_list args;
     va_start(args, fmt);
-    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    vsnprintf(sharedBuffer, sizeof(sharedBuffer), fmt, args);
     va_end(args);
 
-    log("INFO", buffer);
+    log("INFO", sharedBuffer);
 }
 
-void Logger::log(const char *logType, const char *message)
+
+void Logger::log(const char* logType, const char* message)
 {
     switch (mode)
     {
@@ -154,7 +154,7 @@ bool Logger::clearLog()
     return false;
 }
 
-void Logger::vectorToHexString(const unsigned char *data, const size_t length, char *outBuffer, const size_t outSize)
+void Logger::vectorToHexString(const unsigned char* data, const size_t length, char* outBuffer, const size_t outSize)
 {
     size_t needed = (length * 2) + 1;
     if (outSize < needed)
@@ -164,12 +164,12 @@ void Logger::vectorToHexString(const unsigned char *data, const size_t length, c
     outBuffer[length * 2] = '\0';
 }
 
-Logger::HexString Logger::vectorToHexString(const unsigned char *data, const size_t length)
+Logger::HexString Logger::vectorToHexString(const unsigned char* data, const size_t length)
 {
 #ifdef LOGGER_HEXSTRING_DYNAMIC
     HexString hex{};
     hex.size = (length * 2) + 1;
-    hex.buffer = static_cast<char *>(malloc(hex.size));
+    hex.buffer = static_cast<char*>(malloc(hex.size));
     if (!hex.buffer)
         return hex;
     for (size_t i = 0; i < length; ++i)
@@ -186,12 +186,14 @@ Logger::HexString Logger::vectorToHexString(const unsigned char *data, const siz
 #endif
 }
 
-void Logger::getTimestamp(char *buffer, const size_t len)
+void Logger::getTimestamp(char* buffer, const size_t len)
 {
     time_t epoch_t = rtc ? static_cast<time_t>(rtc->getEpoch()) : time(nullptr);
 
-    const tm *t = localtime(&epoch_t);
-    if (!t) { // Fallback en caso raro de fallo de localtime()        
+    const tm* t = localtime(&epoch_t);
+    if (!t)
+    {
+        // Fallback en caso raro de fallo de localtime()
         snprintf(buffer, len, "[INVALID TIME]");
         return;
     }
@@ -200,27 +202,26 @@ void Logger::getTimestamp(char *buffer, const size_t len)
              t->tm_hour, t->tm_min, t->tm_sec);
 }
 
-void Logger::logToSerial(const char *logType, const char *message)
+void Logger::logToSerial(const char* logType, const char* message)
 {
     char ts[20];
     getTimestamp(ts, sizeof(ts));
 
-    char line[300];
-    snprintf(line, sizeof(line) - 1, "[%s] %s: %s", ts, logType, message);
-    line[sizeof(line) - 1] = '\0';
+    snprintf(sharedBuffer, sizeof(sharedBuffer) - 1, "[%s] %s: %s", ts, logType, message);
+    sharedBuffer[sizeof(sharedBuffer) - 1] = '\0';
 
     if (display)
-        display->print(line);
+        display->print(sharedBuffer);
+    else
 #if defined(ARDUINO)
-    else
-        Serial.println(line);
+        Serial.println(sharedBuffer);
 #else
-    else
-        printf("%s\n", line);
+        printf("%s\n", sharedBuffer);
 #endif
 }
 
-void Logger::logToSDCard(const char *logType, const char *message)
+
+void Logger::logToSDCard(const char* logType, const char* message)
 {
     if (!storageManager)
     {
@@ -232,7 +233,7 @@ void Logger::logToSDCard(const char *logType, const char *message)
     char ts[20];
     getTimestamp(ts, sizeof(ts));
 
-    char entry[300];
+    char entry[1024];
     snprintf(entry, sizeof(entry), "%s,%s,%s\n", ts, logType, message);
 
     if (!storageManager->appendToFile(logFilePath, entry))

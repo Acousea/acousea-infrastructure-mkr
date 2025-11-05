@@ -5,78 +5,110 @@
 #include <cinttypes> // for PRId32
 
 
-// -----------------------------------------------------------------------------
-// Optimized tag-to-string helpers (const char* version)
-// -----------------------------------------------------------------------------
-
-inline const char* bodyTagToCString(uint8_t tag)
+namespace
 {
-    switch (tag)
+    bool isRequeueAllowed(const uint8_t packetBodyTag, const uint8_t packetPayloadTag) noexcept
     {
-    case acousea_CommunicationPacket_command_tag: return "Command";
-    case acousea_CommunicationPacket_response_tag: return "Response";
-    case acousea_CommunicationPacket_report_tag: return "Report";
-    case acousea_CommunicationPacket_error_tag: return "Error";
-    default: return "UnknownBody";
+        // Currently, only Command packets with SetConfiguration payloads are allowed to be requeued
+        return ((packetBodyTag == acousea_CommunicationPacket_command_tag)
+                && (packetPayloadTag == acousea_CommandBody_setConfiguration_tag ||
+                    packetPayloadTag == acousea_CommandBody_requestedConfiguration_tag))
+            || ((packetBodyTag == acousea_CommunicationPacket_response_tag)
+                && (packetPayloadTag == acousea_ResponseBody_setConfiguration_tag ||
+                    packetPayloadTag == acousea_ResponseBody_updatedConfiguration_tag)
+            );
+    }
+
+    uint8_t getPayloadTag(const acousea_CommunicationPacket& p) noexcept
+    {
+        switch (p.which_body)
+        {
+        case acousea_CommunicationPacket_command_tag:
+            return p.body.command.which_command;
+        case acousea_CommunicationPacket_response_tag:
+            return p.body.response.which_response;
+        case acousea_CommunicationPacket_report_tag:
+            return p.body.report.which_report;
+        default:
+            return 0;
+        }
+    }
+
+    bool mustReport(const unsigned long currentMinute, const unsigned long reportingPeriod,
+                    const unsigned long lastReportMinute)
+    {
+        if (reportingPeriod == 0) return false; // No reporting if period is 0 (disabled)
+        if (lastReportMinute == ULONG_MAX) return true; // Always report if never reported before
+        if (currentMinute == lastReportMinute) return false; // Avoids issues with duplicated reporting for same minute
+        return ((currentMinute - lastReportMinute) >= reportingPeriod);
+    }
+
+    acousea_CommunicationPacket buildErrorPacket(const char* errorMessage)
+    {
+        acousea_ErrorBody errorBody;
+        strncpy(errorBody.errorMessage, errorMessage, sizeof(errorBody.errorMessage) - 1);
+        errorBody.errorMessage[sizeof(errorBody.errorMessage) - 1] = '\0'; // Ensure null termination
+
+
+        acousea_CommunicationPacket packet = acousea_CommunicationPacket_init_default;
+        packet.has_routing = true;
+        packet.routing = acousea_RoutingChunk_init_default;
+        packet.which_body = acousea_CommunicationPacket_error_tag;
+        packet.body.error = errorBody;
+
+        return packet;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Optimized tag-to-string helpers (const char* version)
+    // -----------------------------------------------------------------------------
+    constexpr const char* bodyAndPayloadTagToCString(const uint8_t bodyTag, const uint8_t payloadTag) noexcept
+    {
+        switch (bodyTag)
+        {
+        case acousea_CommunicationPacket_command_tag:
+            switch (payloadTag)
+            {
+            case acousea_CommandBody_setConfiguration_tag: return "Command->SetConfiguration";
+            case acousea_CommandBody_requestedConfiguration_tag: return "Command->RequestedConfiguration";
+            default: return "Command->Unknown";
+            }
+        case acousea_CommunicationPacket_response_tag:
+            switch (payloadTag)
+            {
+            case acousea_ResponseBody_setConfiguration_tag: return "Response->SetConfiguration";
+            case acousea_ResponseBody_updatedConfiguration_tag: return "Response->UpdatedConfiguration";
+            default: return "Response->Unknown";
+            }
+        case acousea_CommunicationPacket_report_tag:
+            switch (payloadTag)
+            {
+            case acousea_ReportBody_statusPayload_tag: return "Report->StatusPayload";
+            default: return "Report->Unknown";
+            }
+        default:
+            return "UnknownBody";
+        }
     }
 }
 
-inline const char* commandPayloadTagToCString(uint8_t tag)
-{
-    switch (tag)
-    {
-    case acousea_CommandBody_setConfiguration_tag: return "Command->SetConfiguration";
-    case acousea_CommandBody_requestedConfiguration_tag: return "Command->RequestedConfiguration";
-    default: return "Command->Unknown";
-    }
-}
 
-inline const char* responsePayloadTagToCString(uint8_t tag)
+NodeOperationRunner::NodeOperationRunner(
+    Router& router,
+    const NodeConfigurationRepository& nodeConfigurationRepository,
+    const std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>>& routines)
+    : IRunnable(),
+      router(router),
+      routines(routines),
+      nodeConfigurationRepository(nodeConfigurationRepository)
 {
-    switch (tag)
-    {
-    case acousea_ResponseBody_setConfiguration_tag: return "Response->SetConfiguration";
-    case acousea_ResponseBody_updatedConfiguration_tag: return "Response->UpdatedConfiguration";
-    default: return "Response->Unknown";
-    }
-}
-
-inline const char* reportPayloadTagToCString(uint8_t tag)
-{
-    switch (tag)
-    {
-    case acousea_ReportBody_statusPayload_tag: return "Report->StatusPayload";
-    default: return "Report->Unknown";
-    }
-}
-
-
-NodeOperationRunner::NodeOperationRunner(Router& router,
-                                         const NodeConfigurationRepository& nodeConfigurationRepository,
-                                         const std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>&
-                                         commandRoutines,
-                                         const std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>&
-                                         responseRoutines,
-                                         const std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>&
-                                         reportRoutines
-) : IRunnable(),
-    router(router),
-    commandRoutines(commandRoutines),
-    responseRoutines(responseRoutines),
-    reportRoutines(reportRoutines),
-    nodeConfigurationRepository(nodeConfigurationRepository)
-{
-    cache = {
-        acousea_OperationMode_init_default,
-        0,
-        {ULONG_MAX, ULONG_MAX}
-    };
+    cache = {acousea_OperationMode_init_default, 0, {ULONG_MAX, ULONG_MAX, ULONG_MAX}};
 }
 
 void NodeOperationRunner::init()
 {
     currentNodeConfiguration.emplace(nodeConfigurationRepository.getNodeConfiguration());
-    LOG_CLASS_INFO("<Init> Operation Cycle for Operation Mode %" PRId32 "d=(%s) with configuration:",
+    LOG_CLASS_INFO("<Init> Operation Cycle for Operation Mode %" PRId32 "=(%s) with configuration:",
                    cache.currentOperationMode.id,
                    cache.currentOperationMode.name
     );
@@ -94,23 +126,41 @@ void NodeOperationRunner::init()
 
 void NodeOperationRunner::run()
 {
-    LOG_CLASS_INFO("<Run> Operation Cycle for Operation mode %" PRId32 "d=(%s)",
+    LOG_CLASS_INFO("<Run> Operation Cycle for Operation mode %" PRId32 "=(%s)",
                    cache.currentOperationMode.id,
                    cache.currentOperationMode.name
     );
-    checkIfMustTransition();
+    tryTransitionOpMode();
     processIncomingPackets(currentNodeConfiguration->localAddress);
     runPendingRoutines();
     processReportingRoutines();
     cache.cycleCount++;
-    LOG_CLASS_INFO("<Finish> Operation Cycle for Operation mode %" PRId32 "d=(%s)",
+    LOG_CLASS_INFO("<Finish> Operation Cycle for Operation mode %" PRId32 "=(%s)",
                    cache.currentOperationMode.id,
                    cache.currentOperationMode.name
     );
 }
 
 
-void NodeOperationRunner::checkIfMustTransition()
+std::optional<IRoutine<acousea_CommunicationPacket>*> NodeOperationRunner::findRoutine(
+    const uint8_t bodyTag, const uint8_t payloadTag) const
+{
+    const auto bodyIt = routines.find(bodyTag);
+    if (bodyIt == routines.end())
+    {
+        return std::nullopt;
+    }
+    const auto& packetBodyRoutinesMap = bodyIt->second;
+
+    const auto routineIt = packetBodyRoutinesMap.find(payloadTag);
+    if (routineIt == packetBodyRoutinesMap.end() || routineIt->second == nullptr)
+    {
+        return std::nullopt;
+    }
+    return routineIt->second;
+}
+
+void NodeOperationRunner::tryTransitionOpMode()
 {
     if (!cache.currentOperationMode.has_transition)
     {
@@ -127,7 +177,7 @@ void NodeOperationRunner::checkIfMustTransition()
             return;
         }
         cache.currentOperationMode = nextOpModeResult.getValueConst();
-        LOG_CLASS_INFO("Transitioned to next mode... %" PRId32 "d=(%s)",
+        LOG_CLASS_INFO("Transitioned to next mode... %" PRId32 "=(%s)",
                        cache.currentOperationMode.id,
                        cache.currentOperationMode.name
         );
@@ -138,17 +188,15 @@ void NodeOperationRunner::tryReport(const IPort::PortType portType,
                                     unsigned long& lastMinute,
                                     const unsigned long currentMinute)
 {
-    const auto cfg = getReportingEntryForCurrentOperationMode(
-        cache.currentOperationMode.id, portType
-    );
+    const auto resultCfg = getReportingEntryForCurrentOperationMode(cache.currentOperationMode.id, portType);
 
-    if (cfg.isError())
+    if (resultCfg.isError())
     {
-        LOG_CLASS_ERROR("%s", cfg.getError());
+        LOG_CLASS_ERROR("%s", resultCfg.getError());
         return;
     }
 
-    auto [modeId, period] = cfg.getValueConst();
+    auto [modeId, period] = resultCfg.getValueConst();
 
     LOG_CLASS_INFO("%s Config: { Period=%lu, Current minute=%lu, Last report minute=%lu }",
                    IPort::portTypeToCString(portType),
@@ -163,19 +211,24 @@ void NodeOperationRunner::tryReport(const IPort::PortType portType,
         return;
     }
 
-    const auto it = reportRoutines.find(acousea_ReportBody_statusPayload_tag);
-    if (it == reportRoutines.end() || it->second == nullptr)
+    auto routineOpt = findRoutine(
+        acousea_CommunicationPacket_report_tag,acousea_ReportBody_statusPayload_tag
+    );
+
+    if (!routineOpt.has_value())
     {
-        LOG_CLASS_ERROR("Report routine with tag %d not found. Skipping report...",
-                        acousea_ReportBody_statusPayload_tag);
+        LOG_CLASS_ERROR("Report routine for reportTag = %d and payloadTag = %d not found. Cannot send report.",
+                        acousea_CommunicationPacket_report_tag, acousea_ReportBody_statusPayload_tag
+        );
 
         return;
     }
 
-    auto result = executeRoutine(it->second, std::nullopt, portType, false);
-    if (result.has_value())
+    auto resultCommunicationPacket = executeRoutine(routineOpt.value(), std::nullopt, portType, 0, false);
+    if (resultCommunicationPacket.has_value())
     {
-        sendResponsePacket(portType, currentNodeConfiguration->localAddress, *result);
+        sendResponsePacket(portType, currentNodeConfiguration->localAddress, std::nullopt,
+                           resultCommunicationPacket.value());
     }
 
     lastMinute = currentMinute;
@@ -209,18 +262,16 @@ void NodeOperationRunner::processIncomingPackets(const uint8_t& localAddress)
     auto receivedPackets = router.readPorts(localAddress);
     for (const auto& [portType, packets] : receivedPackets)
     {
-        for (auto& packet : packets)
+        for (auto& inPacket : packets)
         {
-            std::optional<acousea_CommunicationPacket> processingResult = processPacket(portType, packet);
-            if (!processingResult.has_value())
+            std::optional<acousea_CommunicationPacket> optOutputPacket = processPacket(portType, inPacket);
+            if (!optOutputPacket.has_value())
             {
                 LOG_CLASS_INFO("No response packet generated for received packet with ID %" PRId32 ". Continuing...",
-                               packet.packetId);
+                               inPacket.packetId);
                 continue;
             }
-            acousea_CommunicationPacket& optResponsePacket = processingResult.value();
-            optResponsePacket.packetId = packet.packetId;
-            sendResponsePacket(portType, localAddress, optResponsePacket);
+            sendResponsePacket(portType, localAddress, inPacket, optOutputPacket.value());
         }
     }
 }
@@ -237,74 +288,40 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::processPacket(IP
         return std::nullopt;
     }
 
-    LOG_CLASS_INFO("Received Packet from %" PRId32 " with BODY = %s and PAYLOAD = %s",
+    LOG_CLASS_INFO("Received Packet from %" PRId32 " of type %s",
                    packet.routing.sender,
-                   bodyTagToCString(packet.which_body),
-                   commandPayloadTagToCString(packet.body.command.which_command)
+                   bodyAndPayloadTagToCString(packet.which_body, getPayloadTag(packet))
+
     );
 
-    switch (packet.which_body)
+    const auto bodyTag = packet.which_body;
+    const auto payloadTag = getPayloadTag(packet);
+    auto routineOpt = findRoutine(bodyTag, payloadTag);
+    if (!routineOpt.has_value())
     {
-    case acousea_CommunicationPacket_command_tag:
-        {
-            const auto it = commandRoutines.find(packet.body.command.which_command);
-            if (it == commandRoutines.end() || it->second == nullptr)
-            {
-                LOG_CLASS_ERROR("Routine with tag %d not found. Building error packet...",
-                                packet.body.command.which_command);
-                return buildErrorPacket("Routine not found.", packet.routing.sender);
-            }
-
-            std::optional<acousea_CommunicationPacket> optResponsePacket = executeRoutine(
-                it->second, packet, portType, /*shouldRespond*/ true);
-
-            return optResponsePacket;
-        }
-
-    case acousea_CommunicationPacket_response_tag:
-        {
-            const auto it = responseRoutines.find(packet.body.response.which_response);
-            if (it == responseRoutines.end() || it->second == nullptr)
-            {
-                LOG_CLASS_ERROR("Routine with tag %d not found. Building error packet...",
-                                packet.body.response.which_response);
-                return buildErrorPacket("Routine not found.", packet.routing.sender);
-            }
-            std::optional<acousea_CommunicationPacket> optResponsePacket = executeRoutine(
-                it->second, packet, portType, /*shouldRespond*/ true
-            );
-            return optResponsePacket;
-        }
-
-    case acousea_CommunicationPacket_report_tag:
-        LOG_CLASS_INFO("Report packet received, but reports are not processed by nodes. Dropping packet...");
-        return std::nullopt;
-
-    case acousea_CommunicationPacket_error_tag:
-        LOG_CLASS_ERROR("Received Error Packet from %" PRId32 " with error: %s",
-                        packet.routing.sender,
-                        packet.body.error.errorMessage);
-        return std::nullopt;
-
-    default:
-        {
-            LOG_CLASS_ERROR("Unknown packet body type. Building error packet...");
-            return buildErrorPacket("Packet without payload.", packet.routing.sender); // devolver al origen
-        }
+        LOG_CLASS_ERROR("Routine not found for Body %d and Payload %d. Building error packet...",
+                        bodyTag, payloadTag);
+        return buildErrorPacket("Routine not found.");
     }
+    IRoutine<acousea_CommunicationPacket>*& routine = *routineOpt;
+    return executeRoutine(routine, packet, portType,
+                          PendingRoutines<0>::MAX_ATTEMPTS, isRequeueAllowed(bodyTag, payloadTag)
+    );
 }
 
 
 std::optional<acousea_CommunicationPacket> NodeOperationRunner::executeRoutine(
     IRoutine<acousea_CommunicationPacket>*& routine,
-    const std::optional<acousea_CommunicationPacket>& optPacket,
+    const std::optional<acousea_CommunicationPacket>& optInputPacket,
     const IPort::PortType portType,
+    const uint8_t remainingAttempts,
     const bool requeueAllowed
 )
 {
-    Result<acousea_CommunicationPacket> result = routine->execute(optPacket);
+    const Result<acousea_CommunicationPacket> result = routine->execute(optInputPacket);
+    acousea_CommunicationPacket outputPacket = acousea_CommunicationPacket_init_default;
 
-    if (result.isPending() && !requeueAllowed)
+    if (result.isPending() && (remainingAttempts <= 0 || !requeueAllowed))
     {
         LOG_CLASS_WARNING("%s[NO REQUEUE ALLOWED] => incomplete with message: %s", routine->routineName.c_str(),
                           result.getError());
@@ -312,9 +329,9 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::executeRoutine(
         return std::nullopt;
     }
 
-    if (result.isPending() && requeueAllowed)
+    if (result.isPending() && remainingAttempts > 0 && requeueAllowed)
     {
-        pendingRoutines.add({routine, optPacket, 3, portType});
+        pendingRoutines.add({routine, optInputPacket, static_cast<uint8_t>(remainingAttempts - 1), portType});
         LOG_CLASS_WARNING("%s [REQUEUED] => incomplete with message: %s", routine->routineName.c_str(),
                           result.getError());
         return std::nullopt;
@@ -323,19 +340,16 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::executeRoutine(
     if (result.isError())
     {
         LOG_CLASS_ERROR("%s => failed with message: %s", routine->routineName.c_str(), result.getError());
-        if (!optPacket.has_value())
+        if (!optInputPacket.has_value())
         {
             LOG_CLASS_INFO("%s: Cannot send error packet, there was no original packet.", routine->routineName.c_str());
             return std::nullopt;
         }
-        const auto& packet = *optPacket;
-        const uint8_t destination = packet.has_routing ? packet.routing.sender : Router::originAddress;
-        const acousea_CommunicationPacket errorPkt = buildErrorPacket(result.getError(), destination);
-        return errorPkt;
-    }
 
+        return buildErrorPacket(result.getError());
+    }
     LOG_CLASS_INFO("%s => succeeded.", routine->routineName.c_str());
-    return result.getValue();
+    return result.getValueConst();
 }
 
 
@@ -347,58 +361,46 @@ void NodeOperationRunner::runPendingRoutines()
         auto& [routinePtr, inputPacket, attempts, portResponseTo] = *entryOpt;
         LOG_CLASS_INFO("Re-attempting pending routine %s with %d attempts left.", routinePtr->routineName.c_str(),
                        attempts);
-        executeRoutine(routinePtr, inputPacket, portResponseTo, false);
+
+        executeRoutine(routinePtr, inputPacket, portResponseTo, attempts,
+                       inputPacket.has_value()
+                           ? isRequeueAllowed(inputPacket->which_body, getPayloadTag(*inputPacket))
+                           : false
+        );
     }
 }
 
 
 void NodeOperationRunner::sendResponsePacket(const IPort::PortType portType,
                                              const uint8_t& localAddress,
-                                             acousea_CommunicationPacket& responsePacket) const
+                                             const std::optional<acousea_CommunicationPacket>& optInputPacket,
+                                             acousea_CommunicationPacket& outputPacket) const
 {
-    LOG_CLASS_INFO("Sending response packet with Body %s to %d through %s",
-                   bodyTagToCString(responsePacket.which_body),
-                   localAddress,
-                   IPort::portTypeToCString(portType)
+    LOG_CLASS_INFO("Sending response packet with type %s through %s from local address %d ...",
+                   bodyAndPayloadTagToCString(outputPacket.which_body, getPayloadTag(outputPacket)),
+                   IPort::portTypeToCString(portType),
+                   localAddress
     );
-    if (const auto sendOk = router.from(localAddress).through(portType).send(responsePacket); !sendOk)
+
+    if (optInputPacket.has_value())
+    {
+        LOG_CLASS_INFO("Setting routing info in response packet...");
+        const auto inputPacket = *optInputPacket;
+        const uint8_t destination = inputPacket.has_routing ? inputPacket.routing.sender : Router::originAddress;
+        outputPacket.packetId = inputPacket.packetId;
+        outputPacket.has_routing = true;
+        outputPacket.routing = acousea_RoutingChunk_init_default;
+        outputPacket.routing.sender = localAddress;
+        outputPacket.routing.receiver = destination;
+    }
+
+    if (const auto sendOk = router.from(localAddress).through(portType).send(outputPacket); !sendOk)
     {
         LOG_CLASS_ERROR(": Failed to send response packet through %s", IPort::portTypeToCString(portType));
     }
 }
 
-
-acousea_CommunicationPacket NodeOperationRunner::buildErrorPacket(const std::string& errorMessage,
-                                                                  const uint8_t& destination)
-{
-    acousea_ErrorBody errorBody;
-    strncpy(errorBody.errorMessage, errorMessage.c_str(), sizeof(errorBody.errorMessage) - 1);
-    errorBody.errorMessage[sizeof(errorBody.errorMessage) - 1] = '\0'; // Ensure null termination
-
-
-    acousea_RoutingChunk routing = acousea_RoutingChunk_init_default;
-    routing.receiver = destination;
-
-    acousea_CommunicationPacket packet = acousea_CommunicationPacket_init_default;
-    packet.has_routing = true;
-    packet.routing = routing;
-    packet.which_body = acousea_CommunicationPacket_error_tag;
-    packet.body.error = errorBody;
-
-    return packet;
-}
-
-
 //---------------------------------------------- Helpers ------------------------------------------------//
-bool NodeOperationRunner::mustReport(const unsigned long currentMinute,
-                                     const unsigned long reportingPeriod,
-                                     const unsigned long lastReportMinute)
-{
-    if (reportingPeriod == 0) return false; // No reporting if period is 0 (disabled)
-    if (lastReportMinute == ULONG_MAX) return true; // Always report if never reported before
-    if (currentMinute == lastReportMinute) return false; // Avoids issues with duplicated reporting for same minute
-    return ((currentMinute - lastReportMinute) >= reportingPeriod);
-}
 
 Result<acousea_OperationMode> NodeOperationRunner::searchForOperationMode(const uint8_t modeId) const
 {
@@ -407,8 +409,8 @@ Result<acousea_OperationMode> NodeOperationRunner::searchForOperationMode(const 
         return RESULT_FAILUREF(acousea_OperationMode, "Node configuration not loaded.");
     }
 
-    if (!currentNodeConfiguration->has_operationModesModule || currentNodeConfiguration->operationModesModule.
-        modes_count == 0)
+    if (!currentNodeConfiguration->has_operationModesModule
+        || currentNodeConfiguration->operationModesModule.modes_count == 0)
     {
         return RESULT_FAILUREF(acousea_OperationMode, "No operation modes module in configuration.");
     }
@@ -424,13 +426,13 @@ Result<acousea_OperationMode> NodeOperationRunner::searchForOperationMode(const 
 }
 
 Result<acousea_ReportingPeriodEntry> NodeOperationRunner::getReportingEntryForCurrentOperationMode(
-    const uint8_t modeId, const IPort::PortType portType)
+    const uint8_t modeId, const IPort::PortType portType) const
 {
     if (!currentNodeConfiguration.has_value())
     {
         return RESULT_FAILUREF(acousea_ReportingPeriodEntry, "Node configuration not loaded.");
     }
-    acousea_ReportingPeriodEntry* entries = nullptr;
+    const acousea_ReportingPeriodEntry* entries = nullptr;
     size_t entryCount = 0;
     switch (portType)
     {
@@ -459,8 +461,8 @@ Result<acousea_ReportingPeriodEntry> NodeOperationRunner::getReportingEntryForCu
         }
     case IPort::PortType::GsmMqttPort:
         {
-            if (!currentNodeConfiguration->has_gsmMqttModule || currentNodeConfiguration->gsmMqttModule.entries_count ==
-                0)
+            if (!currentNodeConfiguration->has_gsmMqttModule ||
+                currentNodeConfiguration->gsmMqttModule.entries_count == 0)
             {
                 return RESULT_FAILUREF(acousea_ReportingPeriodEntry,
                                        "No GSM-MQTT reporting entries defined in configuration.");

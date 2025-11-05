@@ -59,10 +59,14 @@ public:
     using NodeConfigurationRepository::makeDefault; // exposes the private method
     using NodeConfigurationRepository::encodeProto; // exposes the private method
     using NodeConfigurationRepository::decodeProto; // exposes the private method
-    
+
     // =====================================================================
     // Helpers
     // =====================================================================
+    explicit TestableNodeConfigurationRepository(StorageManager& sm)
+    : NodeConfigurationRepository(sm) {
+        testConfig = makeDefault();
+    }
 
     // Genera una configuración válida con Battery, Location y ICListenHF
     static acousea_NodeConfiguration makeValidNodeConfig()
@@ -77,5 +81,14 @@ public:
 
         return cfg;
     }
+
+    void setTestConfig(const acousea_NodeConfiguration& cfg) { testConfig = cfg; }
+    // acousea_NodeConfiguration getNodeConfiguration() const override { return testConfig; }
+private:
+    acousea_NodeConfiguration testConfig;
 };
+
+
+
+
 #endif //ACOUSEA_INFRASTRUCTURE_MKR_COMMON_TEST_RESOURCES_HPP

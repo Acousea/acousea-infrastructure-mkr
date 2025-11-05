@@ -51,10 +51,6 @@ extern const std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType> empty
 
 extern ModuleProxy moduleProxy;
 
-// Routines
-extern SetNodeConfigurationRoutine setNodeConfigurationRoutine;
-extern CompleteStatusReportRoutine completeStatusReportRoutine;
-
 extern std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> configurationRoutines;
 
 extern NodeOperationRunner nodeOperationRunner;

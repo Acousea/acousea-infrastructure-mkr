@@ -197,24 +197,52 @@ StoreNodeConfigurationRoutine storeNodeConfigurationRoutine(
     moduleProxy
 );
 
-std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> commandRoutines = {
-    {acousea_CommandBody_setConfiguration_tag, &setNodeConfigurationRoutine},
-    {acousea_CommandBody_requestedConfiguration_tag, &getUpdatedNodeConfigurationRoutine},
+// std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> commandRoutines = {
+//     {acousea_CommandBody_setConfiguration_tag, &setNodeConfigurationRoutine},
+//     {acousea_CommandBody_requestedConfiguration_tag, &getUpdatedNodeConfigurationRoutine},
+// };
+//
+// std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> responseRoutines = {
+//     {acousea_ResponseBody_setConfiguration_tag, &storeNodeConfigurationRoutine},
+//     {acousea_ResponseBody_updatedConfiguration_tag, &storeNodeConfigurationRoutine},
+// };
+//
+//
+// std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> reportRoutines = {
+//     {acousea_ReportBody_statusPayload_tag, &completeStatusReportRoutine},
+// };
+//
+//
+// NodeOperationRunner nodeOperationRunner(
+//     router,
+//     nodeConfigurationRepository,
+//     commandRoutines, responseRoutines, reportRoutines
+// );
+//
+
+// Mapa jerárquico de routines
+std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>> routines = {
+    {
+        acousea_CommunicationPacket_command_tag, {
+                {acousea_CommandBody_setConfiguration_tag, &setNodeConfigurationRoutine},
+                {acousea_CommandBody_requestedConfiguration_tag, &getUpdatedNodeConfigurationRoutine},
+            }
+    },
+    {
+        acousea_CommunicationPacket_response_tag, {
+                {acousea_ResponseBody_setConfiguration_tag, &storeNodeConfigurationRoutine},
+                {acousea_ResponseBody_updatedConfiguration_tag, &storeNodeConfigurationRoutine},
+            }
+    },
+    {
+        acousea_CommunicationPacket_report_tag, {
+                {acousea_ReportBody_statusPayload_tag, &completeStatusReportRoutine},
+            }
+    }
 };
-
-std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> responseRoutines = {
-    {acousea_ResponseBody_setConfiguration_tag, &storeNodeConfigurationRoutine},
-    {acousea_ResponseBody_updatedConfiguration_tag, &storeNodeConfigurationRoutine},
-};
-
-
-std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> reportRoutines = {
-    {acousea_ReportBody_statusPayload_tag, &completeStatusReportRoutine},
-};
-
 
 NodeOperationRunner nodeOperationRunner(
     router,
     nodeConfigurationRepository,
-    commandRoutines, responseRoutines, reportRoutines
+    routines
 );

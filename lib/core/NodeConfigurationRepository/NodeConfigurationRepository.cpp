@@ -36,110 +36,133 @@ void NodeConfigurationRepository::reset()
 }
 
 
-void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfiguration& cfg) const
+void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfiguration& cfg)
 {
-    std::string line;
-    line.reserve(256);
-    line += std::string(getClassNameCString()) + "Node Configuration ### LocalAddress=" + std::to_string(
-        cfg.localAddress);
+    // Buffer grande para evitar reallocs o truncamiento
+    char line[1024];
+    int len = snprintf(line, sizeof(line),
+                       "%s Node Configuration ### LocalAddress=%lu",
+                       getClassNameCString(), cfg.localAddress);
 
+    // --- Operation Modes ---
     if (cfg.has_operationModesModule)
     {
-        line += " ### OperationModes=[";
+        len += snprintf(line + len, sizeof(line) - len, " ### OperationModes=[");
         for (int i = 0; i < cfg.operationModesModule.modes_count; ++i)
         {
             const auto& m = cfg.operationModesModule.modes[i];
-            if (i) line += ", ";
-            line += "{id=" + std::to_string(m.id) +
-                ", name=" + std::string(m.name) +
-                ", reportTypeId=" + std::to_string(m.reportTypeId) +
-                ", transition={";
+            if (i) len += snprintf(line + len, sizeof(line) - len, ", ");
+            len += snprintf(line + len, sizeof(line) - len,
+                            "{id=%lu, name=%s, reportTypeId=%lu, transition=",
+                            m.id, m.name, m.reportTypeId);
+
             if (m.has_transition)
             {
-                line += "targetModeId=" + std::to_string(m.transition.targetModeId) +
-                    ", duration=" + std::to_string(m.transition.duration);
+                len += snprintf(line + len, sizeof(line) - len,
+                                "{targetModeId=%ld, duration=%ld}",
+                                m.transition.targetModeId,
+                                m.transition.duration);
             }
             else
             {
-                line += "<none>";
+                len += snprintf(line + len, sizeof(line) - len, "<none>");
             }
-            line += "}";
+            len += snprintf(line + len, sizeof(line) - len, "}");
         }
-        line += "]";
-        line += " | ActiveIdx=" + std::to_string(cfg.operationModesModule.activeModeId);
+        len += snprintf(line + len, sizeof(line) - len, "] | ActiveIdx=%ld",
+                        cfg.operationModesModule.activeModeId);
     }
     else
     {
-        line += " ### OperationModes=<none>";
+        len += snprintf(line + len, sizeof(line) - len, " ### OperationModes=<none>");
     }
 
+    // --- Report Types ---
     if (cfg.has_reportTypesModule)
     {
-        line += " ### ReportTypes=[";
+        len += snprintf(line + len, sizeof(line) - len, " ### ReportTypes=[");
         for (int i = 0; i < cfg.reportTypesModule.reportTypes_count; ++i)
         {
-            const auto& reportTypes = cfg.reportTypesModule.reportTypes[i];
-            if (i) line += ", ";
-            line += "{id=" + std::to_string(reportTypes.id) +
-                ", name=" + std::string(reportTypes.name) +
-                ", moduleCodes=[";
-            for (int j = 0; j < reportTypes.includedModules_count; ++j)
+            const auto& report = cfg.reportTypesModule.reportTypes[i];
+            if (i) len += snprintf(line + len, sizeof(line) - len, ", ");
+            len += snprintf(line + len, sizeof(line) - len,
+                            "{id=%ld, name=%s, moduleCodes=[",
+                            report.id, report.name);
+            for (int j = 0; j < report.includedModules_count; ++j)
             {
-                if (j) line += ", ";
-                line += std::to_string(reportTypes.includedModules[j]);
+                if (j) len += snprintf(line + len, sizeof(line) - len, ", ");
+                len += snprintf(line + len, sizeof(line) - len, "%d", report.includedModules[j]);
             }
-            line += "]}";
+            len += snprintf(line + len, sizeof(line) - len, "]}");
         }
-        line += "]";
+        len += snprintf(line + len, sizeof(line) - len, "]");
     }
     else
     {
-        line += " ### ReportTypes=<none>";
+        len += snprintf(line + len, sizeof(line) - len, " ### ReportTypes=<none>");
     }
 
+    // --- LoRa ---
     if (cfg.has_loraModule)
     {
-        line += " ### LoRa=[";
+        len += snprintf(line + len, sizeof(line) - len, " ### LoRa=[");
         for (int i = 0; i < cfg.loraModule.entries_count; ++i)
         {
             const auto& e = cfg.loraModule.entries[i];
-            if (i) line += ", ";
-            line += "{mode=" + std::to_string(e.modeId)
-                + ", period=" + std::to_string(e.period) + "}";
+            if (i) len += snprintf(line + len, sizeof(line) - len, ", ");
+            len += snprintf(line + len, sizeof(line) - len,
+                            "{mode=%ld, period=%lu}", e.modeId, e.period);
         }
-        line += "]";
+        len += snprintf(line + len, sizeof(line) - len, "]");
+    }
+    else
+    {
+        len += snprintf(line + len, sizeof(line) - len, " ### LoRa=<none>");
     }
 
+    // --- Iridium ---
     if (cfg.has_iridiumModule)
     {
-        line += " ### Iridium=[";
+        len += snprintf(line + len, sizeof(line) - len, " ### Iridium=[");
         for (int i = 0; i < cfg.iridiumModule.entries_count; ++i)
         {
             const auto& e = cfg.iridiumModule.entries[i];
-            if (i) line += ", ";
-            line += "{mode=" + std::to_string(e.modeId)
-                + ", period=" + std::to_string(e.period) + "}";
+            if (i) len += snprintf(line + len, sizeof(line) - len, ", ");
+            len += snprintf(line + len, sizeof(line) - len,
+                            "{mode=%ld, period=%lu}", e.modeId, e.period);
         }
-        line += "]";
+        len += snprintf(line + len, sizeof(line) - len, "]");
+    }
+    else
+    {
+        len += snprintf(line + len, sizeof(line) - len, " ### Iridium=<none>");
     }
 
+    // --- GSM-MQTT ---
     if (cfg.has_gsmMqttModule)
     {
-        line += " ### GsmMqtt=[";
+        len += snprintf(line + len, sizeof(line) - len, " ### GsmMqtt=[");
         for (int i = 0; i < cfg.gsmMqttModule.entries_count; ++i)
         {
             const auto& e = cfg.gsmMqttModule.entries[i];
-            if (i) line += ", ";
-            line += "{mode=" + std::to_string(e.modeId)
-                + ", period=" + std::to_string(e.period) + "}";
+            if (i) len += snprintf(line + len, sizeof(line) - len, ", ");
+            len += snprintf(line + len, sizeof(line) - len,
+                            "{mode=%d, period=%lu}", e.modeId, e.period);
         }
-        line += "]";
-        line += " | Broker=" + std::string(cfg.gsmMqttModule.broker)
-            + ":" + std::to_string(cfg.gsmMqttModule.port)
-            + " ClientId=" + std::string(cfg.gsmMqttModule.clientId);
+        len += snprintf(line + len, sizeof(line) - len, "]");
+        len += snprintf(line + len, sizeof(line) - len,
+                        " | Broker=%s:%ld ClientId=%s",
+                        cfg.gsmMqttModule.broker,
+                        cfg.gsmMqttModule.port,
+                        cfg.gsmMqttModule.clientId);
+    }
+    else
+    {
+        len += snprintf(line + len, sizeof(line) - len, " ### GsmMqtt=<none>");
     }
 
-    LOG_CLASS_INFO("%s", line.c_str());
+    // --- Log final ---
+    LOG_CLASS_INFO("%s", line);
 }
 
 
@@ -203,7 +226,8 @@ bool NodeConfigurationRepository::saveConfiguration(const acousea_NodeConfigurat
     auto enc = encodeProto(cfg);
     if (!enc.isSuccess())
     {
-        LOG_CLASS_ERROR("NodeConfigurationRepository::saveConfiguration() -> Error encoding configuration: %s", enc.getError());
+        LOG_CLASS_ERROR("NodeConfigurationRepository::saveConfiguration() -> Error encoding configuration: %s",
+                        enc.getError());
         return false;
     }
     return storageManager.writeFileBytes(configFilePath, enc.getValue().data(), enc.getValue().size());

@@ -153,3 +153,83 @@ TEST_F(NodeConfigurationRepositoryTest, PrintNodeConfigurationDoesNotCrash)
     auto cfg = TestableNodeConfigurationRepository::makeDefault();
     EXPECT_NO_THROW(repo.printNodeConfiguration(cfg));
 }
+
+// printNodeConfiguration genera salida completa con múltiples módulos configurados
+TEST_F(NodeConfigurationRepositoryTest, PrintNodeConfigurationPrintsRichConfiguration)
+{
+    MockStorageManager mock;
+    NodeConfigurationRepository repo(mock);
+
+    acousea_NodeConfiguration cfg = acousea_NodeConfiguration_init_default;
+    cfg.localAddress = 99;
+
+    // --- OperationModesModule ---
+    cfg.has_operationModesModule = true;
+    cfg.operationModesModule.modes_count = 2;
+    cfg.operationModesModule.activeModeId = 1;
+
+    acousea_OperationMode& mode0 = cfg.operationModesModule.modes[0];
+    mode0.id = 1;
+    strcpy(mode0.name, "Standby");
+    mode0.reportTypeId = 1;
+    mode0.has_transition = true;
+    mode0.transition.targetModeId = 2;
+    mode0.transition.duration = 120;
+
+    acousea_OperationMode& mode1 = cfg.operationModesModule.modes[1];
+    mode1.id = 2;
+    strcpy(mode1.name, "Active");
+    mode1.reportTypeId = 2;
+    mode1.has_transition = false;
+
+    // --- ReportTypesModule ---
+    cfg.has_reportTypesModule = true;
+    cfg.reportTypesModule.reportTypes_count = 2;
+
+    acousea_ReportType& rpt0 = cfg.reportTypesModule.reportTypes[0];
+    rpt0.id = 1;
+    strcpy(rpt0.name, "BasicReport");
+    rpt0.includedModules_count = 2;
+    rpt0.includedModules[0] = acousea_ModuleCode_AMBIENT_MODULE;
+    rpt0.includedModules[1] = acousea_ModuleCode_BATTERY_MODULE;
+
+    acousea_ReportType& rpt1 = cfg.reportTypesModule.reportTypes[1];
+    rpt1.id = 2;
+    strcpy(rpt1.name, "FullReport");
+    rpt1.includedModules_count = 3;
+    rpt1.includedModules[0] = acousea_ModuleCode_NETWORK_MODULE;
+    rpt1.includedModules[1] = acousea_ModuleCode_LOCATION_MODULE;
+    rpt1.includedModules[2] = acousea_ModuleCode_STORAGE_MODULE;
+
+    // --- LoRaReportingModule ---
+    cfg.has_loraModule = true;
+    cfg.loraModule.entries_count = 2;
+    cfg.loraModule.entries[0].modeId = 1;
+    cfg.loraModule.entries[0].period = 10;
+    cfg.loraModule.entries[1].modeId = 2;
+    cfg.loraModule.entries[1].period = 20;
+
+    // --- IridiumReportingModule ---
+    cfg.has_iridiumModule = true;
+    strcpy(cfg.iridiumModule.imei, "111122223333444");
+    cfg.iridiumModule.entries_count = 2;
+    cfg.iridiumModule.entries[0].modeId = 1;
+    cfg.iridiumModule.entries[0].period = 30;
+    cfg.iridiumModule.entries[1].modeId = 2;
+    cfg.iridiumModule.entries[1].period = 60;
+
+    // --- GsmMqttReportingModule ---
+    cfg.has_gsmMqttModule = true;
+    strcpy(cfg.gsmMqttModule.clientId, "CLIENT_MAIN");
+    strcpy(cfg.gsmMqttModule.broker, "mqtt.example.org");
+    cfg.gsmMqttModule.port = 1883;
+    cfg.gsmMqttModule.entries_count = 2;
+    cfg.gsmMqttModule.entries[0].modeId = 1;
+    cfg.gsmMqttModule.entries[0].period = 25;
+    cfg.gsmMqttModule.entries[1].modeId = 2;
+    cfg.gsmMqttModule.entries[1].period = 50;
+
+    // --- Ejecución ---
+    EXPECT_NO_THROW(repo.printNodeConfiguration(cfg));
+}
+

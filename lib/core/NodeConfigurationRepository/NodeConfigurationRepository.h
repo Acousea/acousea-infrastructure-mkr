@@ -19,7 +19,7 @@ public:
 
     void reset();
 
-    void printNodeConfiguration(const acousea_NodeConfiguration& cfg) const;
+    static void printNodeConfiguration(const acousea_NodeConfiguration& cfg);
 
 
     [[nodiscard]] acousea_NodeConfiguration getNodeConfiguration() const;

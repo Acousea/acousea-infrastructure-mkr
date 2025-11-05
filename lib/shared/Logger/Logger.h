@@ -70,8 +70,16 @@ private:
     static inline time_t currentTime = 0; // tiempo actual en epoch
 
 
-    static void getTimestamp(char* buffer, size_t len);
+    // Buffer compartido global para todos los métodos (reduce uso de stack)
+    static constexpr size_t SHARED_BUFFER_SIZE =
+#ifdef ARDUINO
+        1024;
+#else
+    2048;
+#endif
+    static inline char sharedBuffer[SHARED_BUFFER_SIZE]{};
 
+    static void getTimestamp(char* buffer, size_t len);
     static void logToSerial(const char* logType, const char* message);
     static void logToSDCard(const char* logType, const char* message);
     static void log(const char* logType, const char* message);
@@ -112,7 +120,6 @@ Logger::logfFreeMemory(fmt, ##__VA_ARGS__)
 #define LOG_FREE_MEMORY(fmt, ...) \
 ((void)0)
 #endif
-
 
 
 #endif // ACOUSEA_LOGGER_MACROS
