@@ -4,8 +4,9 @@
 #include "bindings/nodeDevice.pb.h"
 #include "StorageManager/StorageManager.hpp"
 #include "Result.h"
-#include <string>
 #include "ClassName.h"
+#include <vector>
+
 
 
 class NodeConfigurationRepository
@@ -28,7 +29,7 @@ public:
 private:
     [[nodiscard]] static acousea_NodeConfiguration makeDefault();
     static Result<std::vector<uint8_t>> encodeProto(const acousea_NodeConfiguration& m);
-    static Result<acousea_NodeConfiguration> decodeProto(const std::vector<uint8_t>& bytes);
+    static Result<acousea_NodeConfiguration> decodeProto(const uint8_t* data, size_t length);
 
 private:
     StorageManager& storageManager;

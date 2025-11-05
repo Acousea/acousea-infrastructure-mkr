@@ -52,16 +52,18 @@ IridiumPort realIridiumPort;
 
 #ifdef PLATFORM_HAS_GSM
 // Configuración GSM
-GsmConfig gsmCfg = {
-    .pin = SECRET_PINNUMBER, // Tu SIM no tiene PIN
-    .apn = SECRET_GPRS_APN, // APN del operador (ejemplo: Hologram)
-    .user = SECRET_GPRS_LOGIN, // Usuario del APN
-    .pass = SECRET_GPRS_PASSWORD, // Password del APN
-    .clientId = AWS_MQTT_CLIENT_ID,
-    .broker = AWS_MQTT_BROKER, // Host del servidor destino
-    .port = 8883, // Puerto destino (8883 para MQTT sobre SSL)
-    .certificate = CLIENT_CERTIFICATE
-};
+
+GsmConfig gsmCfg(
+    SECRET_PINNUMBER,
+    SECRET_GPRS_APN,
+    SECRET_GPRS_LOGIN,
+    SECRET_GPRS_PASSWORD,
+    AWS_MQTT_CLIENT_ID,
+    AWS_MQTT_BROKER,
+    8883,
+    CLIENT_CERTIFICATE
+);
+
 
 GsmMQTTPort gsmPort(gsmCfg);
 #endif

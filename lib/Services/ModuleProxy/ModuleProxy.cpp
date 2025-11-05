@@ -62,7 +62,8 @@ bool ModuleProxy::sendModule(const acousea_ModuleCode code, const acousea_Module
         return false;
     }
 
-    LOG_CLASS_INFO("::sendModule() -> Sending module %d through %s for alias %s", static_cast<int>(code), IPort::portTypeToCString(*portType), toString(alias)
+    LOG_CLASS_INFO("::sendModule() -> Sending module %d through %s for alias %s", static_cast<int>(code),
+                   IPort::portTypeToCString(*portType), toString(alias)
     );
 
 
@@ -77,7 +78,8 @@ std::optional<IPort::PortType> ModuleProxy::resolvePort(const DeviceAlias alias)
     const auto it = devicePortMap.find(alias);
     if (it == devicePortMap.end())
     {
-        LOG_CLASS_WARNING( "ModuleProxy::resolvePort() -> Node has no port associated with device alias: %s", toString(alias));
+        LOG_CLASS_WARNING("ModuleProxy::resolvePort() -> Node has no port associated with device alias: %s",
+                          toString(alias));
         return std::nullopt;
     }
     return it->second;
@@ -150,20 +152,38 @@ std::optional<acousea_ModuleWrapper> ModuleProxy::ModuleCache::getIfFresh(acouse
     return it->second.get();
 }
 
-void ModuleProxy::ModuleCache::invalidate(acousea_ModuleCode code) const
+void ModuleProxy::ModuleCache::invalidate(acousea_ModuleCode code)
 {
     const auto it = cache.find(code);
     if (it != cache.end()) it->second.invalidate();
 }
 
-void ModuleProxy::ModuleCache::invalidateAll() const
+void ModuleProxy::ModuleCache::invalidateAll()
 {
     for (auto& kv : cache)
         kv.second.invalidate();
 }
 
-bool ModuleProxy::ModuleCache::fresh(acousea_ModuleCode code) const
+bool ModuleProxy::ModuleCache::isFresh(const acousea_ModuleCode code) const
 {
     const auto it = cache.find(code);
     return (it != cache.end()) && it->second.fresh();
+}
+
+ModuleProxy::ModuleCache ModuleProxy::ModuleCache::clone() const
+{
+    ModuleCache copy;
+    copy.cache = this->cache;
+    return copy;
+}
+
+
+void ModuleProxy::ModuleCache::swap(ModuleCache& other) noexcept
+{
+    cache.swap(other.cache);
+}
+
+void swap(ModuleProxy::ModuleCache& a, ModuleProxy::ModuleCache& b) noexcept
+{
+    a.swap(b);
 }

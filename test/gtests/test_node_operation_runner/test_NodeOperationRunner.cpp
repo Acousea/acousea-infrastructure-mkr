@@ -8,88 +8,18 @@
 #include "Logger/Logger.h"
 #include "ErrorHandler/ErrorHandler.h"
 #include <ConsoleDisplay/ConsoleDisplay.hpp>
-#include "common_test_resources.hpp"
 #include "Result.h"
-#include "../common_test_resources.hpp"
+
+// Recursos comunes
+#include "../common_test_resources/InMemoryStorageManager.hpp"
+#include "../common_test_resources/TestableNodeConfigurationRepository.hpp"
+#include "../common_test_resources/DummyRoutine.hpp"
+#include "../common_test_resources/DummyPort.hpp"
+#include "../common_test_resources/PacketUtils.hpp"
 
 
 // =====================================================================
-// Mock Router para pruebas
-// =====================================================================
-
-class DummyRouter : public Router {
-public:
-    struct SentPacket {
-        IPort::PortType portType;
-        acousea_CommunicationPacket packet;
-    };
-
-    std::vector<SentPacket> sentPackets;
-    std::map<IPort::PortType, std::vector<acousea_CommunicationPacket>> queuedPackets;
-
-    DummyRouter() : Router(std::vector<IPort*>{}) {}
-
-    struct DummyThrough {
-        DummyRouter& parent;
-        IPort::PortType portType;
-        bool send(const acousea_CommunicationPacket& packet) const {
-            parent.sentPackets.push_back({portType, packet});
-            return true; // simula envío correcto
-        }
-    };
-
-    struct DummyFrom {
-        DummyRouter& parent;
-        uint8_t address;
-        DummyThrough through(IPort::PortType port) const { return DummyThrough{parent, port}; }
-    };
-
-    DummyFrom from(uint8_t addr) { return DummyFrom{*this, addr}; }
-
-    // Permite inyectar paquetes "recibidos"
-    void queueIncoming(IPort::PortType port, const acousea_CommunicationPacket& pkt) {
-        queuedPackets[port].push_back(pkt);
-    }
-
-    std::map<IPort::PortType, std::vector<acousea_CommunicationPacket>> readPorts(uint8_t) {
-        auto result = queuedPackets;
-        queuedPackets.clear(); // se consumen al leer
-        return result;
-    }
-};
-
-
-// =====================================================================
-// Mock Routine (simula ejecución de comandos o reportes)
-// =====================================================================
-
-class DummyRoutine : public IRoutine<acousea_CommunicationPacket>
-{
-public:
-    mutable int executeCount = 0;
-    Result<acousea_CommunicationPacket> resultToReturn;
-
-    explicit DummyRoutine(const std::string &name)
-        : IRoutine<acousea_CommunicationPacket>(name), resultToReturn(RESULT_SUCCESS(acousea_CommunicationPacket, acousea_CommunicationPacket_init_default))
-    {
-    }
-
-    DummyRoutine(const std::string &name, Result<acousea_CommunicationPacket> result)
-        : IRoutine<acousea_CommunicationPacket>(name), resultToReturn(std::move(result))
-    {
-    }
-
-    Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket> &input) override
-    {
-        executeCount++;
-        (void)input;
-        return resultToReturn;
-    }
-};
-
-
-// =====================================================================
-// Fixture
+// Fixture para NodeOperationRunner
 // =====================================================================
 class NodeOperationRunnerTest : public ::testing::Test
 {
@@ -103,35 +33,36 @@ protected:
         });
 
         Logger::initialize(&display, nullptr, nullptr, "LOG.TXT", Logger::Mode::SerialOnly);
-
-
     }
 
-    DummyRouter router;
-    MockStorageManager storageManager;
+    DummyPort lora{IPort::PortType::LoraPort};
+    DummyPort iridium{IPort::PortType::SBDPort};
+    std::vector<IPort*> ports{&lora, &iridium};
+    Router router{ports};
+
+    InMemoryStorageManager storageManager;
     TestableNodeConfigurationRepository repo{storageManager};
     ConsoleDisplay display;
 };
 
 // =====================================================================
-// TESTS adaptados con DummyRouter real y TestableNodeConfigurationRepository
+// TESTS
 // =====================================================================
 
 TEST_F(NodeOperationRunnerTest, InitLoadsConfigurationCorrectly)
 {
     auto cfg = TestableNodeConfigurationRepository::makeValidNodeConfig();
-
     std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>> routines;
-    NodeOperationRunner runner(router, repo, routines);
 
+    NodeOperationRunner runner(router, repo, routines);
     EXPECT_NO_THROW(runner.init());
 }
 
 TEST_F(NodeOperationRunnerTest, SearchForOperationModeReturnsCorrectMode)
 {
     auto cfg = TestableNodeConfigurationRepository::makeValidNodeConfig();
-
     std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>> routines;
+
     NodeOperationRunner runner(router, repo, routines);
     runner.init();
 
@@ -143,25 +74,23 @@ TEST_F(NodeOperationRunnerTest, SearchForOperationModeReturnsCorrectMode)
 TEST_F(NodeOperationRunnerTest, SearchForOperationModeFailsWhenNotFound)
 {
     NodeOperationRunner runner(router, repo, {});
-
     runner.init();
+
     auto result = runner.searchForOperationMode(255);
     EXPECT_TRUE(result.isError());
 }
 
 TEST_F(NodeOperationRunnerTest, FindRoutineReturnsCorrectPointer)
 {
-    DummyRoutine dummy(
-        "RoutineA", RESULT_SUCCESS(acousea_CommunicationPacket, acousea_CommunicationPacket_init_default));
+    DummyRoutine dummy("RoutineA",
+        RESULT_SUCCESS(acousea_CommunicationPacket, acousea_CommunicationPacket_init_default));
+
     std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>> routines = {
-        {
-            acousea_CommunicationPacket_command_tag,
-            {{acousea_CommandBody_setConfiguration_tag, &dummy}}
-        }
+        { acousea_CommunicationPacket_command_tag,
+          {{acousea_CommandBody_setConfiguration_tag, &dummy}} }
     };
 
     NodeOperationRunner runner(router, repo, routines);
-
     auto found = runner.findRoutine(acousea_CommunicationPacket_command_tag,
                                     acousea_CommandBody_setConfiguration_tag);
     ASSERT_TRUE(found.has_value());
@@ -170,27 +99,27 @@ TEST_F(NodeOperationRunnerTest, FindRoutineReturnsCorrectPointer)
 
 TEST_F(NodeOperationRunnerTest, ExecuteRoutineReturnsSuccessPacket)
 {
-    acousea_CommunicationPacket expected = acousea_CommunicationPacket_init_default;
-    Result<acousea_CommunicationPacket> ok = RESULT_SUCCESS(acousea_CommunicationPacket, expected);
-    DummyRoutine dummy("SuccessRoutine", ok);
+    DummyRoutine dummy("SuccessRoutine",
+        RESULT_SUCCESS(acousea_CommunicationPacket, acousea_CommunicationPacket_init_default));
 
     NodeOperationRunner runner(router, repo, {});
-
     IRoutine<acousea_CommunicationPacket>* routinePtr = &dummy;
-    auto out = runner.executeRoutine(routinePtr , std::nullopt, IPort::PortType::LoraPort, 0, false);
+
+    auto out = runner.executeRoutine(routinePtr, std::nullopt,
+                                     IPort::PortType::LoraPort, 0, false);
     ASSERT_TRUE(out.has_value());
 }
 
 TEST_F(NodeOperationRunnerTest, ExecuteRoutineRequeuesWhenPending)
 {
-    Result<acousea_CommunicationPacket> pending = RESULT_PENDINGF(acousea_CommunicationPacket, "waiting");
-    DummyRoutine dummy("PendingRoutine", pending);
+    DummyRoutine dummy("PendingRoutine",
+        RESULT_PENDINGF(acousea_CommunicationPacket, "waiting"));
 
     NodeOperationRunner runner(router, repo, {});
-
     IRoutine<acousea_CommunicationPacket>* routinePtr = &dummy;
-    // IRoutine<acousea_CommunicationPacket>*& routineRef = routinePtr;
-    runner.executeRoutine(routinePtr, std::nullopt, IPort::PortType::LoraPort, 2, true);
+
+    runner.executeRoutine(routinePtr, std::nullopt,
+                          IPort::PortType::LoraPort, 2, true);
     EXPECT_GT(dummy.executeCount, 0);
 }
 
@@ -211,7 +140,6 @@ TEST_F(NodeOperationRunnerTest, ProcessPacketReturnsErrorPacketWhenNoRoutine)
 
 TEST_F(NodeOperationRunnerTest, TryTransitionChangesModeWhenDurationReached)
 {
-
     NodeOperationRunner runner(router, repo, {});
     runner.init();
 
@@ -234,7 +162,7 @@ TEST_F(NodeOperationRunnerTest, GetReportingEntryReturnsCorrectEntry)
     cfg.loraModule.entries_count = 1;
     cfg.loraModule.entries[0].modeId = cfg.operationModesModule.modes[0].id;
     cfg.loraModule.entries[0].period = 60;
-    repo.setTestConfig(cfg);
+    repo.saveConfiguration(cfg);
 
     NodeOperationRunner runner(router, repo, {});
     runner.init();
@@ -247,9 +175,8 @@ TEST_F(NodeOperationRunnerTest, GetReportingEntryReturnsCorrectEntry)
 
 TEST_F(NodeOperationRunnerTest, RunPendingRoutinesProcessesAll)
 {
-    Result<acousea_CommunicationPacket> ok =
-        RESULT_SUCCESS(acousea_CommunicationPacket, acousea_CommunicationPacket_init_default);
-    DummyRoutine dummy("Pending", ok);
+    DummyRoutine dummy("Pending",
+        RESULT_SUCCESS(acousea_CommunicationPacket, acousea_CommunicationPacket_init_default));
 
     NodeOperationRunner runner(router, repo, {});
     runner.pendingRoutines.add({&dummy, std::nullopt, 1, IPort::PortType::LoraPort});
@@ -261,28 +188,35 @@ TEST_F(NodeOperationRunnerTest, RunPendingRoutinesProcessesAll)
 TEST_F(NodeOperationRunnerTest, ProcessIncomingPacketsSendsResponsesThroughRouter)
 {
     DummyRoutine dummy("ResponseRoutine",
-                       RESULT_SUCCESS(acousea_CommunicationPacket, acousea_CommunicationPacket_init_default));
+        RESULT_SUCCESS(acousea_CommunicationPacket, acousea_CommunicationPacket_init_default));
 
     std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>> routines = {
-        {
-            acousea_CommunicationPacket_command_tag,
-            {{acousea_CommandBody_setConfiguration_tag, &dummy}}
-        }
+        { acousea_CommunicationPacket_command_tag,
+          {{acousea_CommandBody_setConfiguration_tag, &dummy}} }
     };
 
     NodeOperationRunner runner(router, repo, routines);
     runner.init();
 
-    acousea_CommunicationPacket pkt = acousea_CommunicationPacket_init_default;
-    pkt.has_routing = true;
-    pkt.routing.sender = 77;
+    // Construimos un paquete en alto nivel y lo codificamos con nanopb
+    const uint8_t localAddr = repo.getNodeConfiguration().localAddress;
+
+    acousea_CommunicationPacket pkt = PacketUtils::makeRoutedPacket(/*sender=*/77, /*receiver=*/localAddr);
+
+    // Explicit Command->SetConfiguration although it comes by default on makeRoutedPacket,
     pkt.which_body = acousea_CommunicationPacket_command_tag;
     pkt.body.command.which_command = acousea_CommandBody_setConfiguration_tag;
 
-    router.queueIncoming(IPort::PortType::LoraPort, pkt);
+    // Codificar a bytes (nanopb)
+    std::vector<uint8_t> raw = PacketUtils::encodePacketTest(pkt);
 
-    EXPECT_NO_THROW(runner.processIncomingPackets(repo.getNodeConfiguration().localAddress));
+    // Inyectar los bytes en el puerto LoRa
+    lora.enqueueRaw(raw);
 
-    ASSERT_FALSE(router.sentPackets.empty());
-    EXPECT_EQ(router.sentPackets.front().portType, IPort::PortType::LoraPort);
+    // Procesar, esto hará que Router lea/decodifique, el runner ejecute la rutina
+    // y envíe la respuesta por el mismo puerto
+    runner.processIncomingPackets(localAddr);
+
+    // Debe haberse enviado algo por el puerto LoRa
+    EXPECT_FALSE(lora.sentPackets.empty());
 }

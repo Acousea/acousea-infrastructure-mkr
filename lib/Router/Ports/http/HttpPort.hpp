@@ -4,6 +4,7 @@
 
 #include "ClassName.h"
 #include "Ports/IPort.h"
+#include <string>
 
 class HttpPort : public IPort
 {

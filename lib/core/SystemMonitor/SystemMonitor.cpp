@@ -37,48 +37,67 @@ void SystemMonitor::reset()
 void SystemMonitor::logResetCause()
 {
     const uint8_t cause = Watchdog.resetCause();
-    std::string msg = "[RESET_CAUSE] ";
+    char msg[128];
+    const int written = snprintf(msg, sizeof(msg), "[RESET_CAUSE] ");
 
+    const char* desc = nullptr;
     switch (cause)
     {
-    case 0x01: msg += "Power-on reset";
+    case 0x01: desc = "Power-on reset";
         break;
-    case 0x02: msg += "Brown-out 12 detector reset";
+    case 0x02: desc = "Brown-out 12 detector reset";
         break;
-    case 0x04: msg += "Brown-out 33 detector reset";
+    case 0x04: desc = "Brown-out 33 detector reset";
         break;
-    case 0x10: msg += "External reset (RESET pin)";
+    case 0x10: desc = "External reset (RESET pin)";
         break;
-    case 0x20: msg += "Watchdog reset";
+    case 0x20: desc = "Watchdog reset";
         break;
-    case 0x40: msg += "System reset request";
+    case 0x40: desc = "System reset request";
         break;
-    default: msg += "Unknown cause (0x" + std::to_string(cause) + ")";
-        break;
+    default:
+        snprintf(msg + written, sizeof(msg) - written, "Unknown cause (0x%02X)", cause);
+        LOG_CLASS_WARNING("%s", msg);
+        return;
     }
 
-    LOG_CLASS_WARNING("%s", msg.c_str());
+    snprintf(msg + written, sizeof(msg) - written, "%s", desc);
+    LOG_CLASS_WARNING("%s", msg);
 }
-
 
 void SystemMonitor::sleepFor(const uint32_t ms) const
 {
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH); // LED ON mientras se ejecuta
-    const auto warnMsg = " -> sleeping for " + (ms == 0 ? "indefinite" : std::to_string(ms) + " ms") + "...";
-    LOG_CLASS_WARNING("%s", warnMsg.c_str());
+
+    char msg[96];
+    ms == 0
+        ? snprintf(msg, sizeof(msg), " -> sleeping for indefinite...")
+        : snprintf(msg, sizeof(msg), " -> sleeping for %lu ms...", static_cast<unsigned long>(ms));
+
+    LOG_CLASS_WARNING("%s", msg);
+
     Watchdog.reset();
     Watchdog.disable();
     USBDevice.detach();
 
-    ms == 0 ? LowPower.sleep() : LowPower.sleep(ms); // indefinite sleep
+    if (ms == 0)
+        LowPower.sleep(); // indefinite
+    else
+        LowPower.sleep(ms);
 
     USBDevice.attach();
-    const auto infoMsg = " -> woke up from " + (ms == 0 ? "indefinite" : std::to_string(ms) + " ms") + " sleep.";
-    LOG_CLASS_INFO("%s", infoMsg.c_str());
+
+    ms == 0
+        ? snprintf(msg, sizeof(msg), " -> woke up from indefinite sleep.")
+        : snprintf(msg, sizeof(msg), " -> woke up from %lu ms sleep.", static_cast<unsigned long>(ms));
+
+    LOG_CLASS_INFO("%s", msg);
+
     Watchdog.enable(watchDogTimeoutMs); // re-enable watchdog on wake-up
     digitalWrite(LED_BUILTIN, LOW); // LED OFF al despertar
 }
+
 
 void SystemMonitor::manageRockPiAction(const unsigned long cooldownMs,
                                        void (PiController::*action)() const) const

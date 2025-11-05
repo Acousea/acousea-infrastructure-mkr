@@ -41,71 +41,94 @@ bool HDDStorageManager::writeFileBytes(const char* path, const uint8_t* data, si
     }
 }
 
-bool HDDStorageManager::writeFileBytes(const char* path, const std::vector<uint8_t>& data)
-{
-    return writeFileBytes(path, data.data(), data.size());
-}
+// --------------------------------------------------------------
+// Lee un archivo binario dentro de un buffer
+// --------------------------------------------------------------
+size_t HDDStorageManager::readFileBytes(const char* path, uint8_t* outBuffer, size_t maxLen) {
+    if (!path || !outBuffer || maxLen == 0) return 0;
 
-bool HDDStorageManager::appendToFile(const char* path, const std::string& content){
-    std::ofstream ofs(path, std::ios::out | std::ios::app | std::ios::binary);
-    if (!ofs){
-        std::cerr << "HDDStorageManager::appendToFile() -> Cannot open: " << path << "\n";
-        return false;
-    }
-    ofs << content;
-    return true;
-}
-
-bool HDDStorageManager::overwriteFile(const char* path, const std::string& content){
-    // std::ios::trunc para truncar
-    std::ofstream ofs(path, std::ios::out | std::ios::trunc | std::ios::binary);
-    if (!ofs){
-        std::cerr << "HDDStorageManager::overwriteFile() -> Cannot open: " << path << "\n";
-        return false;
-    }
-    ofs << content;
-    return true;
-}
-
-std::vector<uint8_t> HDDStorageManager::readFileBytes(const char* path) {
     try {
         std::ifstream ifs(path, std::ios::in | std::ios::binary | std::ios::ate);
-
         if (!ifs) {
             std::cerr << "HDDStorageManager::readFileBytes() -> Cannot open: " << path << "\n";
-            return {};
+            return 0;
         }
 
         const std::ifstream::pos_type endPos = ifs.tellg();
-        if (endPos <= 0) {
-            return {};
-        }
+        if (endPos <= 0) return 0;
 
-        std::vector<uint8_t> buffer(static_cast<size_t>(endPos));
+        const size_t fileSize = static_cast<size_t>(endPos);
+        const size_t toRead = (fileSize < maxLen) ? fileSize : maxLen;
+
         ifs.seekg(0, std::ios::beg);
+        ifs.read(reinterpret_cast<char*>(outBuffer), static_cast<std::streamsize>(toRead));
 
-        if (!buffer.empty()) {
-            ifs.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
-            if (!ifs && !ifs.eof()) {
-                std::cerr << "HDDStorageManager::readFileBytes() -> Read failed for: " << path << "\n";
-                return {};
-            }
+        if (!ifs && !ifs.eof()) {
+            std::cerr << "HDDStorageManager::readFileBytes() -> Read failed for: " << path << "\n";
+            return 0;
         }
-        return buffer;
+
+        return toRead;
     } catch (const std::exception& e) {
         std::cerr << "HDDStorageManager::readFileBytes() -> Exception: " << e.what() << "\n";
-        return {};
+        return 0;
     }
 }
 
-std::string HDDStorageManager::readFile(const char* path){
-    std::ifstream ifs(path, std::ios::in | std::ios::binary);
-    if (!ifs){
-        std::cerr << "HDDStorageManager::readFile() -> Cannot open: " << path << "\n";
-        return {};
+
+// --------------------------------------------------------------
+// Añade texto al final de un archivo
+// --------------------------------------------------------------
+bool HDDStorageManager::appendToFile(const char* path, const char* content) {
+    if (!path || !content) return false;
+
+    std::ofstream ofs(path, std::ios::out | std::ios::app | std::ios::binary);
+    if (!ofs) {
+        std::cerr << "HDDStorageManager::appendToFile() -> Cannot open: " << path << "\n";
+        return false;
     }
-    std::string data((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-    return data;
+
+    ofs << content;
+    return true;
+}
+
+
+// --------------------------------------------------------------
+// Sobrescribe completamente un archivo de texto
+// --------------------------------------------------------------
+bool HDDStorageManager::overwriteFile(const char* path, const char* content) {
+    if (!path || !content) return false;
+
+    std::ofstream ofs(path, std::ios::out | std::ios::trunc | std::ios::binary);
+    if (!ofs) {
+        std::cerr << "HDDStorageManager::overwriteFile() -> Cannot open: " << path << "\n";
+        return false;
+    }
+
+    ofs << content;
+    return true;
+}
+// --------------------------------------------------------------
+// Lee un archivo de texto completo
+// --------------------------------------------------------------
+size_t HDDStorageManager::readFile(const char* path, char* outBuffer, size_t maxLen) {
+    if (!path || !outBuffer || maxLen == 0) return 0;
+
+    std::ifstream ifs(path, std::ios::in | std::ios::binary);
+    if (!ifs) {
+        std::cerr << "HDDStorageManager::readFile() -> Cannot open: " << path << "\n";
+        return 0;
+    }
+
+    size_t count = 0;
+    while (ifs.good() && count < maxLen - 1) {
+        char c;
+        ifs.get(c);
+        if (!ifs.good()) break;
+        outBuffer[count++] = c;
+    }
+    outBuffer[count] = '\0';
+    return count;
 }
 
 bool HDDStorageManager::deleteFile(const char* path){

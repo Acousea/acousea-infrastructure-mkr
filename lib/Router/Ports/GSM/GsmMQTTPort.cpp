@@ -50,9 +50,9 @@ void GsmMQTTPort::printCertificates(const std::vector<StoredCert>& currentCerts)
     {
         LOG_CLASS_WARNING(
             "Existing Cert - Type: %s, Name: %s, Expiration: %s",
-            cert.type.c_str(),
-            cert.internalName.c_str(),
-            cert.expiration.c_str()
+            cert.type,
+            cert.internalName,
+            cert.expiration
         );
     }
 }
@@ -137,7 +137,7 @@ void GsmMQTTPort::init()
     LOG_CLASS_INFO(" -> Successfully connected to MQTT broker");
 
     // Automatically subscribe to input topic
-    mqttSubscribeToTopic(config.getInputTopic().c_str());
+    mqttSubscribeToTopic(config.inputTopic);
 
     LOG_CLASS_INFO(" -> Finished initialization.");
 }
@@ -145,8 +145,7 @@ void GsmMQTTPort::init()
 
 bool GsmMQTTPort::send(const std::vector<uint8_t>& data)
 {
-    const std::string topic = config.getOutputTopic();
-    return mqttPublishToTopic(data, topic);
+    return mqttPublishToTopic(data.data(), data.size(), config.outputTopic);
 }
 
 bool GsmMQTTPort::available()
@@ -162,30 +161,33 @@ std::vector<std::vector<uint8_t>> GsmMQTTPort::read()
     return packets;
 }
 
-bool GsmMQTTPort::mqttPublishToTopic(const std::vector<uint8_t>& data, const std::string topic)
+
+bool GsmMQTTPort::mqttPublishToTopic(const uint8_t* data, size_t size, const char* topic)
 {
-    if (!mqttClient.beginMessage(topic.c_str()))
+    if (!mqttClient.beginMessage(topic))
     {
-        LOG_CLASS_ERROR("Failed to begin MQTT message on topic %s", topic.c_str());
-        return true;
+        LOG_CLASS_ERROR("Failed to begin MQTT message on %s", topic);
+        return false;
     }
 
-    const size_t written = mqttClient.write(data.data(), data.size());
-    if (written != data.size())
+    const size_t written = mqttClient.write(data, size);
+    if (written != size)
     {
         LOG_CLASS_WARNING("Partial write while publishing to %s (expected %zu bytes, wrote %zu)",
-                          topic.c_str(), data.size(), written);
+                          topic, size, written);
     }
+
 
     if (!mqttClient.endMessage())
     {
         LOG_CLASS_ERROR("Failed to finalize MQTT message on topic %s (only wrote %zu bytes from %zu)",
-                        topic.c_str(), written, data.size());
+                        topic, written, size);
         return true;
     }
 
-    LOG_CLASS_INFO("Published %zu bytes to topic %s", written, topic.c_str());
-    return false;
+
+    LOG_CLASS_INFO("Published %zu bytes to %s", written, topic);
+    return true;
 }
 
 
@@ -233,23 +235,48 @@ void GsmMQTTPort::testConnection(const char* host, int port, const char* path)
 
     LOG_CLASS_INFO(" -> TLS connection SUCCESS");
 
-    // Example: send a simple HTTP GET
-    ublox_gsmSslClient.print(String("GET ") + path + " HTTP/1.1\r\n" +
-        "Host: " + host + "\r\n" +
-        "Connection: close\r\n\r\n");
+    // ----------- Construir y enviar petición HTTP -----------
+    char request[256];
+    std::snprintf(request, sizeof(request),
+                  "GET %s HTTP/1.1\r\n"
+                  "Host: %s\r\n"
+                  "Connection: close\r\n\r\n",
+                  path, host);
 
-    // Read response
-    std::string response;
-    while (ublox_gsmSslClient.connected())
+    ublox_gsmSslClient.print(request);
+    LOG_CLASS_INFO(" -> HTTP request sent.");
+
+    // ----------- Leer respuesta (máx. 1024 bytes) -----------
+    constexpr size_t MAX_RESPONSE_SIZE = 1024;
+    char response[MAX_RESPONSE_SIZE + 1]; // +1 para '\0'
+    size_t totalRead = 0;
+
+    LOG_CLASS_INFO(" -> Reading up to %zu bytes of response...", MAX_RESPONSE_SIZE);
+
+    while (ublox_gsmSslClient.connected() && totalRead < MAX_RESPONSE_SIZE)
     {
-        while (ublox_gsmSslClient.available())
+        while (ublox_gsmSslClient.available() && totalRead < MAX_RESPONSE_SIZE)
         {
-            char c = ublox_gsmSslClient.read();
-            response += c;
+            int c = ublox_gsmSslClient.read();
+            if (c < 0)
+                continue;
+
+            response[totalRead++] = static_cast<char>(c);
         }
     }
+
+    // Terminar cadena correctamente
+    response[totalRead] = '\0';
+
+    // Si se truncó la respuesta, indicarlo
+    if (totalRead >= MAX_RESPONSE_SIZE)
+    {
+        LOG_CLASS_WARNING(" -> Response truncated to %zu bytes", MAX_RESPONSE_SIZE);
+    }
+
     ublox_gsmSslClient.stop();
-    LOG_CLASS_INFO(" -> Response:\n%s", response.c_str());
+
+    LOG_CLASS_INFO(" -> Connection closed. Response (%zu bytes):\n%.1024s", totalRead, response);
 }
 
 #endif // ARDUINO && PLATFORM_HAS_GSM

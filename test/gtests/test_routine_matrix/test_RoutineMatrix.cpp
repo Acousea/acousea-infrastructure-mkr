@@ -11,24 +11,7 @@
 #include <optional>
 #include "bindings/nodeDevice.pb.h"
 
-// ======================================================
-// DummyRoutine: mínima implementación de IRoutine
-// ======================================================
-class DummyRoutine : public IRoutine<acousea_CommunicationPacket>
-{
-public:
-    explicit DummyRoutine(const std::string &name)
-        : IRoutine<acousea_CommunicationPacket>(name)
-    {
-    }
-
-    Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket> &input) override
-    {
-        (void)input;
-        acousea_CommunicationPacket pkt = acousea_CommunicationPacket_init_default;
-        return Result<acousea_CommunicationPacket>::success(pkt);
-    }
-};
+#include "../common_test_resources/DummyRoutine.hpp"
 
 // ======================================================
 // FIXTURE

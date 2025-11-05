@@ -1,8 +1,9 @@
 #include "Logger.h"
 
 #include <malloc.h> // mallinfo
-#include <cstdarg>  // para va_list, va_start, va_end
+
 #include <cstring>
+#include <cstdio>
 
 #ifdef ARDUINO
 #include <Arduino.h>
@@ -41,11 +42,16 @@ void Logger::logfFreeMemory(const char* fmt, ...)
 void Logger::initialize(IDisplay* display_, StorageManager* sdManager_, RTCController* rtc_, const char* logFilePath_,
                         Mode mode_)
 {
+    // Limpieza del buffer global (evita residuos entre logs o tests)
+    memset(sharedBuffer, 0, sizeof(sharedBuffer)); // <-- 🔧 Añadido
+
+
     Logger::display = display_;
     Logger::storageManager = sdManager_;
     Logger::rtc = rtc_;
     Logger::logFilePath = logFilePath_;
     Logger::mode = mode_;
+
 
     const bool validPath = (logFilePath_ && strlen(logFilePath_) <= 8);
 
@@ -67,38 +73,40 @@ void Logger::initialize(IDisplay* display_, StorageManager* sdManager_, RTCContr
 #endif
 }
 
-void Logger::logError(const char* message)
+void Logger::logInfo(const char* message)
 {
     if (display)
-        display->setColor(IDisplay::Color::RED);
-    log("ERROR", message);
+        display->setColor(IDisplay::Color::DEFAULT);
+
+    vlog("INFO", message);
 }
 
 void Logger::logWarning(const char* message)
 {
     if (display)
         display->setColor(IDisplay::Color::ORANGE);
-    log("WARNING", message);
+
+    vlog("WARNING", message);
 }
 
-void Logger::logInfo(const char* message)
-{
-    if (display)
-        display->setColor(IDisplay::Color::DEFAULT);
-    log("INFO", message);
-}
-
-void Logger::logfError(const char* fmt, ...)
+void Logger::logError(const char* message)
 {
     if (display)
         display->setColor(IDisplay::Color::RED);
 
+    vlog("ERROR", message);
+}
+
+
+void Logger::logfInfo(const char* fmt, ...)
+{
+    if (display)
+        display->setColor(IDisplay::Color::DEFAULT);
+
     va_list args;
     va_start(args, fmt);
-    vsnprintf(sharedBuffer, sizeof(sharedBuffer), fmt, args);
+    vlog("INFO", fmt, args);
     va_end(args);
-
-    log("ERROR", sharedBuffer);
 }
 
 void Logger::logfWarning(const char* fmt, ...)
@@ -108,51 +116,72 @@ void Logger::logfWarning(const char* fmt, ...)
 
     va_list args;
     va_start(args, fmt);
-    vsnprintf(sharedBuffer, sizeof(sharedBuffer), fmt, args);
+    vlog("WARNING", fmt, args);
     va_end(args);
-
-    log("WARNING", sharedBuffer);
 }
 
-void Logger::logfInfo(const char* fmt, ...)
+void Logger::logfError(const char* fmt, ...)
 {
     if (display)
-        display->setColor(IDisplay::Color::DEFAULT);
+        display->setColor(IDisplay::Color::RED);
 
     va_list args;
     va_start(args, fmt);
-    vsnprintf(sharedBuffer, sizeof(sharedBuffer), fmt, args);
+    vlog("ERROR", fmt, args);
     va_end(args);
-
-    log("INFO", sharedBuffer);
 }
 
 
-void Logger::log(const char* logType, const char* message)
+void Logger::do_log()
 {
     switch (mode)
     {
-    case Mode::SDCard:
-        logToSDCard(logType, message);
-        break;
     case Mode::SerialOnly:
-        logToSerial(logType, message);
+        logToSerial(sharedBuffer);
+        break;
+    case Mode::SDCard:
+        logToSDCard(sharedBuffer);
         break;
     case Mode::Both:
-        logToSerial(logType, message);
-        logToSDCard(logType, message);
+        logToSerial(sharedBuffer);
+        logToSDCard(sharedBuffer);
         break;
     }
 }
 
-bool Logger::clearLog()
+void Logger::vlog(const char* logType, const char* message)
 {
-    if (mode == Mode::SDCard && storageManager)
-    {
-        return storageManager->overwriteFile(logFilePath, "");
-    }
-    return false;
+    char timestamp[20];
+    getTimestamp(timestamp, sizeof(timestamp));
+
+    snprintf(sharedBuffer, sizeof(sharedBuffer), "[%s] %s: %s", timestamp, logType, message);
+
+    do_log();
 }
+
+
+void Logger::vlog(const char* logType, const char* fmt, const va_list args)
+{
+    char timestamp[20];
+    getTimestamp(timestamp, sizeof(timestamp));
+
+    const int headerLen = snprintf(sharedBuffer, sizeof(sharedBuffer), "[%s] %s: ", timestamp, logType);
+    if (headerLen < 0 || static_cast<size_t>(headerLen) >= sizeof(sharedBuffer))
+    {
+        // Error al formatear el encabezado o se ha excedido el tamaño del buffer
+        display->setColor(IDisplay::Color::RED);
+        strcpy(sharedBuffer, "[LOGGER INTERNAL ERROR] vlog() header formatting failed.");
+        do_log();
+        return;
+    }
+
+    // Formatear el mensaje con los argumentos variables
+    vsnprintf(sharedBuffer + headerLen, sizeof(sharedBuffer) - static_cast<size_t>(headerLen), fmt, args);
+
+    // Salida según modo
+    do_log();
+}
+
 
 void Logger::vectorToHexString(const unsigned char* data, const size_t length, char* outBuffer, const size_t outSize)
 {
@@ -202,43 +231,51 @@ void Logger::getTimestamp(char* buffer, const size_t len)
              t->tm_hour, t->tm_min, t->tm_sec);
 }
 
-void Logger::logToSerial(const char* logType, const char* message)
+
+bool Logger::clearLog()
 {
-    char ts[20];
-    getTimestamp(ts, sizeof(ts));
+    if (mode == Mode::SDCard && storageManager)
+    {
+        return storageManager->overwriteFile(logFilePath, "");
+    }
+    return false;
+}
 
-    snprintf(sharedBuffer, sizeof(sharedBuffer) - 1, "[%s] %s: %s", ts, logType, message);
-    sharedBuffer[sizeof(sharedBuffer) - 1] = '\0';
 
-    if (display)
-        display->print(sharedBuffer);
-    else
+void Logger::logToSerial(const char* line)
+{
 #if defined(ARDUINO)
-        Serial.println(sharedBuffer);
+    if (display)
+        display->print(line);
+    else
+        Serial.println(line);
 #else
-        printf("%s\n", sharedBuffer);
+    if (display)
+        display->print(line);
+    else
+        printf("%s\n", line);
 #endif
 }
 
 
-void Logger::logToSDCard(const char* logType, const char* message)
+void Logger::logToSDCard(const char* line)
 {
-    if (!storageManager)
+    if (!storageManager || !logFilePath)
     {
         if (display)
             display->print("Logger::logToSDCard() -> StorageManager not initialized.");
         return;
     }
 
-    char ts[20];
-    getTimestamp(ts, sizeof(ts));
+    const size_t len = strlen(line);
+    if (len == 0)
+        return;
 
-    char entry[1024];
-    snprintf(entry, sizeof(entry), "%s,%s,%s\n", ts, logType, message);
+    storageManager->appendToFile(logFilePath, line);
 
-    if (!storageManager->appendToFile(logFilePath, entry))
+    // Añadimos salto de línea final si no lo tiene
+    if (line[len - 1] != '\n')
     {
-        if (display)
-            display->print("Logger::logToSDCard() -> Failed to append to log file.");
+        storageManager->appendToFile(logFilePath, "\n");
     }
 }

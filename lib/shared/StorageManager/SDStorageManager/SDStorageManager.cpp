@@ -14,47 +14,43 @@ bool SDStorageManager::begin(){
     return true;
 }
 
-bool SDStorageManager::appendToFile(const char* path, const std::string& content){
+bool SDStorageManager::appendToFile(const char* path, const char* content) {
     File file = SD.open(path, FILE_WRITE);
-    if (!file){
-        Serial.println("SDStorageManager::appendToFile() -> Error opening file for writing");
+    if (!file) {
+        Serial.println(F("SDStorageManager::appendToFile() -> Error opening file"));
         return false;
     }
-
-    String contentStr(content.c_str());
-    file.print(contentStr);
+    file.print(content);
     file.close();
     return true;
 }
 
-bool SDStorageManager::overwriteFile(const char* path, const std::string& content){
+
+bool SDStorageManager::overwriteFile(const char* path, const char* content) {
     File file = SD.open(path, (O_READ | O_WRITE | O_CREAT | O_TRUNC));
     if (!file) {
-        Serial.println("SDStorageManager::overwriteFile() -> Error opening file for writing");
+        Serial.println(F("SDStorageManager::overwriteFile() -> Error opening file"));
         return false;
     }
-
-
-    String contentStr(content.c_str());
-    file.print(contentStr);
+    file.print(content);
     file.close();
     return true;
 }
 
-std::string SDStorageManager::readFile(const char* path){
+size_t SDStorageManager::readFile(const char* path, char* outBuffer, size_t maxLen) {
     File file = SD.open(path, FILE_READ);
-    if (!file){
-        Serial.println("SDStorageManager::readFile() -> Error opening file for reading");
-        return "";
+    if (!file) {
+        Serial.println(F("SDStorageManager::readFile() -> Error opening file"));
+        return 0;
     }
 
-    std::string content;
-    while (file.available()){
-        content += (char)file.read();
+    size_t i = 0;
+    while (file.available() && i < (maxLen - 1)) {
+        outBuffer[i++] = static_cast<char>(file.read());
     }
-
+    outBuffer[i] = '\0';
     file.close();
-    return content;
+    return i;
 }
 
 
@@ -100,46 +96,23 @@ bool SDStorageManager::writeFileBytes(const char* path, const uint8_t* data, siz
     return true;
 }
 
-bool SDStorageManager::writeFileBytes(const char* path, const std::vector<uint8_t>& data){
-    return writeFileBytes(path, data.data(), data.size());
-}
-
-// Lee todo el archivo como vector<uint8_t>
-std::vector<uint8_t> SDStorageManager::readFileBytes(const char* path){
+size_t SDStorageManager::readFileBytes(const char* path, uint8_t* outBuffer, size_t maxLen) {
     File file = SD.open(path, FILE_READ);
-    if (!file){
-        Serial.println("SDStorageManager::readFileBytes() -> Error opening file for reading");
-        return {};
+    if (!file) {
+        Serial.println(F("SDStorageManager::readFileBytes() -> Error opening file"));
+        return 0;
     }
 
-    // Intentamos reservar según tamaño reportado por la librería SD
-    std::vector<uint8_t> buffer;
-    const size_t fsize = file.size(); // Puede no estar disponible en todas las plataformas
-    if (fsize > 0){
-        buffer.resize(fsize);
-        size_t readTotal = 0;
-        while (readTotal < fsize && file.available()){
-            int c = file.read();
-            if (c < 0) break;
-            buffer[readTotal++] = static_cast<uint8_t>(c);
-        }
-        // En caso de tamaños no fiables, ajustamos al número realmente leído
-        buffer.resize(readTotal);
-    }
-    else{
-        // Fallback: tamaño desconocido -> leemos por bloques
-        const size_t CHUNK = 512;
-        buffer.reserve(1024);
-        while (file.available()){
-            uint8_t tmp[CHUNK];
-            int r = file.read(tmp, CHUNK);
-            if (r <= 0) break;
-            buffer.insert(buffer.end(), tmp, tmp + r);
-        }
+    size_t readTotal = 0;
+    while (file.available() && readTotal < maxLen) {
+        int c = file.read();
+        if (c < 0) break;
+        outBuffer[readTotal++] = static_cast<uint8_t>(c);
     }
 
     file.close();
-    return buffer;
+    return readTotal;
 }
+
 
 #endif // ARDUINO

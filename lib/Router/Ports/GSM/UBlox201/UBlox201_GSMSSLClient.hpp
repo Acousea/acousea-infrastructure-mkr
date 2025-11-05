@@ -5,7 +5,6 @@
 
 #include <GSMSSLClient.h>
 #include <vector>
-#include <string>
 
 #include "ClassName.h"
 #include "Logger/Logger.h"
@@ -19,11 +18,11 @@ enum class CertType : uint8_t{
     Unknown = 4
 };
 
-struct StoredCert{
-    std::string type;
-    std::string internalName;
-    std::string commonName;
-    std::string expiration;
+struct StoredCert {
+    char type[8];
+    char internalName[64];
+    char commonName[64];
+    char expiration[32];
 };
 
 // Estructura para contener el certificado
@@ -62,43 +61,27 @@ public:
     void setModemNoDebug(){ MODEM.noDebug(); }
 
     // 🔹 Helper centralizado
-    static bool logAndCheckResponse(const int result, const std::string& action, const std::string& name){
-        switch (result){
-        case 1:
-            LOG_CLASS_INFO("Removed %s: %s", action.c_str(), name.c_str());
-            return true;
-        case 2:
-            LOG_CLASS_ERROR(" -> AT command error while removing %s: %s", action.c_str(), name.c_str());
-            return false;
-        case 3:
-            LOG_CLASS_ERROR(" -> No carrier while removing %s: %s", action.c_str(), name.c_str());
-            return false;
-        case -1:
-        default:
-            LOG_CLASS_ERROR(" -> Timeout while removing %s: %s", action.c_str(), name.c_str());
-            return false;
-        }
-    }
+    static bool logAndCheckResponse(const int result, const char* action, const char* name);
 
 
     [[nodiscard]] bool updateCerts(const GSMRootCert* rootCerts, const size_t rootCertsSize,
-                                   const std::string& testBroker = "google.com"
+                                   const char* testBroker = "google.com"
     );
 
     [[nodiscard]] std::vector<StoredCert> listCertificates(CertType type);
 
 
     // 🔹 Eliminar un certificado de cliente
-    [[nodiscard]] bool removeClientCertificate(const std::string& name);
+    [[nodiscard]] bool removeClientCertificate(const char* name);
 
     // 🔹 Eliminar una clave privada
-    [[nodiscard]] bool removePrivateKey(const std::string& name);
+    [[nodiscard]] bool removePrivateKey(const char* name);
 
     // 🔹 Eliminar un certificado raíz por nombre
-    [[nodiscard]] bool removeRootCertificateByName(const std::string& name);
+    [[nodiscard]] bool removeRootCertificateByName(const char* name);
 
     // 🔹 Eliminar múltiples certificados raíz (vector<string>)
-    [[nodiscard]] bool removeTrustedRootCertificates(const std::vector<std::string>& names);
+    [[nodiscard]] bool removeTrustedRootCertificates(const std::vector<char*>& names);
 
     // 🔹 Eliminar múltiples certificados raíz (array GSMRootCert)
     [[nodiscard]] bool removeTrustedRootCertificates(const GSMRootCert* certs, size_t count);

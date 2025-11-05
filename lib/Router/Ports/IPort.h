@@ -5,7 +5,6 @@
 #include <vector>
 #include <deque>
 #include <cstdint>
-#include <string>
 
 // Definición de la interfaz de comunicador
 class IPort

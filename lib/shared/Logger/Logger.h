@@ -3,6 +3,8 @@
 
 
 #include <ctime>
+#include <cstdarg>  // para va_list, va_start, va_end
+
 #include "StorageManager/StorageManager.hpp"
 #include "RTCController.hpp"
 #include "IDisplay.h"
@@ -56,7 +58,6 @@ public:
     static void logfWarning(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
     static void logfError(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
 
-    static bool clearLog();
 
     static void vectorToHexString(const unsigned char* data, size_t length, char* outBuffer, size_t outSize);
     static HexString vectorToHexString(const unsigned char* data, size_t length);
@@ -80,9 +81,16 @@ private:
     static inline char sharedBuffer[SHARED_BUFFER_SIZE]{};
 
     static void getTimestamp(char* buffer, size_t len);
-    static void logToSerial(const char* logType, const char* message);
-    static void logToSDCard(const char* logType, const char* message);
-    static void log(const char* logType, const char* message);
+
+    static void vlog(const char* logType, const char* fmt, va_list args);
+    static void vlog(const char* logType, const char* message);
+
+    static bool clearLog();
+
+    static void do_log();
+
+    static void logToSerial(const char* line);
+    static void logToSDCard(const char* line);
 };
 
 // ============================================================================

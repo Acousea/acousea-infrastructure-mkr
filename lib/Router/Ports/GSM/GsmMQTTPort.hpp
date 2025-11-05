@@ -3,15 +3,12 @@
 
 #if defined(ARDUINO) && defined(PLATFORM_HAS_GSM)
 
-#include <deque>
-#include <string>
-
 #include <MKRGSM.h>
-
 #include <ArduinoMqttClient.h>
 #include <Logger/Logger.h>
 #include <ErrorHandler/ErrorHandler.h>
 
+#include "GsmConfig.hpp"
 #include "UBlox201/UBlox201_GSMSSLClient.hpp"
 #include "Ports/IPort.h"
 #include "ClassName.h"
@@ -19,29 +16,6 @@
 #include "../../private_keys/cert.h"
 #include "../../private_keys/key.h"
 
-struct GsmConfig{
-    const char* pin; // PIN de la SIM ("" si no tiene)
-    const char* apn; // APN del operador
-    const char* user; // Usuario APN
-    const char* pass; // Password APN
-    const char* clientId; // Identificador cliente MQTT (ej: IMEI o ECCX08 SN)
-    const char* broker; // Endpoint AWS IoT
-    int port; // Puerto destino, normalmente 8883
-    const char* certificate; // Certificado cliente en PEM
-
-
-    static constexpr auto baseTopic = "acousea/nodes"; // prefijo común fijo
-
-    // Devuelve el topic de entrada
-    [[nodiscard]] std::string getInputTopic() const{
-        return std::string(baseTopic) + "/mt/" + clientId; // "mt" = Mobile Terminated (incoming)
-    }
-
-    // Devuelve el topic de salida
-    [[nodiscard]] std::string getOutputTopic() const{
-        return std::string(baseTopic) + "/mo/" + clientId; // "mo" = Mobile Originated (outgoing)
-    }
-};
 
 
 class GsmMQTTPort final : public IPort{
@@ -61,7 +35,7 @@ public:
     // Métodos MQTT
     void mqttLoop();
     void mqttSubscribeToTopic(const char* topic);
-    bool mqttPublishToTopic(const std::vector<uint8_t>& data, std::string topic);
+    bool mqttPublishToTopic(const uint8_t* data, size_t size, const char* topic);
 
 private:
     static unsigned long getTime();

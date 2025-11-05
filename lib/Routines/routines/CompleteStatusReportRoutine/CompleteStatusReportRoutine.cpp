@@ -1,6 +1,8 @@
 #include "CompleteStatusReportRoutine.h"
 
 #include <algorithm>
+#include <cstdio>
+
 #include "Logger/Logger.h"
 
 CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationRepository& nodeConfigurationRepository,
@@ -20,15 +22,15 @@ CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationReposi
 
 
 Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
-    const std::optional<acousea_CommunicationPacket>& none)
+    const std::optional<acousea_CommunicationPacket>& input /*unused*/)
 {
     // --- Obtener configuración actual ---
     const acousea_NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
     const auto reportTypeResult = getCurrentReportingConfiguration(nodeConfig);
     if (reportTypeResult.isError())
     {
-        return RESULT_FAILUREF(acousea_CommunicationPacket, "Cannot get current reporting configuration: %s",
-                               reportTypeResult.getError());
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket, "Cannot get current reporting configuration: %s",
+                                     reportTypeResult.getError());
     }
     const acousea_ReportType& reportType = reportTypeResult.getValueConst();
 
@@ -37,44 +39,41 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
     status.modules_count = 0;
 
     // --- Log included modules ---
-    std::string moduleIds = "[";
-    for (pb_size_t i = 0; i < reportType.includedModules_count; i++)
+    char moduleIds[128];
+    size_t pos = 0;
+    pos += snprintf(moduleIds + pos, sizeof(moduleIds) - pos, "[");
+    for (pb_size_t i = 0; i < reportType.includedModules_count && pos < sizeof(moduleIds) - 4; i++)
     {
-        moduleIds += std::to_string(reportType.includedModules[i]);
-        if (i < reportType.includedModules_count - 1) moduleIds += ", ";
+        pos += snprintf(moduleIds + pos, sizeof(moduleIds) - pos, "%d", reportType.includedModules[i]);
+        if (i < reportType.includedModules_count - 1) pos += snprintf(moduleIds + pos, sizeof(moduleIds) - pos, ", ");
     }
-    moduleIds += "]";
+    snprintf(moduleIds + pos, sizeof(moduleIds) - pos, "]");
+    LOG_CLASS_INFO("Building report packet with %d modules: %s", reportType.includedModules_count, moduleIds);
 
-    LOG_CLASS_INFO("Building report packet with %d modules: %s", reportType.includedModules_count, moduleIds.c_str());
 
     // --- Fill modules ---
     for (pb_size_t i = 0; i < reportType.includedModules_count; i++)
     {
-        switch (auto moduleCode = reportType.includedModules[i])
+        const auto code = reportType.includedModules[i];
+        auto& entry = status.modules[status.modules_count++];
+        entry.has_value = true;
+        entry.key = code;
+
+        switch (code)
         {
         case acousea_ModuleCode_BATTERY_MODULE:
             {
-                acousea_StatusReportPayload_ModulesEntry entry =
-                    acousea_StatusReportPayload_ModulesEntry_init_default;
-                entry.has_value = true;
-                entry.key = acousea_ModuleCode_BATTERY_MODULE;
                 entry.value.which_module = acousea_ModuleWrapper_battery_tag;
                 entry.value.module.battery.batteryPercentage = battery->voltageSOC_rounded();
                 entry.value.module.battery.batteryStatus = battery->status();
-                status.modules[status.modules_count++] = entry;
                 break;
             }
         case acousea_ModuleCode_LOCATION_MODULE:
             {
-                acousea_StatusReportPayload_ModulesEntry entry =
-                    acousea_StatusReportPayload_ModulesEntry_init_default;
-                entry.has_value = true;
-                entry.key = acousea_ModuleCode_LOCATION_MODULE;
                 entry.value.which_module = acousea_ModuleWrapper_location_tag;
                 auto [lat, lon] = gps->read();
                 entry.value.module.location.latitude = lat;
                 entry.value.module.location.longitude = lon;
-                status.modules[status.modules_count++] = entry;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_HF:
@@ -85,21 +84,16 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
                 // Si no está fresco → la rutina queda en estado pending
                 if (!optHF)
                 {
-                    return RESULT_PENDINGF(acousea_CommunicationPacket, ": ICListenHF module data not fresh");
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket, ": ICListenHF module data not fresh");
                 }
 
-
-                acousea_StatusReportPayload_ModulesEntry entry =
-                    acousea_StatusReportPayload_ModulesEntry_init_default;
-                entry.has_value = true;
-                entry.key = acousea_ModuleCode_ICLISTEN_HF;
                 entry.value.which_module = acousea_ModuleWrapper_icListenHF_tag;
                 entry.value = *optHF;
-                status.modules[status.modules_count++] = entry;
                 break;
             }
         default:
-            LOG_CLASS_WARNING(": Module %d in ReportType not supported yet", moduleCode);
+            LOG_CLASS_WARNING(": Module %d in ReportType not supported yet", code);
+            status.modules_count--; // remove unused slot
             break;
         }
     }
@@ -126,17 +120,17 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
 
 
 Result<acousea_ReportType> CompleteStatusReportRoutine::getCurrentReportingConfiguration(
-    const acousea_NodeConfiguration nodeConfig)
+    const acousea_NodeConfiguration& nodeConfig)
 {
     // Get the current operation mode
     if (!nodeConfig.has_operationModesModule)
     {
-        return RESULT_FAILUREF(acousea_ReportType, "No operation modes module in configuration.");
+        return RESULT_CLASS_FAILUREF(acousea_ReportType, "No operation modes module in configuration.");
     }
 
     if (!nodeConfig.has_reportTypesModule)
     {
-        return RESULT_FAILUREF(acousea_ReportType, "No report types module in configuration.");
+        return RESULT_CLASS_FAILUREF(acousea_ReportType, "No report types module in configuration.");
     }
 
     const auto currentOperationModeId = nodeConfig.operationModesModule.activeModeId;
@@ -151,8 +145,8 @@ Result<acousea_ReportType> CompleteStatusReportRoutine::getCurrentReportingConfi
 
     if (currentOperationModeIt == nodeConfig.operationModesModule.modes + nodeConfig.operationModesModule.modes_count)
     {
-        return RESULT_FAILUREF(acousea_ReportType, "Current operation mode ID %ld not found in configuration.",
-                               currentOperationModeId);
+        return RESULT_CLASS_FAILUREF(acousea_ReportType, "Current operation mode ID %ld not found in configuration.",
+                                     currentOperationModeId);
     }
 
     const auto currentReportTypeId = currentOperationModeIt->reportTypeId;
@@ -169,8 +163,8 @@ Result<acousea_ReportType> CompleteStatusReportRoutine::getCurrentReportingConfi
 
     if (reportType == nodeConfig.reportTypesModule.reportTypes + nodeConfig.reportTypesModule.reportTypes_count)
     {
-        return RESULT_FAILUREF(acousea_ReportType, "Report type ID %ld not found in configuration.",
-                               currentReportTypeId);
+        return RESULT_CLASS_FAILUREF(acousea_ReportType, "Report type ID %ld not found in configuration.",
+                                     currentReportTypeId);
     }
 
     return RESULT_SUCCESS(acousea_ReportType, *reportType);

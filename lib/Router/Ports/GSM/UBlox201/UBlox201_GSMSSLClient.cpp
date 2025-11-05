@@ -7,8 +7,10 @@
 #include <string>
 
 
-inline CertType certTypeFromInt(int type){
-    switch (type){
+inline CertType certTypeFromInt(int type)
+{
+    switch (type)
+    {
     case 0: return CertType::RootCA;
     case 1: return CertType::ClientCert;
     case 2: return CertType::PrivateKey;
@@ -16,128 +18,133 @@ inline CertType certTypeFromInt(int type){
     }
 }
 
-inline CertType certTypeFromString(const std::string& typeStr){
-    if (typeStr == "CA") return CertType::RootCA;
-    if (typeStr == "CC") return CertType::ClientCert;
-    if (typeStr == "PK") return CertType::PrivateKey;
-    return CertType::Unknown; // mejor que All si es un error
+inline CertType certTypeFromString(const char* typeStr)
+{
+    if (!typeStr) return CertType::Unknown;
+
+    if (strcmp(typeStr, "CA") == 0) return CertType::RootCA;
+    if (strcmp(typeStr, "CC") == 0) return CertType::ClientCert;
+    if (strcmp(typeStr, "PK") == 0) return CertType::PrivateKey;
+    return CertType::Unknown;
 }
 
-/**
- * Copies only \n characters once to normalize CRLF to LF and remove duplicate LFs.
-*/
-std::string& normalizeOutputCrlfAndQuotationMarks(std::string& input){
-    LOG_INFO("normalizeCrlf() -> Normalizing input of size: %zu", input.size());
 
-    size_t writeIndex = 0;
+/**
+ * Normaliza una cadena en el mismo buffer:
+ * - Convierte CRLF → LF
+ * - Elimina comillas
+ * - Evita líneas vacías repetidas
+ */
+void normalizeOutputCrlfAndQuotationMarks(char* input)
+{
+    LOG_INFO("normalizeCrlf() -> Normalizing input of size %zu", input ? strlen(input) : 0);
+
+    if (!input) return;
+
+    size_t w = 0;
     bool lastWasNewline = false;
 
-    for (size_t readIndex = 0; readIndex < input.size(); ++readIndex){
-        char c = input[readIndex];
+    for (size_t r = 0; input[r]; ++r)
+    {
+        const char c = input[r];
 
-        if (c == '\r' || c == '"'){
-            continue; // ignorar CR y comillas
-        }
+        if (c == '\r' || c == '"') continue; // ignorar CR y comillas
 
-        if (c == '\n'){
-            if (lastWasNewline){
-                continue; // evitar saltos de línea duplicados
-            }
+        if (c == '\n')
+        {
+            if (lastWasNewline) continue;
             lastWasNewline = true;
-        } else {
+        }
+        else
+        {
             lastWasNewline = false;
         }
 
-        input[writeIndex++] = c; // sobrescribe en la misma cadena
+        input[w++] = c;
     }
-
-    input.resize(writeIndex); // recortar al nuevo tamaño
-    return input; // devolver referencia al mismo string
+    input[w] = '\0';
 }
 
+/**
+ * Divide un texto por líneas y devuelve el número de líneas no vacías encontradas.
+ * Cada puntero apunta dentro del mismo buffer modificado (se insertan '\0').
+ */
+size_t splitByNewlines(char* text, const char* linesOut[], const size_t maxLines)
+{
+    LOG_INFO("splitByNewlines() -> Splitting text into lines (up to %zu lines)", maxLines);
+    if (!text || !linesOut) return 0;
 
-// Split by newlines, normalize CRLF, compact, and return non-empty lines
-std::vector<std::string> splitByNewlines(const std::string& normalizedCleanInput){
-    std::vector<std::string> lines;
-    std::string current;
-    current.reserve(128); // para evitar muchas realocaciones
+    size_t count = 0;
+    const char* token = strtok(text, "\n");
 
-    LOG_INFO("splitByNewlines() -> Cleaned input size: %zu", normalizedCleanInput.size());
-
-    for (const char c : normalizedCleanInput){
-        if (c != '\n'){
-            current.push_back(c);
-            continue;
+    while (token && count < maxLines)
+    {
+        if (strlen(token) > 0)
+        {
+            linesOut[count++] = token;
         }
-        lines.push_back(current);
-        LOG_INFO("splitByNewlines() -> Line: %s", current.c_str());
-        current.clear();
+        token = strtok(nullptr, "\n");
     }
 
-    // añadir la última línea si no terminó en '\n'
-    if (!current.empty()){
-        lines.push_back(current);
-        LOG_INFO("splitByNewlines() -> Line: %s", lines.back().c_str());
-    }
-
-    LOG_INFO("splitByNewlines() -> Total lines parsed: %zu", lines.size());
-    return lines;
+    return count;
 }
 
-// Build a StoredCert from a single CSV-like line
-StoredCert buildStoredCert(const std::string& input){
-    std::vector<std::string> parts;
-    std::string current;
-    current.reserve(64); // reservar memoria inicial
+/**
+ * Parsea una línea tipo CSV y llena una estructura StoredCert.
+ * Ejemplo de línea: "CA,myCert,CommonName,2025-12-31"
+ */
+StoredCert buildStoredCert(const char* line)
+{
+    StoredCert cert{};
+    if (!line) return cert;
 
-    for (const char c : input){
-        if (c == ','){
-            // fin de campo → guardamos
-            parts.push_back(current);
-            current.clear();
-            continue;
-        }
-        current.push_back(c);
+    const char* parts[4] = {nullptr, nullptr, nullptr, nullptr};
+    size_t partIndex = 0;
+
+    // Creamos una copia temporal para usar strtok
+    char buffer[256];
+    strncpy(buffer, line, sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0';
+
+    char* token = strtok(buffer, ",");
+    while (token && partIndex < 4)
+    {
+        parts[partIndex++] = token;
+        token = strtok(nullptr, ",");
     }
-    // último campo
-    parts.push_back(current);
 
-    // asegurar 4 campos
-    while (parts.size() < 4){
-        parts.emplace_back("");
-    }
+    // Copiar partes al struct
+    strncpy(cert.type, parts[0] ? parts[0] : "", sizeof(cert.type) - 1);
+    strncpy(cert.internalName, parts[1] ? parts[1] : "", sizeof(cert.internalName) - 1);
+    strncpy(cert.commonName, parts[2] ? parts[2] : "", sizeof(cert.commonName) - 1);
+    strncpy(cert.expiration, parts[3] ? parts[3] : "", sizeof(cert.expiration) - 1);
 
-    StoredCert cert{parts[0], parts[1], parts[2], parts[3]};
-
-    LOG_INFO("buildStoredCert() -> Parsed cert line -"
-        " Type: %s, Name: %s, CN: %s, Expiration: %s",
-        cert.type.c_str(),
-        cert.internalName.c_str(),
-        cert.commonName.c_str(),
-        cert.expiration.c_str()
-    );
+    LOG_INFO("buildStoredCert() -> Type: %s, Name: %s, CN: %s, Exp: %s",
+             cert.type, cert.internalName, cert.commonName, cert.expiration);
 
     return cert;
 }
 
 
 bool UBlox201_GSMSSLClient::updateCerts(
-    const GSMRootCert* rootCerts, const size_t rootCertsSize, const std::string& testBroker /* = "google.com" */
-){
+    const GSMRootCert* rootCerts, const size_t rootCertsSize, const char* testBroker /* = "google.com" */
+)
+{
     LOG_CLASS_INFO(" -> Loading new trusted root CAs...");
     LOG_CLASS_INFO("updateCerts() -> Number of root certs to load: %zu", rootCertsSize);
     this->eraseTrustedRoot(); // Erase the currently existing roots
     this->setUserRoots(rootCerts, rootCertsSize);
-    for (size_t i = 0; i < rootCertsSize; i++){
+    for (size_t i = 0; i < rootCertsSize; i++)
+    {
         const GSMRootCert& rootCert = rootCerts[i];
         this->importTrustedRoot(rootCert.data, rootCert.name, rootCert.size);
         this->setTrustedRoot(rootCert.name);
         LOG_CLASS_INFO(" -> Trusted root CA added: %s", rootCert.name);
-
     }
 
-    LOG_CLASS_INFO(" -> Verifying by connecting to %s:443", testBroker.c_str());
-    if (!this->connect(testBroker.c_str(), 443)){
+    LOG_CLASS_INFO(" -> Verifying by connecting to %s:443", testBroker);
+    if (!this->connect(testBroker, 443))
+    {
         LOG_CLASS_ERROR("updateCerts()  CERTIFICATES NOT UPDATED. SSL connect() failed");
 
         this->stop();
@@ -148,64 +155,74 @@ bool UBlox201_GSMSSLClient::updateCerts(
 }
 
 
-std::vector<StoredCert> UBlox201_GSMSSLClient::listCertificates(CertType type){
+std::vector<StoredCert> UBlox201_GSMSSLClient::listCertificates(CertType type)
+{
     LOG_CLASS_INFO("listCertificates() -> Listing certificates of type: %s",
-        (type == CertType::All
-             ? "All"
-             : type == CertType::RootCA
-             ? "RootCA"
-             : type == CertType::ClientCert
-             ? "ClientCert"
-             : type == CertType::PrivateKey
-             ? "PrivateKey"
-             : "Unknown")
+                   (type == CertType::All
+                       ? "All"
+                       : type == CertType::RootCA
+                       ? "RootCA"
+                       : type == CertType::ClientCert
+                       ? "ClientCert"
+                       : type == CertType::PrivateKey
+                       ? "PrivateKey"
+                       : "Unknown")
     );
 
-    if (type == CertType::All || type == CertType::Unknown){
+    if (type == CertType::All || type == CertType::Unknown)
+    {
         MODEM.send("AT+USECMNG=3"); // listar todos
     }
-    else{
+    else
+    {
         MODEM.sendf("AT+USECMNG=3,%d", static_cast<int>(type));
     }
 
 
     String modemOutput;
-    if (MODEM.waitForResponse(5000, &modemOutput) != 1){
+    if (MODEM.waitForResponse(5000, &modemOutput) != 1)
+    {
         LOG_CLASS_ERROR("listCertificates() -> No response from modem");
         return {}; // vacío
     }
-
-    LOG_CLASS_INFO("listCertificates() -> Modem output length: %d", modemOutput.length());
-    // LOG_CLASS_INFO("listCertificates() -> %s", modemOutput.c_str());
-
-    std::string response(modemOutput.c_str());
-
-    LOG_CLASS_INFO("listCertificates() -> Modem output copied to std::string, length: %zu",
-        response.size()
-    );
-
-
-    // FIXME: [WARNING] Do not print the following line in full, it may overflow the log buffer depending on the display
-    LOG_CLASS_INFO("listCertificates() -> MODEM Response (truncated): %.100s", response.c_str());
-
-    // saltar líneas vacías
-    if (modemOutput.length() == 0){
+    const unsigned int outLen = modemOutput.length();
+    if (outLen <= 0) {
         LOG_CLASS_WARNING("listCertificates() -> Empty response");
         return {};
     }
 
-    const auto normalizedCleanResponse = normalizeOutputCrlfAndQuotationMarks(response);
+    LOG_CLASS_INFO("listCertificates() -> Modem output length: %d", outLen);
 
-    LOG_CLASS_INFO( "listCertificates() -> Cleaned input size: %zu", normalizedCleanResponse.size());
+    // Copiar a buffer C-style
+    char modemResponseBuf[2048];
+    strncpy(modemResponseBuf, modemOutput.c_str(), sizeof(modemResponseBuf) - 1);
+    modemResponseBuf[sizeof(modemResponseBuf) - 1] = '\0';
 
-    const std::vector<std::string> certStrLines = splitByNewlines(normalizedCleanResponse);
-    LOG_CLASS_INFO("listCertificates() -> Found ""%zu" " certificate lines", certStrLines.size());
+
+    LOG_CLASS_INFO("listCertificates() -> Modem output copied to string-buf, length: %zu", strlen(modemResponseBuf));
+    // [WARNING] Do not print the following line in full, it may overflow the log buffer depending on the display
+    LOG_CLASS_INFO("listCertificates() -> MODEM Response (truncated): %.100s", modemResponseBuf);
+
+    // Normalizar CRLF y eliminar comillas
+    normalizeOutputCrlfAndQuotationMarks(modemResponseBuf);
+
+    // Dividir por líneas
+    const char* lines[64];
+    const size_t numLines = splitByNewlines(modemResponseBuf, lines, 64);
+
+    LOG_CLASS_INFO("listCertificates() -> Cleaned input size: %zu", strlen(modemResponseBuf));
+    LOG_CLASS_INFO("listCertificates() -> Found ""%zu" " certificate lines", numLines);
 
     std::vector<StoredCert> certs = {};
-    for (const auto& line : certStrLines){
-        LOG_CLASS_INFO("listCertificates() -> Line: %s", line.c_str());
-        StoredCert cert = buildStoredCert(line);
+    certs.reserve(numLines);
+
+   // Parsear cada línea CSV
+    for (size_t i = 0; i < numLines; ++i) {
+        const char* linePtr = lines[i];
+        if (linePtr == nullptr || linePtr[0] == '\0') continue;
+        StoredCert cert = buildStoredCert(linePtr);
         certs.push_back(cert);
+        LOG_CLASS_INFO("listCertificates() -> Parsed line %zu: %s", i, lines[i]);
     }
 
     LOG_CLASS_INFO("listCertificates() -> Total certificates parsed: %zu", certs.size());
@@ -213,50 +230,61 @@ std::vector<StoredCert> UBlox201_GSMSSLClient::listCertificates(CertType type){
     return certs;
 }
 
-bool UBlox201_GSMSSLClient::removeClientCertificate(const std::string& name){
-    MODEM.sendf("AT+USECMNG=2,1,\"%s\"", name.c_str());
+bool UBlox201_GSMSSLClient::removeClientCertificate(const char* name)
+{
+    MODEM.sendf("AT+USECMNG=2,1,\"%s\"", name);
     int res = MODEM.waitForResponse(3000);
     return logAndCheckResponse(res, "client certificate", name);
 }
 
-bool UBlox201_GSMSSLClient::removePrivateKey(const std::string& name){
-    MODEM.sendf("AT+USECMNG=2,2,\"%s\"", name.c_str());
+bool UBlox201_GSMSSLClient::removePrivateKey(const char* name)
+{
+    MODEM.sendf("AT+USECMNG=2,2,\"%s\"", name);
     int res = MODEM.waitForResponse(3000);
     return logAndCheckResponse(res, "private key", name);
 }
 
-bool UBlox201_GSMSSLClient::removeRootCertificateByName(const std::string& name){
-    MODEM.sendf("AT+USECMNG=2,0,\"%s\"", name.c_str());
+bool UBlox201_GSMSSLClient::removeRootCertificateByName(const char* name)
+{
+    MODEM.sendf("AT+USECMNG=2,0,\"%s\"", name);
     int res = MODEM.waitForResponse(3000);
     return logAndCheckResponse(res, "root certificate", name);
 }
 
-bool UBlox201_GSMSSLClient::removeTrustedRootCertificates(const std::vector<std::string>& names){
+bool UBlox201_GSMSSLClient::removeTrustedRootCertificates(const std::vector<char*>& names)
+{
     bool allOk = true;
-    for (const auto& name : names){
-        if (!removeRootCertificateByName(name)){
+    for (const auto& name : names)
+    {
+        if (!removeRootCertificateByName(name))
+        {
             allOk = false; // seguimos, pero marcamos fallo
         }
     }
     return allOk;
 }
 
-bool UBlox201_GSMSSLClient::removeTrustedRootCertificates(const GSMRootCert* certs, size_t count){
+bool UBlox201_GSMSSLClient::removeTrustedRootCertificates(const GSMRootCert* certs, size_t count)
+{
     bool allOk = true;
-    for (size_t i = 0; i < count; ++i){
-        std::string name(certs[i].name);
-        if (!removeRootCertificateByName(name)){
+    for (size_t i = 0; i < count; ++i)
+    {
+        const char* name = certs[i].name;
+        if (!removeRootCertificateByName(name))
+        {
             allOk = false;
         }
     }
     return allOk;
 }
 
-bool UBlox201_GSMSSLClient::removeDefaultTrustedRoots(){
+bool UBlox201_GSMSSLClient::removeDefaultTrustedRoots()
+{
     return removeTrustedRootCertificates(reinterpret_cast<const GSMRootCert*>(trust_anchors), trust_anchors_num);
 }
 
-void UBlox201_GSMSSLClient::importTrustedRoot(const uint8_t* cert, const char* name, size_t size){
+void UBlox201_GSMSSLClient::importTrustedRoot(const uint8_t* cert, const char* name, size_t size)
+{
     MODEM.sendf("AT+USECMNG=0,0,\"%s\",%d", name, size);
     int res = MODEM.waitForResponse(1000);
     logAndCheckResponse(res, "root certificate import (prepare)", name);
@@ -266,18 +294,41 @@ void UBlox201_GSMSSLClient::importTrustedRoot(const uint8_t* cert, const char* n
     logAndCheckResponse(res, "root certificate import (write)", name);
 }
 
-void UBlox201_GSMSSLClient::importTrustedRoots(const GSMRootCert* certs, size_t count){
-    for (size_t i = 0; i < count; ++i){
+void UBlox201_GSMSSLClient::importTrustedRoots(const GSMRootCert* certs, size_t count)
+{
+    for (size_t i = 0; i < count; ++i)
+    {
         importTrustedRoot(certs[i].data, certs[i].name, certs[i].size);
     }
 }
 
-void UBlox201_GSMSSLClient::setTrustedRoots(const GSMRootCert* gsm_root_cert, const size_t size){
-    for (size_t i = 0; i < size; ++i){
+void UBlox201_GSMSSLClient::setTrustedRoots(const GSMRootCert* gsm_root_cert, const size_t size)
+{
+    for (size_t i = 0; i < size; ++i)
+    {
         this->setTrustedRoot(gsm_root_cert[i].name);
         LOG_CLASS_INFO(" -> Trusted root set: %s", gsm_root_cert[i].name);
     }
 }
 
 
+bool UBlox201_GSMSSLClient::logAndCheckResponse(const int result, const char* action, const char* name)
+{
+    switch (result)
+    {
+    case 1:
+        LOG_CLASS_INFO("Removed %s: %s", action, name);
+        return true;
+    case 2:
+        LOG_CLASS_ERROR(" -> AT command error while removing %s: %s", action, name);
+        return false;
+    case 3:
+        LOG_CLASS_ERROR(" -> No carrier while removing %s: %s", action, name);
+        return false;
+    case -1:
+    default:
+        LOG_CLASS_ERROR(" -> Timeout while removing %s: %s", action, name);
+        return false;
+    }
+}
 #endif

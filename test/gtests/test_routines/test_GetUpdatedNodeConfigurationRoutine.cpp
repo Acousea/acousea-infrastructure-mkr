@@ -13,7 +13,11 @@
 #include "MockBatteryController/MockBatteryController.h"
 #include "MockRTCController/MockRTCController.h"
 #include "ModuleProxy/ModuleProxy.hpp"
-#include "common_test_resources.hpp"
+
+// ................. Common test resources ..................
+#include "../common_test_resources/InMemoryStorageManager.hpp"
+#include "../common_test_resources/TestableNodeConfigurationRepository.hpp"
+
 
 // =====================================================================
 // Mock Router & Proxy
@@ -50,7 +54,7 @@ protected:
 
 // Caso 1: Devuelve con éxito la configuración actual codificada en UpdatedNodeConfigurationPayload
 TEST_F(GetUpdatedNodeConfigurationRoutineTest, ExecuteReturnsUpdatedConfigurationPacket) {
-    MockStorageManager storage;
+    InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
     repo.saveConfiguration(TestableNodeConfigurationRepository::makeDefault());
 
@@ -90,7 +94,7 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, ExecuteReturnsUpdatedConfiguratio
 
 // Caso 2: Devuelve pending si se solicita un módulo no fresco
 TEST_F(GetUpdatedNodeConfigurationRoutineTest, ReturnsPendingIfICListenNotFresh) {
-    MockStorageManager storage;
+    InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
     repo.saveConfiguration(TestableNodeConfigurationRepository::makeDefault());
 
@@ -117,7 +121,7 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, ReturnsPendingIfICListenNotFresh)
 
 // Caso 3: Falla si el paquete no tiene el body esperado
 TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfPacketNotCommandType) {
-    MockStorageManager storage;
+    InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
     repo.saveConfiguration(TestableNodeConfigurationRepository::makeDefault());
 
@@ -138,7 +142,7 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfPacketNotCommandType) {
 
 // Caso 4: Falla si no se pasa ningún paquete
 TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfNoPacketProvided) {
-    MockStorageManager storage;
+    InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
     repo.saveConfiguration(TestableNodeConfigurationRepository::makeDefault());
 
@@ -156,7 +160,7 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfNoPacketProvided) {
 
 // Caso 5: Devuelve correctamente la hora del RTC
 TEST_F(GetUpdatedNodeConfigurationRoutineTest, ReturnsRTCModuleCorrectly) {
-    MockStorageManager storage;
+    InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
     repo.saveConfiguration(TestableNodeConfigurationRepository::makeDefault());
 

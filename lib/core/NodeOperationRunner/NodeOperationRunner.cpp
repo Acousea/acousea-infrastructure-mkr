@@ -323,7 +323,7 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::executeRoutine(
 
     if (result.isPending() && (remainingAttempts <= 0 || !requeueAllowed))
     {
-        LOG_CLASS_WARNING("%s[NO REQUEUE ALLOWED] => incomplete with message: %s", routine->routineName.c_str(),
+        LOG_CLASS_WARNING("%s[NO REQUEUE ALLOWED] => incomplete with message: %s", routine->routineName,
                           result.getError());
 
         return std::nullopt;
@@ -332,23 +332,23 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::executeRoutine(
     if (result.isPending() && remainingAttempts > 0 && requeueAllowed)
     {
         pendingRoutines.add({routine, optInputPacket, static_cast<uint8_t>(remainingAttempts - 1), portType});
-        LOG_CLASS_WARNING("%s [REQUEUED] => incomplete with message: %s", routine->routineName.c_str(),
+        LOG_CLASS_WARNING("%s [REQUEUED] => incomplete with message: %s", routine->routineName,
                           result.getError());
         return std::nullopt;
     }
 
     if (result.isError())
     {
-        LOG_CLASS_ERROR("%s => failed with message: %s", routine->routineName.c_str(), result.getError());
+        LOG_CLASS_ERROR("%s => failed with message: %s", routine->routineName, result.getError());
         if (!optInputPacket.has_value())
         {
-            LOG_CLASS_INFO("%s: Cannot send error packet, there was no original packet.", routine->routineName.c_str());
+            LOG_CLASS_INFO("%s: Cannot send error packet, there was no original packet.", routine->routineName);
             return std::nullopt;
         }
 
         return buildErrorPacket(result.getError());
     }
-    LOG_CLASS_INFO("%s => succeeded.", routine->routineName.c_str());
+    LOG_CLASS_INFO("%s => succeeded.", routine->routineName);
     return result.getValueConst();
 }
 
@@ -359,7 +359,7 @@ void NodeOperationRunner::runPendingRoutines()
     while (auto entryOpt = pendingRoutines.next())
     {
         auto& [routinePtr, inputPacket, attempts, portResponseTo] = *entryOpt;
-        LOG_CLASS_INFO("Re-attempting pending routine %s with %d attempts left.", routinePtr->routineName.c_str(),
+        LOG_CLASS_INFO("Re-attempting pending routine %s with %d attempts left.", routinePtr->routineName,
                        attempts);
 
         executeRoutine(routinePtr, inputPacket, portResponseTo, attempts,
@@ -406,13 +406,13 @@ Result<acousea_OperationMode> NodeOperationRunner::searchForOperationMode(const 
 {
     if (!currentNodeConfiguration.has_value())
     {
-        return RESULT_FAILUREF(acousea_OperationMode, "Node configuration not loaded.");
+        return RESULT_CLASS_FAILUREF(acousea_OperationMode, "Node configuration not loaded.");
     }
 
     if (!currentNodeConfiguration->has_operationModesModule
         || currentNodeConfiguration->operationModesModule.modes_count == 0)
     {
-        return RESULT_FAILUREF(acousea_OperationMode, "No operation modes module in configuration.");
+        return RESULT_CLASS_FAILUREF(acousea_OperationMode, "No operation modes module in configuration.");
     }
 
     for (int i = 0; i < currentNodeConfiguration->operationModesModule.modes_count; ++i)
@@ -422,7 +422,7 @@ Result<acousea_OperationMode> NodeOperationRunner::searchForOperationMode(const 
     }
 
     LOG_CLASS_ERROR("Operation mode %d not found in configuration.", modeId);
-    return RESULT_FAILUREF(acousea_OperationMode, "Operation mode %d not found in configuration.", modeId);
+    return RESULT_CLASS_FAILUREF(acousea_OperationMode, "Operation mode %d not found in configuration.", modeId);
 }
 
 Result<acousea_ReportingPeriodEntry> NodeOperationRunner::getReportingEntryForCurrentOperationMode(
@@ -430,7 +430,7 @@ Result<acousea_ReportingPeriodEntry> NodeOperationRunner::getReportingEntryForCu
 {
     if (!currentNodeConfiguration.has_value())
     {
-        return RESULT_FAILUREF(acousea_ReportingPeriodEntry, "Node configuration not loaded.");
+        return RESULT_CLASS_FAILUREF(acousea_ReportingPeriodEntry, "Node configuration not loaded.");
     }
     const acousea_ReportingPeriodEntry* entries = nullptr;
     size_t entryCount = 0;
@@ -440,7 +440,7 @@ Result<acousea_ReportingPeriodEntry> NodeOperationRunner::getReportingEntryForCu
         {
             if (!currentNodeConfiguration->has_loraModule || currentNodeConfiguration->loraModule.entries_count == 0)
             {
-                return RESULT_FAILUREF(acousea_ReportingPeriodEntry,
+                return RESULT_CLASS_FAILUREF(acousea_ReportingPeriodEntry,
                                        "No LoRa reporting entries defined in configuration.");
             }
             entries = currentNodeConfiguration->loraModule.entries;
@@ -452,7 +452,7 @@ Result<acousea_ReportingPeriodEntry> NodeOperationRunner::getReportingEntryForCu
             if (!currentNodeConfiguration->has_iridiumModule ||
                 currentNodeConfiguration->iridiumModule.entries_count == 0)
             {
-                return RESULT_FAILUREF(acousea_ReportingPeriodEntry,
+                return RESULT_CLASS_FAILUREF(acousea_ReportingPeriodEntry,
                                        "No Iridium reporting entries defined in configuration.");
             }
             entries = currentNodeConfiguration->iridiumModule.entries;
@@ -464,7 +464,7 @@ Result<acousea_ReportingPeriodEntry> NodeOperationRunner::getReportingEntryForCu
             if (!currentNodeConfiguration->has_gsmMqttModule ||
                 currentNodeConfiguration->gsmMqttModule.entries_count == 0)
             {
-                return RESULT_FAILUREF(acousea_ReportingPeriodEntry,
+                return RESULT_CLASS_FAILUREF(acousea_ReportingPeriodEntry,
                                        "No GSM-MQTT reporting entries defined in configuration.");
             }
             entries = currentNodeConfiguration->gsmMqttModule.entries;
@@ -472,14 +472,14 @@ Result<acousea_ReportingPeriodEntry> NodeOperationRunner::getReportingEntryForCu
             break;
         }
     default:
-        return RESULT_FAILUREF(acousea_ReportingPeriodEntry, "Unsupported port type for reporting entry.");
+        return RESULT_CLASS_FAILUREF(acousea_ReportingPeriodEntry, "Unsupported port type for reporting entry.");
     }
 
     for (size_t i = 0; i < entryCount; ++i)
     {
         if (entries[i].modeId == modeId) return RESULT_SUCCESS(acousea_ReportingPeriodEntry, entries[i]);
     }
-    return RESULT_FAILUREF(acousea_ReportingPeriodEntry,
+    return RESULT_CLASS_FAILUREF(acousea_ReportingPeriodEntry,
                            "::getReportingEntryForCurrentOperationMode() Reporting entry for mode %d not found.",
                            modeId
     );

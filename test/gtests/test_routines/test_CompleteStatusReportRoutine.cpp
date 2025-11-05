@@ -3,18 +3,19 @@
 #endif
 
 #include <gtest/gtest.h>
-#include "common_test_resources.hpp"
-
 #include "Logger/Logger.h"
 #include <ConsoleDisplay/ConsoleDisplay.hpp>
 
-#include "../common_test_resources.hpp"
 #include "routines/CompleteStatusReportRoutine/CompleteStatusReportRoutine.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
 #include "MockGPS/MockGPS.h"
 #include "MockBatteryController/MockBatteryController.h"
 #include "MockRTCController/MockRTCController.h"
 #include "ErrorHandler/ErrorHandler.h"
+
+// ................. Common test resources ..................
+#include "../common_test_resources/InMemoryStorageManager.hpp"
+#include "../common_test_resources/TestableNodeConfigurationRepository.hpp"
 
 // =====================================================================
 // Mock ModuleProxy para controlar el cache de módulos
@@ -69,7 +70,7 @@ protected:
 // --- Caso 1: Ejecución exitosa (todos los módulos frescos) ---
 TEST_F(CompleteStatusReportRoutineTest, Execute_SuccessfulReportPacket)
 {
-    MockStorageManager storage;
+    InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
     repo.saveConfiguration(TestableNodeConfigurationRepository::makeValidNodeConfig());
 
@@ -121,7 +122,7 @@ TEST_F(CompleteStatusReportRoutineTest, Execute_SuccessfulReportPacket)
 // --- Caso 2: Pending si ICListenHF no está fresco ---
 TEST_F(CompleteStatusReportRoutineTest, Execute_ReturnsPendingIfICListenNotFresh)
 {
-    MockStorageManager storage;
+    InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
     repo.saveConfiguration(TestableNodeConfigurationRepository::makeValidNodeConfig());
 
@@ -140,7 +141,7 @@ TEST_F(CompleteStatusReportRoutineTest, Execute_ReturnsPendingIfICListenNotFresh
 // --- Caso 3: Falla por ausencia de operationModesModule ---
 TEST_F(CompleteStatusReportRoutineTest, Execute_FailsWithoutOperationModesModule)
 {
-    MockStorageManager storage;
+    InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
 
     acousea_NodeConfiguration cfg = TestableNodeConfigurationRepository::makeDefault();
@@ -162,7 +163,7 @@ TEST_F(CompleteStatusReportRoutineTest, Execute_FailsWithoutOperationModesModule
 // --- Caso 4: Falla por ausencia de reportTypesModule ---
 TEST_F(CompleteStatusReportRoutineTest, Execute_FailsWithoutReportTypesModule)
 {
-    MockStorageManager storage;
+    InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
 
     acousea_NodeConfiguration cfg = TestableNodeConfigurationRepository::makeDefault();
@@ -184,7 +185,7 @@ TEST_F(CompleteStatusReportRoutineTest, Execute_FailsWithoutReportTypesModule)
 // --- Caso 5: ReportType no contiene módulos soportados ---
 TEST_F(CompleteStatusReportRoutineTest, Execute_IgnoresUnsupportedModulesGracefully)
 {
-    MockStorageManager storage;
+    InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
 
     // configuración válida pero con un módulo no soportado (STORAGE_MODULE)

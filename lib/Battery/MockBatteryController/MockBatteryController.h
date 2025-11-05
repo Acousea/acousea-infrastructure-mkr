@@ -4,7 +4,6 @@
 
 #include "IBatteryController.h"
 #include "Logger/Logger.h"
-#include <string>
 #include "ClassName.h"
 
 class MockBatteryController final : public IBatteryController{

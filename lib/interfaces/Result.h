@@ -37,9 +37,6 @@ private:
 
 
     Result(std::optional<T> value, const char* errorMessage, Type type);
-
-    // Result(std::string errorMessage, const Type type) : errorMessage(std::move(errorMessage)), type(type) {}
-    // Result(std::string errorMessage, const Type type);
 };
 
 template <>
@@ -71,25 +68,42 @@ private:
     Result(const char* errorMessage, Type type);
 };
 
-// ----- Macros para Result<T> -----
-#define RESULT_FAILUREF(ClassType, fmt, ...) \
+// ----- Macros para Result<T> con ClassName -----
+#define RESULT_CLASS_FAILUREF(ClassType, fmt, ...) \
 Result<ClassType>::failuref("%s" fmt, getClassNameCString(), ##__VA_ARGS__)
 
-#define RESULT_PENDINGF(ClassType, fmt, ...) \
+#define RESULT_CLASS_PENDINGF(ClassType, fmt, ...) \
 Result<ClassType>::pendingf("%s" fmt, getClassNameCString(), ##__VA_ARGS__)
 
+
+// ----- Macros para Result<void> con ClassName -----
+#define RESULT_CLASS_VOID_FAILUREF(fmt, ...) \
+Result<void>::failuref("%s" fmt, getClassNameCString(), ##__VA_ARGS__)
+
+#define RESULT_CLASS_VOID_PENDINGF(fmt, ...) \
+Result<void>::pendingf("%s" fmt, getClassNameCString(), ##__VA_ARGS__)
+
+// ----- Macros generales para Result<T> sin ClassName -----
+#define RESULT_FAILUREF(ClassType, fmt, ...) \
+    Result<ClassType>::failuref(fmt, ##__VA_ARGS__)
+
+#define RESULT_PENDINGF(ClassType, fmt, ...) \
+    Result<ClassType>::pendingf(fmt, ##__VA_ARGS__)
+
+// ----- Macros generales para Result<void> sin ClassName -----
+#define RESULT_VOID_FAILUREF(fmt, ...) \
+    Result<void>::failuref(fmt, ##__VA_ARGS__)
+
+#define RESULT_VOID_PENDINGF(fmt, ...) \
+    Result<void>::pendingf(fmt, ##__VA_ARGS__)
+
+
+// ----- Macros SUCCESS para Result<T> y Result<void>, con o sin ClassName -----
 #define RESULT_SUCCESS(ClassType, value) \
 Result<ClassType>::success(value)
 
-
-// ----- Macros para Result<void> -----
-#define RESULT_VOID_FAILUREF(fmt, ...) \
-Result<void>::failuref("%s" fmt, getClassNameCString(), ##__VA_ARGS__)
-
-#define RESULT_VOID_PENDINGF(fmt, ...) \
-Result<void>::pendingf("%s" fmt, getClassNameCString(), ##__VA_ARGS__)
-
 #define RESULT_VOID_SUCCESS() \
 Result<void>::success()
+
 
 #endif // RESULT_H

@@ -2,17 +2,21 @@
 #define IROUTINE_H
 
 
-#include <string>
 #include "Result.h"
 #include "bindings/nodeDevice.pb.h"
 
+/**
+ * @brief Interfaz base para todas las rutinas del sistema.
+ */
 template <typename In>
 class IRoutine
 {
 public:
-    std::string routineName;
+    const char* routineName;  // Nombre estático, sin asignación dinámica
 
-    explicit IRoutine(std::string name) : routineName(std::move(name))
+
+    explicit constexpr IRoutine(const char* name) noexcept
+        : routineName(name)
     {
     }
 

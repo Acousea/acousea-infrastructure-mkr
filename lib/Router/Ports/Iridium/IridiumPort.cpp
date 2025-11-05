@@ -109,57 +109,36 @@ std::vector<std::vector<uint8_t>> IridiumPort::read()
 
 void IridiumPort::handleError(const int err)
 {
-    std::string errorMessage = "IridiumPort::handleError(): " + std::to_string(err) + " - ";
+    char errorMessage[128]; // tamaño ajustable según tus logs
+    int written = snprintf(errorMessage, sizeof(errorMessage), "IridiumPort::handleError(): %d - ", err);
+
+    const char* desc = nullptr;
     switch (err)
     {
-    case ISBD_SUCCESS:
-        errorMessage += "Success";
-        break;
-    case ISBD_ALREADY_AWAKE:
-        errorMessage += "Already awake";
-        break;
-    case ISBD_SERIAL_FAILURE:
-        errorMessage += "Serial failure";
-        break;
-    case ISBD_PROTOCOL_ERROR:
-        errorMessage += "Protocol failure";
-        break;
-    case ISBD_CANCELLED:
-        errorMessage += "Cancelled";
-        break;
-    case ISBD_NO_MODEM_DETECTED:
-        errorMessage += "No modem detected";
-        break;
-    case ISBD_SBDIX_FATAL_ERROR:
-        errorMessage += "SBDIX fatal failure";
-        break;
-    case ISBD_SENDRECEIVE_TIMEOUT:
-        errorMessage += "Send/receive timeout";
-        break;
-    case ISBD_RX_OVERFLOW:
-        errorMessage += "RX overflow";
-        break;
-    case ISBD_REENTRANT:
-        errorMessage += "Reentrant";
-        break;
-    case ISBD_IS_ASLEEP:
-        errorMessage += "Is asleep";
-        break;
-    case ISBD_NO_SLEEP_PIN:
-        errorMessage += "No sleep pin";
-        break;
-    case ISBD_NO_NETWORK:
-        errorMessage += "No network";
-        break;
-    case ISBD_MSG_TOO_LONG:
-        errorMessage += "Message too long";
-        break;
-    default:
-        errorMessage += "Unknown failure";
-        break;
+    case ISBD_SUCCESS:            desc = "Success"; break;
+    case ISBD_ALREADY_AWAKE:      desc = "Already awake"; break;
+    case ISBD_SERIAL_FAILURE:     desc = "Serial failure"; break;
+    case ISBD_PROTOCOL_ERROR:     desc = "Protocol failure"; break;
+    case ISBD_CANCELLED:          desc = "Cancelled"; break;
+    case ISBD_NO_MODEM_DETECTED:  desc = "No modem detected"; break;
+    case ISBD_SBDIX_FATAL_ERROR:  desc = "SBDIX fatal failure"; break;
+    case ISBD_SENDRECEIVE_TIMEOUT:desc = "Send/receive timeout"; break;
+    case ISBD_RX_OVERFLOW:        desc = "RX overflow"; break;
+    case ISBD_REENTRANT:          desc = "Reentrant"; break;
+    case ISBD_IS_ASLEEP:          desc = "Is asleep"; break;
+    case ISBD_NO_SLEEP_PIN:       desc = "No sleep pin"; break;
+    case ISBD_NO_NETWORK:         desc = "No network"; break;
+    case ISBD_MSG_TOO_LONG:       desc = "Message too long"; break;
+    default:                      desc = "Unknown failure"; break;
     }
-    LOG_CLASS_ERROR("%s", errorMessage.c_str());
+
+    // Aseguramos no sobrepasar el buffer
+    if (written < 0) written = 0;
+    snprintf(errorMessage + written, sizeof(errorMessage) - written, "%s", desc);
+
+    LOG_CLASS_ERROR("%s", errorMessage);
 }
+
 
 void IridiumPort::storeReceivedPacket(const uint8_t* data, size_t length)
 {

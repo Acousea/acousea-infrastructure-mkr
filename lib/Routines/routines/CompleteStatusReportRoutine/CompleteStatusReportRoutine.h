@@ -35,7 +35,7 @@ public:
     Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& input) override;
 
 private:
-    static Result<acousea_ReportType> getCurrentReportingConfiguration(const acousea_NodeConfiguration nodeConfig);
+    static Result<acousea_ReportType> getCurrentReportingConfiguration(const acousea_NodeConfiguration& nodeConfig);
 };
 
 #endif //  COMPLETE_STATUS_REPORT_ROUTINE_H

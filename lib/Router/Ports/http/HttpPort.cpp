@@ -22,6 +22,8 @@ static size_t write_str_cb(char* ptr, size_t sz, size_t nm, void* userdata)
 }
 #endif
 
+
+
 HttpPort::HttpPort(std::string baseUrl, std::string imei, long timeoutMs, int pollMax)
     : IPort(PortType::SBDPort),
       baseUrl_(std::move(baseUrl)),

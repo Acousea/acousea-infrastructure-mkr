@@ -1,4 +1,6 @@
 #include "NodeConfigurationRepository.h"
+
+#include <cstdio>
 #include <pb_encode.h>
 #include <pb_decode.h>
 #include "Logger/Logger.h"
@@ -12,10 +14,12 @@ NodeConfigurationRepository::NodeConfigurationRepository(StorageManager& sdManag
 
 void NodeConfigurationRepository::init()
 {
-    const std::string content = storageManager.readFile(configFilePath);
+    char content[256] = {};
+    const size_t bytesRead = storageManager.readFile(configFilePath, content, sizeof(content));
+
     LOG_CLASS_INFO("::init() -> Reading configuration from file %s", configFilePath);
 
-    if (content.empty())
+    if (bytesRead == 0)
     {
         LOG_CLASS_ERROR("::init() -> No configuration file found. Creating default configuration.");
         if (!saveConfiguration(makeDefault()))
@@ -23,6 +27,7 @@ void NodeConfigurationRepository::init()
             ERROR_HANDLE_CLASS("NodeConfigurationRepository::begin() -> Error saving default configuration.");
         }
     }
+
     LOG_CLASS_INFO("NodeConfigurationRepository initialized.");
 }
 
@@ -147,7 +152,7 @@ void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfi
             const auto& e = cfg.gsmMqttModule.entries[i];
             if (i) len += snprintf(line + len, sizeof(line) - len, ", ");
             len += snprintf(line + len, sizeof(line) - len,
-                            "{mode=%d, period=%lu}", e.modeId, e.period);
+                            "{mode=%lu, period=%lu}", e.modeId, e.period);
         }
         len += snprintf(line + len, sizeof(line) - len, "]");
         len += snprintf(line + len, sizeof(line) - len,
@@ -171,14 +176,16 @@ Result<std::vector<uint8_t>> NodeConfigurationRepository::encodeProto(const acou
     pb_ostream_t s1 = PB_OSTREAM_SIZING;
     if (!pb_encode(&s1, acousea_NodeConfiguration_fields, &m))
     {
-        return RESULT_FAILUREF(std::vector<uint8_t>, "encodeProto (size): pb_encode failed: %s", PB_GET_ERROR(&s1));
+        return RESULT_CLASS_FAILUREF(std::vector<uint8_t>, "encodeProto (size): pb_encode failed: %s",
+                                     PB_GET_ERROR(&s1));
     }
 
     std::vector<uint8_t> buf(s1.bytes_written);
     pb_ostream_t s2 = pb_ostream_from_buffer(buf.data(), buf.size());
     if (!pb_encode(&s2, acousea_NodeConfiguration_fields, &m))
     {
-        return RESULT_FAILUREF(std::vector<uint8_t>, "encodeProto (write): pb_encode failed: %s", PB_GET_ERROR(&s2));
+        return RESULT_CLASS_FAILUREF(std::vector<uint8_t>, "encodeProto (write): pb_encode failed: %s",
+                                     PB_GET_ERROR(&s2));
     }
 
     return RESULT_SUCCESS(std::vector<uint8_t>, std::move(buf));
@@ -187,17 +194,23 @@ Result<std::vector<uint8_t>> NodeConfigurationRepository::encodeProto(const acou
 // ------------------------------------------------------------------
 // Decodifica desde bytes a struct nanopb
 // ------------------------------------------------------------------
-Result<acousea_NodeConfiguration> NodeConfigurationRepository::decodeProto(const std::vector<uint8_t>& bytes)
+Result<acousea_NodeConfiguration> NodeConfigurationRepository::decodeProto(const uint8_t* data, const size_t length)
 {
     acousea_NodeConfiguration m = acousea_NodeConfiguration_init_default;
 
-    pb_istream_t is = pb_istream_from_buffer(bytes.data(), bytes.size());
-    if (!pb_decode(&is, acousea_NodeConfiguration_fields, &m))
+    if (data == nullptr || length == 0)
     {
-        return RESULT_FAILUREF(acousea_NodeConfiguration, "decodeProto: pb_decode failed: %s", PB_GET_ERROR(&is));
+        return RESULT_CLASS_FAILUREF(acousea_NodeConfiguration, "decodeProto: invalid buffer (null or empty)");
     }
 
-    return RESULT_SUCCESS(acousea_NodeConfiguration, std::move(m));
+    pb_istream_t is = pb_istream_from_buffer(data, length);
+
+    if (!pb_decode(&is, acousea_NodeConfiguration_fields, &m))
+    {
+        return RESULT_CLASS_FAILUREF(acousea_NodeConfiguration, "decodeProto: pb_decode failed: %s", PB_GET_ERROR(&is));
+    }
+
+    return RESULT_SUCCESS(acousea_NodeConfiguration, m);
 }
 
 
@@ -206,18 +219,24 @@ Result<acousea_NodeConfiguration> NodeConfigurationRepository::decodeProto(const
 // ------------------------------------------------------------------
 acousea_NodeConfiguration NodeConfigurationRepository::getNodeConfiguration() const
 {
-    const std::vector<uint8_t> bytes = storageManager.readFileBytes(configFilePath);
-    if (bytes.empty())
+    constexpr size_t MAX_CONFIG_SIZE = 1024; // ajusta según el tamaño esperado del proto
+    uint8_t buffer[MAX_CONFIG_SIZE] = {0};
+
+    const size_t bytesRead = storageManager.readFileBytes(configFilePath, buffer, sizeof(buffer));
+
+    if (bytesRead == 0)
     {
+        // Archivo vacío o inexistente → usar configuración por defecto
         return makeDefault();
     }
 
-    const auto dec = decodeProto(bytes);
+    const auto dec = decodeProto(buffer, bytesRead);
     if (!dec.isSuccess())
     {
-        // Opcional: log del error dec.getError()
+        // (Opcional) loguear el error: dec.getError()
         return makeDefault();
     }
+
     return dec.getValueConst();
 }
 

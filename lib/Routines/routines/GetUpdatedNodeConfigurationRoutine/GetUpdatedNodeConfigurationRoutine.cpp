@@ -21,18 +21,18 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
 
     if (!optPacket.has_value())
     {
-        return RESULT_FAILUREF(acousea_CommunicationPacket, "No packet provided to process");
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket, "No packet provided to process");
     }
     const acousea_CommunicationPacket& packet = optPacket.value();
 
     if (packet.which_body != acousea_CommunicationPacket_command_tag)
     {
-        return RESULT_FAILUREF(acousea_CommunicationPacket, "Packet is not of type command");
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket, "Packet is not of type command");
     }
 
     if (packet.body.command.which_command != acousea_CommandBody_requestedConfiguration_tag)
     {
-        return RESULT_FAILUREF(acousea_CommunicationPacket, "Packet command is not of type requestedConfiguration");
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket, "Packet command is not of type requestedConfiguration");
     }
 
     acousea_GetUpdatedNodeConfigurationPayload requestedConfigurationPayload = packet.body.command.command.
@@ -227,7 +227,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                                                                         .getIfFresh(
                                                                             acousea_ModuleCode_ICLISTEN_STATUS);
                 if (!optICListenStatus_ModuleWrapper)
-                    return RESULT_PENDINGF(acousea_CommunicationPacket, "ICListen status is not fresh");
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket, "ICListen status is not fresh");
                 icListenStatusEntry.value = *optICListenStatus_ModuleWrapper;
 
                 updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenStatusEntry;
@@ -248,7 +248,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                                                                              acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG);
                 if (!optICListenLogging_ModuleWrapper)
                 {
-                    return RESULT_PENDINGF(acousea_CommunicationPacket, "ICListen logging config is not fresh");
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket, "ICListen logging config is not fresh");
                 }
                 icListenLoggingEntry.value = *optICListenLogging_ModuleWrapper;
 
@@ -271,7 +271,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                                                                                acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG);
                 if (!optICListenStreaming_ModuleWrapper)
                 {
-                    return RESULT_PENDINGF(acousea_CommunicationPacket, "ICListen streaming config is not fresh");
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket, "ICListen streaming config is not fresh");
                 }
                 icListenStreamingEntry.value = *optICListenStreaming_ModuleWrapper;
 
@@ -291,7 +291,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 const auto optICListenRecordingStats_ModuleWrapper = moduleProxy.getCache()
                     .getIfFresh(acousea_ModuleCode_ICLISTEN_RECORDING_STATS);
                 if (!optICListenRecordingStats_ModuleWrapper)
-                    return RESULT_PENDINGF(acousea_CommunicationPacket, "ICListen recording stats is not fresh");
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket, "ICListen recording stats is not fresh");
 
                 icListenRecordingStatsEntry.value = *optICListenRecordingStats_ModuleWrapper;
                 updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenRecordingStatsEntry;
@@ -310,7 +310,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 const auto optICListenHf_ModuleWrapper = moduleProxy.getCache()
                                                                     .getIfFresh(acousea_ModuleCode_ICLISTEN_HF);
                 if (!optICListenHf_ModuleWrapper)
-                    return RESULT_PENDINGF(acousea_CommunicationPacket, "ICListen HF is not fresh");
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket, "ICListen HF is not fresh");
 
                 icListenHfEntry.value = *optICListenHf_ModuleWrapper;
                 updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenHfEntry;

@@ -11,7 +11,7 @@ Result<acousea_CommunicationPacket> Router::decodePacket(const std::vector<uint8
 {
     if (raw.empty())
     {
-        return RESULT_FAILUREF(acousea_CommunicationPacket, "decodePacket: empty input buffer");
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket, "decodePacket: empty input buffer");
     }
 
     acousea_CommunicationPacket pkt = acousea_CommunicationPacket_init_default;
@@ -19,7 +19,7 @@ Result<acousea_CommunicationPacket> Router::decodePacket(const std::vector<uint8
     pb_istream_t is = pb_istream_from_buffer(raw.data(), raw.size());
     if (!pb_decode(&is, acousea_CommunicationPacket_fields, &pkt))
     {
-        return RESULT_FAILUREF(acousea_CommunicationPacket, "decodePacket: pb_decode failed: %s", PB_GET_ERROR(&is));
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket, "decodePacket: pb_decode failed: %s", PB_GET_ERROR(&is));
     }
 
     return RESULT_SUCCESS(acousea_CommunicationPacket, pkt);
@@ -31,7 +31,7 @@ Result<std::vector<uint8_t>> Router::encodePacket(const acousea_CommunicationPac
     if (!pb_encode(&sizing, acousea_CommunicationPacket_fields, &pkt))
     {
         LOG_CLASS_ERROR("encodePacket(SIZE) -> %s", PB_GET_ERROR(&sizing));
-        return RESULT_FAILUREF(std::vector<uint8_t>, "encodePacket (size): pb_encode failed: %s",
+        return RESULT_CLASS_FAILUREF(std::vector<uint8_t>, "encodePacket (size): pb_encode failed: %s",
                                PB_GET_ERROR(&sizing));
     }
 
@@ -40,7 +40,7 @@ Result<std::vector<uint8_t>> Router::encodePacket(const acousea_CommunicationPac
     if (!pb_encode(&os, acousea_CommunicationPacket_fields, &pkt))
     {
         LOG_CLASS_ERROR("encodePacket(WRITE) -> %s", PB_GET_ERROR(&os));
-        return RESULT_FAILUREF(std::vector<uint8_t>, "encodePacket (write): pb_encode failed: %s", PB_GET_ERROR(&os));
+        return RESULT_CLASS_FAILUREF(std::vector<uint8_t>, "encodePacket (write): pb_encode failed: %s", PB_GET_ERROR(&os));
     }
     return RESULT_SUCCESS(std::vector<uint8_t>, std::move(buf));
 }

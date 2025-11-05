@@ -81,7 +81,7 @@ TEST_F(ModuleProxyTest, InvalidateRemovesFreshness)
     proxy.getCache().store(acousea_ModuleCode_ICLISTEN_HF, wrapper);
     proxy.getCache().invalidate(acousea_ModuleCode_ICLISTEN_HF);
 
-    EXPECT_FALSE(proxy.getCache().fresh(acousea_ModuleCode_ICLISTEN_HF));
+    EXPECT_FALSE(proxy.getCache().isFresh(acousea_ModuleCode_ICLISTEN_HF));
 }
 
 // =====================================================

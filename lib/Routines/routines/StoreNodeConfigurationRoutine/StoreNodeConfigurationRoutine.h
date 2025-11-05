@@ -21,10 +21,6 @@ public:
 
     Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& optPacket) override;
 
-private:
-    template <typename EntryT>
-    void processModules(const EntryT*, pb_size_t);
-    void handleModule(int32_t key, bool hasValue, const acousea_ModuleWrapper* value) const;
 };
 
 
