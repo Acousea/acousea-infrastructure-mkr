@@ -2,6 +2,36 @@
 
 #ifdef ARDUINO
 
+namespace
+{
+    using Comparator = bool (*)(uint8_t, uint8_t);
+    struct BatteryRule
+    {
+        uint8_t threshold;
+        Comparator cmp;
+        void (PiController::*action)() const;
+        uint32_t actionCooldownMs;
+        int32_t sleepMs;
+    };
+
+    constexpr Comparator lessEq = +[](const uint8_t a, const uint8_t b) { return a <= b; };
+    constexpr Comparator greater = +[](const uint8_t a, const uint8_t b) { return a > b; };
+    constexpr BatteryRule batteryProtectionRules[] = {
+        // Critical level: shut down immediately and sleep indefinitely
+        {10, lessEq, &PiController::commandShutdown, 120000, 0},
+
+        // Aggressive protection: shut down and sleep for 10 minutes
+        {15, lessEq, &PiController::commandShutdown, 120000, 600000},
+
+        // Low battery: keep RockPi on but sleep for 5 minutes
+        {20, lessEq, nullptr, 120000, 300000},
+
+        // Battery sufficient: start RockPi if it is off, no sleep
+        {30, greater, &PiController::commandStartup, 120000, -1}
+    };
+
+}
+
 void SystemMonitor::init(const int timeoutMs)
 {
     if (timeoutMs >= 16000)
@@ -131,33 +161,7 @@ void SystemMonitor::protectBattery() const
     }
     const uint8_t soc = batteryController->voltageSOC_rounded();
 
-    using Comparator = bool (*)(uint8_t, uint8_t);
-    struct BatteryRule
-    {
-        uint8_t threshold;
-        Comparator cmp;
-        void (PiController::*action)() const;
-        uint32_t actionCooldownMs;
-        int32_t sleepMs;
-    };
-
-    constexpr Comparator lessEq = +[](uint8_t a, uint8_t b) { return a <= b; };
-    constexpr Comparator greater = +[](uint8_t a, uint8_t b) { return a > b; };
-    constexpr BatteryRule rules[] = {
-        // Critical level: shut down immediately and sleep indefinitely
-        {10, lessEq, &PiController::commandShutdown, 120000, 0},
-
-        // Aggressive protection: shut down and sleep for 10 minutes
-        {15, lessEq, &PiController::commandShutdown, 120000, 600000},
-
-        // Low battery: keep RockPi on but sleep for 5 minutes
-        {20, lessEq, nullptr, 120000, 300000},
-
-        // Battery sufficient: start RockPi if it is off, no sleep
-        {30, greater, &PiController::commandStartup, 120000, -1}
-    };
-
-    for (const auto& rule : rules)
+    for (const auto& rule : batteryProtectionRules)
     {
         if (rule.cmp(soc, rule.threshold))
         {
@@ -165,6 +169,7 @@ void SystemMonitor::protectBattery() const
 
             if (rockpiController && rule.action) manageRockPiAction(rule.actionCooldownMs, rule.action);
             if (rule.sleepMs >= 0) SystemMonitor::sleepFor(rule.sleepMs);
+            return; // solo aplicar la primera regla que coincida
         }
     }
 

@@ -21,7 +21,8 @@
  *  - Query current power status.
  */
 
-class PiController{
+class PiController
+{
 public:
     CLASS_NAME(RockPiPowerController)
     explicit PiController(
@@ -41,13 +42,14 @@ private:
     const int rockPiShutdownPin;
     const int rockPiMonitorPin;
     MosfetController mosfetController;
-    enum : unsigned long {
+
+    enum : unsigned long
+    {
         RECEIVE_SHUTDOWN_SIGNAL_PERIOD = 30000,
         STARTUP_TIMEOUT = 60000,
         POLL_INTERVAL = 500,
         FULL_SHUTDOWN_GRACE_PERIOD = 60000
     };
-
 };
 
 #endif // ARDUINO

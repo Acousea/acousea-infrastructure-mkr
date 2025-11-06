@@ -1,6 +1,10 @@
 #if defined(ARDUINO) && defined(PLATFORM_HAS_GSM)
 #include "GsmMQTTPort.hpp"
 
+#include "UBlox201/TrustAnchors.h"
+#include "../../private_keys/cert.h"
+#include "../../private_keys/key.h"
+
 GsmMQTTPort* GsmMQTTPort::instance = nullptr;
 
 unsigned long GsmMQTTPort::getTime()

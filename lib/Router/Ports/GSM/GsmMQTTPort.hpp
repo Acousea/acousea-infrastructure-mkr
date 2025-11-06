@@ -13,11 +13,6 @@
 #include "Ports/IPort.h"
 #include "ClassName.h"
 
-#include "../../private_keys/cert.h"
-#include "../../private_keys/key.h"
-
-
-
 class GsmMQTTPort final : public IPort{
     CLASS_NAME(GsmPort)
 

@@ -1,6 +1,6 @@
 // Auto-generated trust anchors implementation
 #include "TrustAnchors.h"
-
+#ifdef TRUST_ANCHORS_INCLUDE_AMAZONROOTCA1
 // Certificado: AmazonRootCA1
 const unsigned char AmazonRootCA1_der[] = {
   0x30, 0x82, 0x03, 0x41, 0x30, 0x82, 0x02, 0x29, 0xa0, 0x03, 0x02, 0x01,
@@ -75,7 +75,9 @@ const unsigned char AmazonRootCA1_der[] = {
   0x59, 0x33, 0xf8, 0xeb, 0xc4, 0x90, 0xbe, 0xf1, 0xb9
 };
 const unsigned int AmazonRootCA1_der_len = 837;
+#endif // TRUST_ANCHORS_INCLUDE_AMAZONROOTCA1
 
+#ifdef TRUST_ANCHORS_INCLUDE_BALTIMORECYBERTRUST
 // Certificado: BaltimoreCyberTrust
 const unsigned char BaltimoreCyberTrust_der[] = {
   0x30, 0x82, 0x03, 0x77, 0x30, 0x82, 0x02, 0x5f, 0xa0, 0x03, 0x02, 0x01,
@@ -155,7 +157,9 @@ const unsigned char BaltimoreCyberTrust_der[] = {
   0x63, 0x39, 0xa9
 };
 const unsigned int BaltimoreCyberTrust_der_len = 891;
+#endif // TRUST_ANCHORS_INCLUDE_BALTIMORECYBERTRUST
 
+#ifdef TRUST_ANCHORS_INCLUDE_COMODORSA_CERTIFICATION_AUTHORITY
 // Certificado: COMODO RSA Certification Authority
 const unsigned char COMODO_RSA_Certification_Authority_der[] = {
   0x30, 0x82, 0x05, 0xd8, 0x30, 0x82, 0x03, 0xc0, 0xa0, 0x03, 0x02, 0x01,
@@ -285,7 +289,10 @@ const unsigned char COMODO_RSA_Certification_Authority_der[] = {
   0x35, 0x53, 0x85, 0x06, 0x4a, 0x5d, 0x9f, 0xad, 0xbb, 0x1b, 0x5f, 0x74
 };
 const unsigned int COMODO_RSA_Certification_Authority_der_len = 1500;
+#endif // COMODO_RSA_Certification_Authority_der_len
 
+
+#ifdef TRUST_ANCHORS_INCLUDE_DIGICERTGLOBALROOTCA
 // Certificado: DigiCertGlobalRootCA
 const unsigned char DigiCertGlobalRootCA_der[] = {
   0x30, 0x82, 0x03, 0xaf, 0x30, 0x82, 0x02, 0x97, 0xa0, 0x03, 0x02, 0x01,
@@ -369,7 +376,9 @@ const unsigned char DigiCertGlobalRootCA_der[] = {
   0x5f, 0x8d, 0x0a, 0x3c, 0xc6, 0xe9, 0xd5, 0x95, 0x95, 0x6d, 0xde
 };
 const unsigned int DigiCertGlobalRootCA_der_len = 947;
+#endif // TRUST_ANCHORS_INCLUDE_DIGICERTGLOBALROOTCA
 
+#ifdef TRUST_ANCHORS_INCLUDE_DIGICERTGLOBALROOTG2
 // Certificado: DigiCertGlobalRootG2
 const unsigned char DigiCertGlobalRootG2_der[] = {
   0x30, 0x82, 0x03, 0x8e, 0x30, 0x82, 0x02, 0x76, 0xa0, 0x03, 0x02, 0x01,
@@ -451,7 +460,9 @@ const unsigned char DigiCertGlobalRootG2_der[] = {
   0x32, 0xb6
 };
 const unsigned int DigiCertGlobalRootG2_der_len = 914;
+#endif // TRUST_ANCHORS_INCLUDE_DIGICERTGLOBALROOTG2
 
+#ifdef TRUST_ANCHORS_INCLUDE_DIGICERTROOT
 // Certificado: Digicert_Root
 const unsigned char Digicert_Root_der[] = {
   0x30, 0x82, 0x03, 0xc5, 0x30, 0x82, 0x02, 0xad, 0xa0, 0x03, 0x02, 0x01,
@@ -537,7 +548,9 @@ const unsigned char Digicert_Root_der[] = {
   0xf8, 0xe9, 0x2e, 0x13, 0xa3, 0x77, 0xe8, 0x1f, 0x4a
 };
 const unsigned int Digicert_Root_der_len = 969;
+#endif // TRUST_ANCHORS_INCLUDE_DIGICERTROOT
 
+#ifdef TRUST_ANCHORS_INCLUDE_ENTRUST
 // Certificado: EnTrust
 const unsigned char EnTrust_der[] = {
   0x30, 0x82, 0x04, 0x91, 0x30, 0x82, 0x03, 0x79, 0xa0, 0x03, 0x02, 0x01,
@@ -640,7 +653,10 @@ const unsigned char EnTrust_der[] = {
   0x85, 0x5b, 0x13, 0xfe, 0x1e, 0x7f, 0x5a, 0xb4, 0x3c
 };
 const unsigned int EnTrust_der_len = 1173;
+#endif // TRUST_ANCHORS_INCLUDE_ENTRUST
 
+
+#ifdef TRUST_ANCHORS_INCLUDE_GEOTRUSTPRIMARYCERTIFICATIONAUTHORITY_G3
 // Certificado: GeoTrustPrimaryCertificationAuthority-G3
 const unsigned char GeoTrustPrimaryCertificationAuthority_G3_der[] = {
   0x30, 0x82, 0x03, 0xfe, 0x30, 0x82, 0x02, 0xe6, 0xa0, 0x03, 0x02, 0x01,
@@ -731,7 +747,9 @@ const unsigned char GeoTrustPrimaryCertificationAuthority_G3_der[] = {
   0x82, 0x12, 0xeb, 0x19, 0x11, 0x2d
 };
 const unsigned int GeoTrustPrimaryCertificationAuthority_G3_der_len = 1026;
+#endif // TRUST_ANCHORS_INCLUDE_GEOTRUSTPRIMARYCERTIFICATIONAUTHORITY_G3
 
+#ifdef TRUST_ANCHORS_INCLUDE_GLOBALSIGNROOTR1
 // Certificado: GlobalSignRootR1
 const unsigned char GlobalSignRootR1_der[] = {
   0x30, 0x82, 0x03, 0x75, 0x30, 0x82, 0x02, 0x5d, 0xa0, 0x03, 0x02, 0x01,
@@ -811,7 +829,9 @@ const unsigned char GlobalSignRootR1_der[] = {
   0xe0
 };
 const unsigned int GlobalSignRootR1_der_len = 889;
+#endif // TRUST_ANCHORS_INCLUDE_GLOBALSIGNROOTR1
 
+#ifdef TRUST_ANCHORS_INCLUDE_GODADDYROOTCERTIFICATEAUTHORITY_G2
 // Certificado: GoDaddyRootCertificateAuthority-G2
 const unsigned char GoDaddyRootCertificateAuthority_G2_der[] = {
   0x30, 0x82, 0x03, 0xc5, 0x30, 0x82, 0x02, 0xad, 0xa0, 0x03, 0x02, 0x01,
@@ -897,7 +917,9 @@ const unsigned char GoDaddyRootCertificateAuthority_G2_der[] = {
   0xe2, 0xe2, 0x44, 0xbe, 0x5c, 0xf7, 0xea, 0x1c, 0xf5
 };
 const unsigned int GoDaddyRootCertificateAuthority_G2_der_len = 969;
+#endif // TRUST_ANCHORS_INCLUDE_GODADDYROOTCERTIFICATEAUTHORITY_G2
 
+#ifdef TRUST_ANCHORS_INCLUDE_ISRGROOTX1
 // Certificado: ISRGRootX1
 const unsigned char ISRGRootX1_der[] = {
   0x30, 0x82, 0x05, 0x6b, 0x30, 0x82, 0x03, 0x53, 0xa0, 0x03, 0x02, 0x01,
@@ -1018,7 +1040,9 @@ const unsigned char ISRGRootX1_der[] = {
   0xa2, 0xcd, 0x40, 0x9d, 0x7e, 0x62, 0x22, 0xda, 0xde, 0x18, 0x27
 };
 const unsigned int ISRGRootX1_der_len = 1391;
+#endif  // TRUST_ANCHORS_INCLUDE_ISRGROOTX1
 
+#ifdef TRUST_ANCHORS_INCLUDE_MICROSOFTRSAROOTCERTIFICATEAUTHORITY2017
 // Certificado: MicrosoftRSARootCertificateAuthority2017
 const unsigned char MicrosoftRSARootCertificateAuthority2017_der[] = {
   0x30, 0x82, 0x05, 0xa8, 0x30, 0x82, 0x03, 0x90, 0xa0, 0x03, 0x02, 0x01,
@@ -1144,7 +1168,10 @@ const unsigned char MicrosoftRSARootCertificateAuthority2017_der[] = {
   0x44, 0x0f, 0x86, 0xb0, 0x2c, 0x91, 0xc6, 0x3d, 0xea, 0xae, 0x0f, 0x84
 };
 const unsigned int MicrosoftRSARootCertificateAuthority2017_der_len = 1452;
+#endif
 
+
+#ifdef TRUST_ANCHORS_INCLUDE_VERISIGN_CERTIFICATE
 // Certificado: VeriSign
 const unsigned char VeriSign_der[] = {
   0x30, 0x82, 0x04, 0xd3, 0x30, 0x82, 0x03, 0xbb, 0xa0, 0x03, 0x02, 0x01,
@@ -1253,21 +1280,61 @@ const unsigned char VeriSign_der[] = {
   0xed, 0x63, 0x6a
 };
 const unsigned int VeriSign_der_len = 1239;
+#endif
 
 const TrustAnchor trust_anchors[] = {
+#ifdef TRUST_ANCHORS_INCLUDE_AMAZONROOTCA1
     {"AmazonRootCA1", AmazonRootCA1_der, static_cast<int>(AmazonRootCA1_der_len)},
+#endif
+
+#ifdef TRUST_ANCHORS_INCLUDE_BALTIMORECYBERTRUST
     {"BaltimoreCyberTrust", BaltimoreCyberTrust_der, static_cast<int>(BaltimoreCyberTrust_der_len)},
+#endif
+
+#ifdef TRUST_ANCHORS_INCLUDE_COMODORSA_CERTIFICATION_AUTHORITY
     {"COMODO RSA Certification Authority", COMODO_RSA_Certification_Authority_der, static_cast<int>(COMODO_RSA_Certification_Authority_der_len)},
+#endif
+
+#ifdef TRUST_ANCHORS_INCLUDE_DIGICERTGLOBALROOTCA
     {"DigiCertGlobalRootCA", DigiCertGlobalRootCA_der, static_cast<int>(DigiCertGlobalRootCA_der_len)},
+#endif
+
+#ifdef TRUST_ANCHORS_INCLUDE_DIGICERTGLOBALROOTG2
     {"DigiCertGlobalRootG2", DigiCertGlobalRootG2_der, static_cast<int>(DigiCertGlobalRootG2_der_len)},
+#endif
+
+#ifdef TRUST_ANCHORS_INCLUDE_DIGICERTROOT
     {"Digicert_Root", Digicert_Root_der, static_cast<int>(Digicert_Root_der_len)},
+#endif
+
+#ifdef TRUST_ANCHORS_INCLUDE_ENTRUST
     {"EnTrust", EnTrust_der, static_cast<int>(EnTrust_der_len)},
+#endif
+
+#ifdef TRUST_ANCHORS_INCLUDE_GEOTRUSTPRIMARYCERTIFICATIONAUTHORITY_G3
     {"GeoTrustPrimaryCertificationAuthority-G3", GeoTrustPrimaryCertificationAuthority_G3_der, static_cast<int>(GeoTrustPrimaryCertificationAuthority_G3_der_len)},
+#endif
+
+#ifdef TRUST_ANCHORS_INCLUDE_GLOBALSIGNROOTR1
     {"GlobalSignRootR1", GlobalSignRootR1_der, static_cast<int>(GlobalSignRootR1_der_len)},
+#endif
+
+#ifdef TRUST_ANCHORS_INCLUDE_GODADDYROOTCERTIFICATEAUTHORITY_G2
     {"GoDaddyRootCertificateAuthority-G2", GoDaddyRootCertificateAuthority_G2_der, static_cast<int>(GoDaddyRootCertificateAuthority_G2_der_len)},
+#endif
+
+#ifdef TRUST_ANCHORS_INCLUDE_ISRGROOTX1
     {"ISRGRootX1", ISRGRootX1_der, static_cast<int>(ISRGRootX1_der_len)},
+#endif
+
+#ifdef TRUST_ANCHORS_INCLUDE_MICROSOFTRSAROOTCERTIFICATEAUTHORITY2017
     {"MicrosoftRSARootCertificateAuthority2017", MicrosoftRSARootCertificateAuthority2017_der, static_cast<int>(MicrosoftRSARootCertificateAuthority2017_der_len)},
+#endif
+
+#ifdef TRUST_ANCHORS_INCLUDE_VERISIGN_CERTIFICATE
     {"VeriSign", VeriSign_der, static_cast<int>(VeriSign_der_len)},
+#endif
+
 };
 
-const unsigned int trust_anchors_num = 13;
+const unsigned int trust_anchors_num = sizeof(trust_anchors) / sizeof(trust_anchors[0]); // 13 total maximum

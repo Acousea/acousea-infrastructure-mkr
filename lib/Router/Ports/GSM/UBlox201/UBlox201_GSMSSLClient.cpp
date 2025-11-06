@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <string>
+#include "TrustAnchors.h"
 
 
 inline CertType certTypeFromInt(int type)
