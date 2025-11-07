@@ -1,4 +1,4 @@
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 #include "SerialArduinoDisplay.h"
 
 #ifndef SERIAL_USE_ANSI

@@ -1,7 +1,7 @@
 #ifndef MKRGPS_H
 #define MKRGPS_H
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #include "IGPS.h"
 #include "ClassName.h"

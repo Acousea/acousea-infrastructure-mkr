@@ -1,6 +1,7 @@
 #ifndef HTTPPORT_HPP
 #define HTTPPORT_HPP
 
+#ifdef PLATFORM_NATIVE
 
 #include "ClassName.h"
 #include "Ports/IPort.h"
@@ -36,5 +37,7 @@ private:
     bool initialized_{false};
 };
 
+#endif // PLATFORM_NATIVE
 
 #endif //HTTPPORT_HPP
+

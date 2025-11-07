@@ -60,13 +60,12 @@ extern std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> configurationRo
 extern NodeOperationRunner nodeOperationRunner;
 
 extern TaskScheduler scheduler;
-extern SystemMonitor systemMonitor;
 
 
 // =======================================================
 //       ARDUINO BUILD
 // =======================================================
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 extern Uart softwareSerialSercom1;
 extern Uart softwareSerialSercom0;
 

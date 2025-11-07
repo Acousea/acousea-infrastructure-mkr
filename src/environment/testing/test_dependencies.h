@@ -1,7 +1,13 @@
 #ifndef DEPENDENCIES_H
 #define DEPENDENCIES_H
 
+// #undef PLATFORM_ARDUINO
+// #define PLATFORM_NATIVE
+
+#include "../shared_utils.hpp"
 #include <libraries.h>
+
+
 
 #if __has_include("environment/credentials.hpp")
 #include "environment/credentials.hpp"
@@ -10,27 +16,23 @@
 #endif
 
 
-#ifdef ARDUINO
+#if defined(PLATFORM_ARDUINO)
 extern Uart softwareSerialSercom1;
 extern Uart softwareSerialSercom0;
-#endif
-
 #define ConsoleSerial SerialUSB
 // #define ConsoleSerial softwareSerialSercom0
 // #define ConsoleSerial softwareSerialSercom1
 
-// =======================================================
-//       COMMON
-// =======================================================
 // ---- Batería ----
 extern MockBatteryController mockBatteryController;
 extern SolarXBatteryController solarXBatteryController;
-extern IBatteryController* batteryController;
+extern IBatteryController& batteryControllerRef;
 
 // ---- GPS ----
-extern IGPS* gps;
+extern IGPS& gpsRef;
+
 // ---- Display ----
-extern IDisplay* display;
+extern IDisplay& displayRef;
 
 // ---- Ports -----
 #ifdef PLATFORM_HAS_GSM
@@ -43,28 +45,49 @@ extern LoraPort realLoraPort;
 
 extern TaskScheduler scheduler;
 
-extern SystemMonitor systemMonitor;
-
-// =======================================================
-//       ARDUINO BUILD
-// =======================================================
-#ifdef ARDUINO
-
 // USB Display
 extern SerialArduinoDisplay serialUartDisplay;
 
 extern PiController piPowerController;
 
-extern StorageManager* storageManager;
+extern StorageManager& storageManagerRef;
 
-extern RTCController* rtcController;
+extern RTCController& rtcControllerRef;
+
+extern BatteryProtectionPolicy batteryProtectionPolicy;
 
 // =======================================================
 //       NATIVE BUILD
 // =======================================================
+#elif defined(PLATFORM_NATIVE)
+
+static const NativeConsole consoleNative;
+#define ConsoleSerial consoleNative
+
+// ---- Batería ----
+extern IBatteryController& batteryControllerRef;
+
+// ---- GPS ----
+extern IGPS* gps;
+
+// ---- Display ----
+extern IDisplay& displayRef;
+
+
+// ---- Task Scheduler ----
+extern TaskScheduler scheduler;
+
+// ----- Storage Manager -----
+extern StorageManager& storageManagerRef;
+
+// ----- RTC Controller -----
+extern RTCController& rtcControllerRef;
+
+
 #else // NATIVE
+#error "No valid PLATFORM defined. Please define PLATFORM as PLATFORM_ARDUINO or PLATFORM_NATIVE."
 
+#endif // PLATFORM_ARDUINO
 
-#endif // ARDUINO vs NATIVE
 
 #endif // DEPENDENCIES_H

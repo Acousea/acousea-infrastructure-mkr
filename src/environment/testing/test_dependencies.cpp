@@ -3,7 +3,7 @@
 // =======================================================
 //       ARDUINO BUILD
 // =======================================================
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 // Define los pines para el segundo puerto serie por hardware (SERCOM2)
 // Uart softSerial(&sercom0, PIN_A4, PIN_A3, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 Uart softwareSerialSercom0(&sercom0,
@@ -30,64 +30,62 @@ SolarXBatteryController solarXBatteryController(
     // INA219_ADDRESS + 5 // 0x45
 );
 
-IBatteryController* batteryController = &solarXBatteryController; // o PMIC según HW
+IBatteryController& batteryControllerRef = solarXBatteryController; // o PMIC según HW
 
 // --------- Display ----------
 SerialArduinoDisplay serialUartDisplay(&ConsoleSerial);
-IDisplay* display = &serialUartDisplay;
+IDisplay& displayRef = serialUartDisplay;
 
 
 // --------- GPS ----------
 // MKRGPS mkrGPS;
 UBloxGNSS ubloxGNSS;
 MockGPS mockGPS(0.0, 0.0, 1.0);
-IGPS* gps = &ubloxGNSS;
+IGPS& gpsRef = ubloxGNSS;
 
 // --------- RTC ----------
 // MockRTCController mockRTCController;
-// RTCController* rtcController = &mockRTCController;
+// RTCController& rtcControllerRef = mockRTCController;
 ZeroRTCController zeroRTCController;
-RTCController* rtcController = &zeroRTCController;
+RTCController& rtcControllerRef = zeroRTCController;
 
 // --------- Storage ----------
 SDStorageManager sdStorageManager;
-StorageManager* storageManager = &sdStorageManager; // o hddStorageManager según build
+StorageManager& storageManagerRef = sdStorageManager; // o hddStorageManager según build
 
 // ---------- Puertos ----------
 #ifdef PLATFORM_HAS_GSM
 // Configuración GSM
-GsmConfig gsmCfg = {
-    .pin = SECRET_PINNUMBER, // Tu SIM no tiene PIN
-    .apn = SECRET_GPRS_APN, // APN del operador (ejemplo: Hologram)
-    .user = SECRET_GPRS_LOGIN, // Usuario del APN
-    .pass = SECRET_GPRS_PASSWORD, // Password del APN
-    .clientId = AWS_MQTT_CLIENT_ID,
-    .broker = AWS_MQTT_BROKER, // Host del servidor destino
-    .port = 8883, // Puerto destino (8883 para MQTT sobre SSL)
-    .certificate = CLIENT_CERTIFICATE
-};
+GsmConfig gsmCfg(
+    SECRET_PINNUMBER, // Tu SIM no tiene PIN
+    SECRET_GPRS_APN, // APN del operador (ejemplo: Hologram)
+    SECRET_GPRS_LOGIN, // Usuario del APN
+    SECRET_GPRS_PASSWORD, // Password del APN
+    AWS_MQTT_CLIENT_ID,
+    AWS_MQTT_BROKER, // Host del servidor destino
+    8883, // Puerto destino (8883 para MQTT sobre SSL)
+    CLIENT_CERTIFICATE,
+    CLIENT_PRIVATE_KEY
+);
 GsmMQTTPort gsmPort(gsmCfg);
 
+#endif
 PiController piPowerController;
 
-TaskScheduler scheduler;
-
-SystemMonitor systemMonitor(&solarXBatteryController, &piPowerController);
-
-#endif
+BatteryProtectionPolicy batteryProtectionPolicy(batteryControllerRef, piPowerController);
 
 // =======================================================
 //       NATIVE BUILD
 // =======================================================
-#else // NATIVE
+#elif defined(PLATFORM_NATIVE)
 
 // --------- Batería ----------
 MockBatteryController mockBatteryController;
-IBatteryController* batteryController = &mockBatteryController;
+IBatteryController& batteryControllerRef = mockBatteryController;
 
 // --------- Display ----------
 ConsoleDisplay consoleDisplay;
-IDisplay* display = &consoleDisplay;
+IDisplay& displayRef = consoleDisplay;
 
 // --------- Puertos ----------
 MockSerialPort mockSerialPort;
@@ -107,14 +105,21 @@ IGPS* gps = &mockGPS;
 
 // --------- RTC ----------
 MockRTCController mockRTCController;
-RTCController* rtcController = &mockRTCController;
+RTCController& rtcControllerRef = mockRTCController;
 
 // --------- Storage ----------
 HDDStorageManager hddStorageManager;
-StorageManager* storageManager = &hddStorageManager; // o hddStorageManager según build
+StorageManager& storageManagerRef = hddStorageManager; // o hddStorageManager según build
 
 // --------- Router ----------
 Router router({serialPort, loraPort, iridiumPort});
 
+#else // NATIVE
+#error "No valid PLATFORM defined. Please define PLATFORM as PLATFORM_ARDUINO or PLATFORM_NATIVE."
 
-#endif // ARDUINO vs NATIVE
+#endif // PLATFORM_NATIVE
+
+
+TaskScheduler scheduler;
+
+

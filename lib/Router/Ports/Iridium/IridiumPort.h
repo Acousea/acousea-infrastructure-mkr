@@ -1,7 +1,7 @@
 #ifndef IRIDIUMPORT_H
 #define IRIDIUMPORT_H
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #include <Arduino.h>
 

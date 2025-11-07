@@ -7,9 +7,9 @@
 
 CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationRepository& nodeConfigurationRepository,
                                                          ModuleProxy& moduleProxy,
-                                                         IGPS* gps,
-                                                         IBatteryController* battery,
-                                                         RTCController* rtc
+                                                         IGPS& gps,
+                                                         IBatteryController& battery,
+                                                         RTCController& rtc
 )
     : IRoutine(getClassNameCString()),
       nodeConfigurationRepository(nodeConfigurationRepository),
@@ -22,7 +22,7 @@ CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationReposi
 
 
 Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
-    const std::optional<acousea_CommunicationPacket>& input /*unused*/)
+    const std::optional<acousea_CommunicationPacket>& /*input*/) // input unused, always std::nullopt
 {
     // --- Obtener configuración actual ---
     const acousea_NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
@@ -64,14 +64,14 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
         case acousea_ModuleCode_BATTERY_MODULE:
             {
                 entry.value.which_module = acousea_ModuleWrapper_battery_tag;
-                entry.value.module.battery.batteryPercentage = battery->voltageSOC_rounded();
-                entry.value.module.battery.batteryStatus = battery->status();
+                entry.value.module.battery.batteryPercentage = battery.voltageSOC_rounded();
+                entry.value.module.battery.batteryStatus = battery.status();
                 break;
             }
         case acousea_ModuleCode_LOCATION_MODULE:
             {
                 entry.value.which_module = acousea_ModuleWrapper_location_tag;
-                auto [lat, lon] = gps->read();
+                auto [lat, lon] = gps.read();
                 entry.value.module.location.latitude = lat;
                 entry.value.module.location.longitude = lon;
                 break;

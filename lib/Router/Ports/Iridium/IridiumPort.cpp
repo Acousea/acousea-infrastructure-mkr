@@ -1,4 +1,4 @@
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 #include "IridiumPort.h"
 
 #include <Logger/Logger.h>

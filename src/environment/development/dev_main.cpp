@@ -121,7 +121,7 @@ void dev_setup(){
     std::printf("[native] Setup: Ensured pointers\n");
 #endif
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
     // Inicializa la comunicación serial a 9600 baudios
     ConsoleSerial.begin(9600);
     // softwareSerialSercom0.begin(9600);
@@ -215,7 +215,7 @@ void dev_loop(){
         lastTime = getMillis();
     }
 }
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #if defined(PLATFORM_HAS_LORA)
 void dev_onReceiveWrapper(int packetSize){

@@ -11,9 +11,9 @@ protected:
 
 public:
     virtual bool init() = 0;
+    virtual bool sync() = 0;
     virtual uint8_t voltageSOC_rounded() = 0;
     virtual acousea_BatteryStatus  status() = 0;
-
 };
 
 #endif // IBATTERY_H

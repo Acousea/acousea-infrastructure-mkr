@@ -1,4 +1,4 @@
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #include "SolarXBatteryController.h"
 
@@ -19,20 +19,24 @@ SolarXBatteryController::SolarXBatteryController(const uint8_t batteryAddr, cons
     : batteryAddress(batteryAddr),
       panelAddress(panelAddr),
       batterySensor(batteryAddr),
-      panelSensor(panelAddr) {
+      panelSensor(panelAddr)
+{
 }
 
 
-bool SolarXBatteryController::init() {
+bool SolarXBatteryController::init()
+{
     Wire.setTimeout(1500); // 1500 ms de timeout
 
-    if (!batterySensor.begin()) {
+    if (!batterySensor.begin())
+    {
         LOG_CLASS_ERROR("Error initializing battery INA219 at 0x%02X", batteryAddress);
         return false;
     }
     batterySensor.setCalibration_32V_1A();
 
-    if (!panelSensor.begin()) {
+    if (!panelSensor.begin())
+    {
         LOG_CLASS_ERROR("Error initializing panel INA219 at 0x%02X", panelAddress);
         return false;
     }
@@ -47,29 +51,35 @@ bool SolarXBatteryController::init() {
 }
 
 
-void SolarXBatteryController::initialBatteryCalibration() {
+void SolarXBatteryController::initialBatteryCalibration()
+{
     const auto currentA = batteryCurrentAmp();
     const auto voltageSOC = static_cast<float>(voltageSOC_accurate());
 
-    if (fabs(currentA) < CURRENT_IDLE_THRESHOLD) {
+    if (fabs(currentA) < CURRENT_IDLE_THRESHOLD)
+    {
         coulombCountedAh = (voltageSOC / 100.0f) * NOMINAL_CAPACITY_AH;
         cachedCombinedSOC = voltageSOC;
         LOG_CLASS_INFO("%sInitial SOC set from voltage: %.1f%%",
-                 getClassNameCString(), voltageSOC);
-    } else {
+                       getClassNameCString(), voltageSOC);
+    }
+    else
+    {
         coulombCountedAh = 0.5f * NOMINAL_CAPACITY_AH;
         cachedCombinedSOC = 50.0f;
         LOG_CLASS_WARNING("%sInitial SOC set to 50%% (battery not idle)",
-                    getClassNameCString());
+                          getClassNameCString());
     }
 
     lastSyncTime = getMillis();
 }
 
-void SolarXBatteryController::sync() {
-    if (!_initialized) {
+bool SolarXBatteryController::sync()
+{
+    if (!_initialized)
+    {
         LOG_CLASS_INFO("Sensor not initialized. Call init() first.");
-        return;
+        return false;
     }
 
     const unsigned long now = getMillis();
@@ -88,31 +98,36 @@ void SolarXBatteryController::sync() {
     const auto voltageSOC = static_cast<float>(voltageSOC_accurate());
 
     // --- Dynamic and combined SOC ---
-    const float alpha = (fabs(currentA) > CURRENT_IDLE_THRESHOLD) ? ALPHA_SOC_MAX : ALPHA_SOC_MIN; // más peso al voltaje en reposo
+    const float alpha = (fabs(currentA) > CURRENT_IDLE_THRESHOLD) ? ALPHA_SOC_MAX : ALPHA_SOC_MIN;
+    // más peso al voltaje en reposo
     const float combinedSOC = (alpha * coulombSOC) +
-                              ((1.0f - alpha) * voltageSOC);
-
+        ((1.0f - alpha) * voltageSOC);
 
 
     LOG_CLASS_INFO("sync() -> VoltageSOC=%.2f%%, CoulombSOC=%.2f%%, CombinedSOC=%.2f%%",
-               voltageSOC, coulombSOC, combinedSOC);
+                   voltageSOC, coulombSOC, combinedSOC);
 
 
     // Actualizar el estado interno
     cachedCombinedSOC = combinedSOC;
+    return true;
 }
 
-float SolarXBatteryController::combinedSOC_accurate() const {
+float SolarXBatteryController::combinedSOC_accurate() const
+{
     return cachedCombinedSOC;
 }
 
-uint8_t SolarXBatteryController::combinedSOC_rounded() const {
+uint8_t SolarXBatteryController::combinedSOC_rounded() const
+{
     return static_cast<uint8_t>(cachedCombinedSOC);
 }
 
 
-double SolarXBatteryController::coulombSOC_accurate() const {
-    if (!_initialized) {
+double SolarXBatteryController::coulombSOC_accurate() const
+{
+    if (!_initialized)
+    {
         LOG_CLASS_ERROR("Sensor not initialized. Call init() first.");
         return 0.0;
     }
@@ -123,13 +138,16 @@ double SolarXBatteryController::coulombSOC_accurate() const {
     return std::clamp(soc, 0.0, 100.0);
 }
 
-uint8_t SolarXBatteryController::coulombSOC_rounded() const {
+uint8_t SolarXBatteryController::coulombSOC_rounded() const
+{
     return static_cast<uint8_t>(coulombSOC_accurate());
 }
 
 
-double SolarXBatteryController::voltageSOC_accurate() {
-    if (!_initialized) {
+double SolarXBatteryController::voltageSOC_accurate()
+{
+    if (!_initialized)
+    {
         LOG_CLASS_ERROR("Sensor not initialized. Call init() first.");
         return 0;
     }
@@ -144,30 +162,37 @@ double SolarXBatteryController::voltageSOC_accurate() {
     return std::clamp(percentage, 0.0, 100.0);
 }
 
-uint8_t SolarXBatteryController::voltageSOC_rounded() {
+uint8_t SolarXBatteryController::voltageSOC_rounded()
+{
     const double percentage = voltageSOC_accurate();
     return static_cast<uint8_t>(percentage);
 }
 
-acousea_BatteryStatus SolarXBatteryController::status() {
-    if (!_initialized) {
+acousea_BatteryStatus SolarXBatteryController::status()
+{
+    if (!_initialized)
+    {
         LOG_CLASS_ERROR("Sensor not initialized. Call init() first.");
         return acousea_BatteryStatus_BATTERY_STATUS_ERROR;
     }
     const float current = batteryCurrentAmp();
     LOG_CLASS_INFO("status() -> Battery current: %.3f A", current);
-    if (current > 0.05f) {
+    if (current > 0.05f)
+    {
         return acousea_BatteryStatus_BATTERY_STATUS_CHARGING;
     }
-    if (current < -0.05f) {
+    if (current < -0.05f)
+    {
         return acousea_BatteryStatus_BATTERY_STATUS_DISCHARGING;
     }
 
     return acousea_BatteryStatus_BATTERY_STATUS_IDLE; // nuevo estado “ni carga ni descarga”
 }
 
-float SolarXBatteryController::batteryVolts() {
-    if (!_initialized) {
+float SolarXBatteryController::batteryVolts()
+{
+    if (!_initialized)
+    {
         LOG_CLASS_ERROR("Sensor not initialized. Call init() first.");
         return 0;
     }
@@ -176,8 +201,10 @@ float SolarXBatteryController::batteryVolts() {
     return batteryVoltage;
 }
 
-float SolarXBatteryController::panelVolts() {
-    if (!_initialized) {
+float SolarXBatteryController::panelVolts()
+{
+    if (!_initialized)
+    {
         LOG_CLASS_ERROR("Sensor not initialized. Call init() first.");
         return 0;
     }
@@ -187,8 +214,10 @@ float SolarXBatteryController::panelVolts() {
 }
 
 
-float SolarXBatteryController::batteryCurrentAmp() {
-    if (!_initialized) {
+float SolarXBatteryController::batteryCurrentAmp()
+{
+    if (!_initialized)
+    {
         LOG_CLASS_ERROR("Sensor not initialized. Call init() first.");
         return 0;
     }
@@ -197,8 +226,10 @@ float SolarXBatteryController::batteryCurrentAmp() {
     return batteryCurrentAmp;
 }
 
-float SolarXBatteryController::panelCurrentAmp() {
-    if (!_initialized) {
+float SolarXBatteryController::panelCurrentAmp()
+{
+    if (!_initialized)
+    {
         LOG_CLASS_ERROR("Sensor not initialized. Call init() first.");
         return 0;
     }
@@ -213,8 +244,10 @@ Returns the system's total current consumption (always >= 0). Computed as panel 
  - If batt < 0 (discharging), battery covers system deficit.
 Result is always positive: net current drawn by the system.
 **/
-float SolarXBatteryController::netCurrentConsumption() {
-    if (!_initialized) {
+float SolarXBatteryController::netCurrentConsumption()
+{
+    if (!_initialized)
+    {
         LOG_CLASS_ERROR("Sensor not initialized. Call init() first.");
         return 0;
     }
@@ -233,14 +266,16 @@ float SolarXBatteryController::netCurrentConsumption() {
     const float balance = panel - batt; // since batt is negative when discharging
 
     LOG_CLASS_INFO("netCurrentConsumption() -> System current consumption: %.3f A (Panel=%.3f A, Battery=%.3f A)",
-               balance, panel, batt);
+                   balance, panel, batt);
 
     return balance;
 }
 
 // Potencia que entrega el panel al sistema (W)
-float SolarXBatteryController::panelPowerWatts() {
-    if (!_initialized) {
+float SolarXBatteryController::panelPowerWatts()
+{
+    if (!_initialized)
+    {
         LOG_CLASS_ERROR("Sensor not initialized. Call init() first.");
         return 0;
     }
@@ -249,8 +284,10 @@ float SolarXBatteryController::panelPowerWatts() {
 
 // Potencia que entrega o recibe la batería (W)
 // Positiva = carga, Negativa = descarga
-float SolarXBatteryController::batteryPowerWatts() {
-    if (!_initialized) {
+float SolarXBatteryController::batteryPowerWatts()
+{
+    if (!_initialized)
+    {
         LOG_CLASS_ERROR("Sensor not initialized. Call init() first.");
         return 0;
     }
@@ -260,8 +297,10 @@ float SolarXBatteryController::batteryPowerWatts() {
 
 // Potencia neta consumida por el sistema (W)
 // Igual a panelPower + batteryPower
-float SolarXBatteryController::netPowerConsumptionWatts() {
-    if (!_initialized) {
+float SolarXBatteryController::netPowerConsumptionWatts()
+{
+    if (!_initialized)
+    {
         LOG_CLASS_ERROR("Sensor not initialized. Call init() first.");
         return 0;
     }
@@ -273,7 +312,7 @@ float SolarXBatteryController::netPowerConsumptionWatts() {
     const float battPFiltered = (fabs(battP) < 0.1f) ? 0.0f : battP;
 
     LOG_CLASS_INFO("Filtered Power readings: Panel=%.2f W, Battery=%.2f W",
-               panelPFiltered, battPFiltered);
+                   panelPFiltered, battPFiltered);
 
     // Calculate the net consumption of the system
     // If battery is charging (battP > 0), panel covers system + charges battery.
@@ -284,7 +323,7 @@ float SolarXBatteryController::netPowerConsumptionWatts() {
 
 
     LOG_CLASS_INFO("netPowerConsumptionWatts() -> System power consumption: %.2f W (Panel=%.2f W, Battery=%.2f W)",
-               netP, panelP, battP);
+                   netP, panelP, battP);
 
     return netP;
 }

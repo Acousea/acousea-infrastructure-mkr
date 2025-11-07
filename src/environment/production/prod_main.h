@@ -15,7 +15,7 @@ void prod_saveDrifterConfig();
 void prod_setup();
 void prod_loop();
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #if defined(PLATFORM_HAS_LORA)
 void prod_onReceiveWrapper(int packetSize);

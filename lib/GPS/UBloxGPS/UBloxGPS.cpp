@@ -1,7 +1,6 @@
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #include "UBloxGPS.h"
-
 #include <Logger/Logger.h>
 #include "SparkFun_u-blox_GNSS_Arduino_Library.h"
 

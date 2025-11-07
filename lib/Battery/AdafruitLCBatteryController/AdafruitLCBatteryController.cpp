@@ -1,4 +1,4 @@
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #include "AdafruitLCBatteryController.h"
 #include "Adafruit_LC709203F.h"
@@ -29,7 +29,9 @@ bool AdafruitLCBatteryController::init()
 
     delay(1000);
 
-    return true;
+    errorState = false;
+
+    return errorState;
 }
 
 uint8_t AdafruitLCBatteryController::voltageSOC_rounded()
@@ -45,6 +47,11 @@ acousea_BatteryStatus AdafruitLCBatteryController::status()
     if (v > 3.2) return acousea_BatteryStatus_BATTERY_STATUS_DISCHARGING;
     if (v <= 3.2) return acousea_BatteryStatus_BATTERY_STATUS_ERROR;
     return acousea_BatteryStatus_BATTERY_STATUS_ERROR;
+}
+
+bool AdafruitLCBatteryController::sync()
+{
+    return !errorState;
 }
 
 

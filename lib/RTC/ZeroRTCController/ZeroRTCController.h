@@ -1,7 +1,7 @@
 #ifndef ACOUSEA_ZERO_RTC_CONTROLLER_H
 #define ACOUSEA_ZERO_RTC_CONTROLLER_H
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 #include "RTCController.hpp"
 
 class ZeroRTCController final : public RTCController {

@@ -47,7 +47,7 @@ public:
         const char* logFilePath_,
         Mode mode_ = Mode::SerialOnly);
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
     static void logfFreeMemory(const char* fmt = "", ...) __attribute__((format(printf, 1, 2)));
 #endif
     static void logInfo(const char* message);
@@ -73,7 +73,7 @@ private:
 
     // Buffer compartido global para todos los métodos (reduce uso de stack)
     static constexpr size_t SHARED_BUFFER_SIZE =
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
         1024;
 #else
     2048;
@@ -121,7 +121,7 @@ Logger::logfWarning(fmt, ##__VA_ARGS__)
 Logger::logfError(fmt, ##__VA_ARGS__)
 
 // ---------- Free memory logging (Arduino-only) ----------
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 #define LOG_FREE_MEMORY(fmt, ...) \
 Logger::logfFreeMemory(fmt, ##__VA_ARGS__)
 #else

@@ -5,65 +5,66 @@
 #include <cstdlib> // std::abort
 #include "time/getMillis.hpp"
 
-#ifdef ARDUINO
-#include <Arduino.h>
-// Asumo que tienes ConsoleSerial ya inicializado
-#endif
-
-template <typename T>
-inline void ENSURE(T* ptr, const char* name){
-    if (ptr) return;
-
-#ifdef ARDUINO
-    // Parpadeo infinito en el LED
-    if (SerialUSB){
-        SerialUSB.print("[arduino] ");
-        SerialUSB.print(name);
-        SerialUSB.println(" is NULL");
-    }
-    pinMode(LED_BUILTIN, OUTPUT);
-    while (true){
-        digitalWrite(LED_BUILTIN, HIGH);
-        delay(1000);
-        digitalWrite(LED_BUILTIN, LOW);
-        delay(1000);
-    }
-#else
-    std::fprintf(stderr, "[native] %s is NULL\n", name);
-    std::abort();  // mata el programa inmediatamente
-#endif
-}
-
-
-
 template <typename Func>
-void executeEvery(const unsigned long interval, Func&& callback){
+void executeEvery(const unsigned long interval, Func&& callback)
+{
     static unsigned long lastTime = 0;
     unsigned long now = getMillis();
-    if (lastTime == 0 || now - lastTime >= interval){
+    if (lastTime == 0 || now - lastTime >= interval)
+    {
         callback();
         lastTime = now;
     }
 }
 
-#ifdef ARDUINO
+#if defined(PLATFORM_ARDUINO)
 #include <Arduino.h>
-#endif
+
 
 template <typename Func>
-void withLedIndicator(Func&& innerFunc) {
-#ifdef ARDUINO
+void withLedIndicator(Func&& innerFunc)
+{
     pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, HIGH);  // LED ON mientras se ejecuta
-#endif
+    digitalWrite(LED_BUILTIN, HIGH); // LED ON mientras se ejecuta
 
-    innerFunc();  // Ejecuta la función interna
+    innerFunc(); // Ejecuta la función interna
 
-#ifdef ARDUINO
-    digitalWrite(LED_BUILTIN, LOW);   // LED OFF al terminar
-#endif
+    digitalWrite(LED_BUILTIN, LOW); // LED OFF al termina
 }
 
+
+#elif defined(PLATFORM_NATIVE)
+
+template <typename Func>
+void withLedIndicator(Func&& innerFunc)
+{
+    innerFunc(); // Ejecuta la función interna
+}
+
+#include <iostream>
+#include <string>
+
+struct NativeConsole {
+    template <typename T>
+    void print(const T& value) const {
+        std::cout << value;
+    }
+
+    template <typename T>
+    void println(const T& value) const {
+        std::cout << value << std::endl;
+    }
+
+    void println() const {
+        std::cout << std::endl;
+    }
+};
+
+static const NativeConsole ConsoleSerial;
+
+#else
+#error "Platform not supported for ENSURE and withLedIndicator"
+#endif
 
 
 #endif //ENSURE_HPP

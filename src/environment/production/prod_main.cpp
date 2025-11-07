@@ -1,8 +1,7 @@
 #include "prod_main.h"
 
-#include "../../../lib/shared/ErrorHandler/ErrorHandler.h"
-
-void prod_saveLocalizerConfig(){
+void prod_saveLocalizerConfig()
+{
     acousea_NodeConfiguration localizerConfig = acousea_NodeConfiguration_init_default;
 
     localizerConfig.localAddress = 202;
@@ -43,7 +42,8 @@ void prod_saveLocalizerConfig(){
     nodeConfigurationRepository.saveConfiguration(localizerConfig);
 }
 
-void prod_saveDrifterConfig(){
+void prod_saveDrifterConfig()
+{
     acousea_NodeConfiguration drifterConfig = acousea_NodeConfiguration_init_default;
     drifterConfig.localAddress = 101;
 
@@ -104,24 +104,13 @@ void prod_saveDrifterConfig(){
 }
 
 
-void prod_setup(){
+void prod_setup()
+{
 #if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
     std::printf("[native] Setup: starting...\n");
 #endif
-    ENSURE(storageManager, "storageManager");
-    ENSURE(display, "display");
-    ENSURE(gps, "gps");
-    ENSURE(rtcController, "rtcController");
-    ENSURE(batteryController, "battery");
-    ENSURE(serialPort, "serialPort");
-    ENSURE(loraOrGsmPort, "loraPort");
-    ENSURE(iridiumPort, "iridiumPort");
 
-#if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
-    std::printf("[native] Setup: Ensured pointers\n");
-#endif
-
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
     // Inicializa la comunicación serial a 9600 baudios
     ConsoleSerial.begin(9600);
     // softwareSerialSercom0.begin(9600);
@@ -140,9 +129,7 @@ void prod_setup(){
 #endif
 
     // Inicializa el administrador de la tarjeta SD
-    if (!storageManager->begin()){
-        ERROR_HANDLE("Failed to initialize SD card.");
-    }
+    storageManagerRef.begin();
 
 #if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
     std::printf("[native] Setup: Began storageManager\n");
@@ -150,9 +137,9 @@ void prod_setup(){
 
     // Logger initialization and configuration
     Logger::initialize(
-        display,
-        storageManager,
-        rtcController,
+        &displayRef,
+        &storageManagerRef,
+        &rtcControllerRef,
         "log", // MAX 8 chars for 8.3 filenames
         Logger::Mode::Both
     );
@@ -176,8 +163,8 @@ void prod_setup(){
     // Logger::setCurrentTime(gps->getTimestamp());
 
     // Inicializa el controlador de tiempo real
-    rtcController->init();
-    rtcController->syncTime(gps->getTimestamp());
+    rtcControllerRef.init();
+    rtcControllerRef.syncTime(gpsRef.getTimestamp());
 
 
     // Set a custom error handler
@@ -196,25 +183,31 @@ void prod_setup(){
     // Inicializa el repositorio de configuración
     nodeConfigurationRepository.init();
 
-    solarXBatteryController.init();
-
-    systemMonitor.init(10000); // 10 segundos
+    WatchdogUtils::enable(10000); // 10 seconds
 
     // Initialize the gps
     // gps->init();
 
-    static MethodTask<SolarXBatteryController> solarXBatterySyncTask(15000,
-                                                                     &solarXBatteryController,
-                                                                     &SolarXBatteryController::sync);
-    static FunctionTask watchDogTask(5000, &SystemMonitor::reset);
+#ifdef PLATFORM_ARDUINO
+    solarXBatteryController.init();
 
-    static MethodTask<SystemMonitor> systemMonitorTask(10000, // This must be less than watchdog timeout (10s)
-                                                  &systemMonitor,
-                                                  &SystemMonitor::protectBattery);
+    static MethodTask<BatteryProtectionPolicy> batteryProtectionTask(
+        10000, // This must be less than watchdog timeout (10s)
+        &batteryProtectionPolicy,
+        &BatteryProtectionPolicy::enforce
+    );
+    scheduler.addTask(&batteryProtectionTask);
 
-    scheduler.addTask(&watchDogTask);
-    scheduler.addTask(&systemMonitorTask);
-    scheduler.addTask(&solarXBatterySyncTask);
+#endif
+    nodeOperationRunner.init();
+
+    static MethodTask<NodeOperationRunner> nodeOperationTask(
+        15000, // 15 seconds
+        &nodeOperationRunner,
+        &NodeOperationRunner::run
+    );
+    scheduler.addTask(&nodeOperationTask);
+
 
 #if MODE == DRIFTER_MODE
     // saveDrifterConfig();
@@ -223,41 +216,36 @@ void prod_setup(){
 #endif
 }
 
-void prod_loop(){
-    static unsigned long lastTime = 0;
-    // Operate every 30 seconds
-    if (getMillis() - lastTime >= 15000 || lastTime == 0){
-        nodeOperationRunner.init();
-        nodeOperationRunner.run();
-        // const auto percentage = batteryController->percentage();
-        // const auto status = batteryController->status();
-        // Logger::logInfo("Battery: " + std::to_string(percentage) + "%, Status: " + std::to_string(static_cast<int>(status)));
-        lastTime = getMillis();
-    }
+void prod_loop()
+{
+    scheduler.run();
 }
-
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #if defined(PLATFORM_HAS_LORA)
-void prod_onReceiveWrapper(int packetSize){
+void prod_onReceiveWrapper(int packetSize)
+{
     SerialUSB.println("OnReceiveWrapper Callback");
     realLoraPort.onReceive(packetSize);
 }
 #endif
 
-void prod_SERCOM0_Handler(){
+void prod_SERCOM0_Handler()
+{
     // SerialUSB.println("INTERRUPT SERCOM0");
     softwareSerialSercom0.IrqHandler();
 }
 
-void prod_SERCOM1_Handler(){
+void prod_SERCOM1_Handler()
+{
     // SerialUSB.println("INTERRUPT SERCOM0");
     softwareSerialSercom1.IrqHandler();
 }
 
 
 // Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)
-void prod_SERCOM3_Handler(){
+void prod_SERCOM3_Handler()
+{
     mySerial3.IrqHandler();
 }
 

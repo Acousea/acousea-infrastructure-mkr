@@ -3,14 +3,14 @@
 
 GetUpdatedNodeConfigurationRoutine::GetUpdatedNodeConfigurationRoutine(
     NodeConfigurationRepository& nodeConfigurationRepository,
-
     ModuleProxy& moduleProxy,
-    IGPS* gps,
-    IBatteryController* battery,
-    RTCController* rtcController) : IRoutine<acousea_CommunicationPacket>(getClassNameCString()),
-                                    nodeConfigurationRepository(nodeConfigurationRepository),
-                                    moduleProxy(moduleProxy),
-                                    gps(gps), battery(battery), rtcController(rtcController)
+    IGPS& gps,
+    IBatteryController& battery,
+    RTCController& rtcController)
+    : IRoutine<acousea_CommunicationPacket>(getClassNameCString()),
+      nodeConfigurationRepository(nodeConfigurationRepository),
+      moduleProxy(moduleProxy),
+      gps(gps), battery(battery), rtcController(rtcController)
 {
 }
 
@@ -32,7 +32,8 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
 
     if (packet.body.command.which_command != acousea_CommandBody_requestedConfiguration_tag)
     {
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket, "Packet command is not of type requestedConfiguration");
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket,
+                                     "Packet command is not of type requestedConfiguration");
     }
 
     acousea_GetUpdatedNodeConfigurationPayload requestedConfigurationPayload = packet.body.command.command.
@@ -81,8 +82,8 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 batteryEntry.value.which_module = acousea_ModuleWrapper_battery_tag;
 
                 acousea_BatteryModule batteryModule = acousea_BatteryModule_init_default;
-                batteryModule.batteryStatus = battery->status();
-                batteryModule.batteryPercentage = battery->voltageSOC_rounded();
+                batteryModule.batteryStatus = battery.status();
+                batteryModule.batteryPercentage = battery.voltageSOC_rounded();
 
                 batteryEntry.value.module.battery = batteryModule;
                 updatedConfiguration.modules[updatedConfiguration.modules_count] = batteryEntry;
@@ -98,7 +99,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 locationEntry.value.which_module = acousea_ModuleWrapper_location_tag;
 
                 acousea_LocationModule locationModule = acousea_LocationModule_init_default;
-                auto [latitude, longitude] = gps->read();
+                auto [latitude, longitude] = gps.read();
                 locationModule.latitude = latitude;
                 locationModule.longitude = longitude;
                 locationEntry.value.module.location = locationModule;
@@ -207,7 +208,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 rtcEntry.key = acousea_ModuleCode_RTC_MODULE;
                 rtcEntry.value.which_module = acousea_ModuleWrapper_rtc_tag;
                 acousea_RTCModule rtcModule = acousea_RTCModule_init_default;
-                rtcModule.epochSeconds = rtcController->getEpoch();
+                rtcModule.epochSeconds = rtcController.getEpoch();
                 rtcEntry.value.module.rtc = rtcModule;
                 updatedConfiguration.modules[updatedConfiguration.modules_count] = rtcEntry;
                 updatedConfiguration.modules_count++;

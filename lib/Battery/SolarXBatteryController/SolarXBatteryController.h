@@ -2,7 +2,7 @@
 #define SOLARXBATTERYCONTROLLER_H
 
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #include "ClassName.h"
 #include "IBatteryController.h"
@@ -80,7 +80,7 @@ public:
 
     void initialBatteryCalibration();
 
-    void sync();
+    bool sync() override;
 
     [[nodiscard]] float combinedSOC_accurate() const;
 
@@ -118,6 +118,6 @@ public:
 };
 
 
-#endif // ARDUINO
+#endif // PLATFORM_ARDUINO
 
-#endif // AdafruitLC_MANAGER_H
+#endif // SOLARXBATTERYCONTROLLER_H

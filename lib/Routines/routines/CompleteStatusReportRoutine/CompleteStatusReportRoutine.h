@@ -19,18 +19,18 @@ class CompleteStatusReportRoutine final : public IRoutine<acousea_CommunicationP
 {
     NodeConfigurationRepository& nodeConfigurationRepository;
     ModuleProxy& moduleProxy;
-    IGPS* gps;
-    IBatteryController* battery;
-    RTCController* rtc;
+    IGPS& gps;
+    IBatteryController& battery;
+    RTCController& rtc;
 
 public:
     CLASS_NAME(CompleteSummaryReportRoutine)
 
     CompleteStatusReportRoutine(NodeConfigurationRepository& nodeConfigurationRepository,
                                 ModuleProxy& moduleProxy,
-                                IGPS* gps,
-                                IBatteryController* battery,
-                                RTCController* rtc);
+                                IGPS& gps,
+                                IBatteryController& battery,
+                                RTCController& rtc);
 
     Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& input) override;
 

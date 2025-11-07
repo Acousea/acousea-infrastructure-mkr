@@ -1,13 +1,15 @@
 #ifndef PMIC_MANAGER_H
 #define PMIC_MANAGER_H
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #include "IBatteryController.h"
 
 class PMICBatteryController final : public IBatteryController {
 public:
     bool init() override;
+
+    bool sync() override;
 
     uint8_t voltageSOC_rounded() override;
 
@@ -16,7 +18,7 @@ public:
     void printStatus() const;
 
 private:
-    bool error = false;
+    bool errorState = false;
 
     static constexpr float INPUT_CURRENT_LIMIT = 2.0;
     static constexpr float INPUT_VOLTAGE_LIMIT = 3.88;

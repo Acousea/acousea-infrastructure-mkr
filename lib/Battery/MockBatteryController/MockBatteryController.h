@@ -14,31 +14,20 @@ private:
     acousea_BatteryStatus mockStatus;
 
 public:
-    explicit MockBatteryController(const uint8_t initialPercentage = 100, const acousea_BatteryStatus initialStatus = acousea_BatteryStatus_BATTERY_STATUS_FULL)
-        : mockPercentage(initialPercentage), mockStatus(initialStatus){
-    }
+    explicit MockBatteryController(const uint8_t initialPercentage = 100, const acousea_BatteryStatus initialStatus = acousea_BatteryStatus_BATTERY_STATUS_FULL);
 
-    bool init() override{
-        LOG_CLASS_INFO("Initializing battery controller...");
-        return true; // Always returns true in the mock implementation
-    }
+    bool init() override;
 
-    uint8_t voltageSOC_rounded() override{
-        return mockPercentage;
-    }
+    bool sync() override;
 
-    acousea_BatteryStatus status() override{
-        return mockStatus;
-    }
+    uint8_t voltageSOC_rounded() override;
+
+    acousea_BatteryStatus status() override;
 
     // Setters for mock data
-    void setMockPercentage(const uint8_t percentage){
-        mockPercentage = percentage;
-    }
+    void setMockPercentage(const uint8_t percentage);
 
-    void setMockStatus(const acousea_BatteryStatus status){
-        mockStatus = status;
-    }
+    void setMockStatus(const acousea_BatteryStatus status);
 };
 
 

@@ -1,7 +1,8 @@
 #ifndef ACOUSEA_LIBRARIES_H
 #define ACOUSEA_LIBRARIES_H
 
-
+// ================== COMMON TO ALL SUPPORTED PLATFORMS ==================
+#if defined(PLATFORM_ARDUINO) || defined(PLATFORM_NATIVE)
 // ------------------------- PROTOBUF -------------------------
 #include <bindings/nodeDevice.pb.h>
 
@@ -11,9 +12,17 @@
 #include <ErrorHandler/ErrorHandler.h>
 #include <ClassName.h>
 #include "time/getMillis.hpp"
+#include "WatchDog/WatchDogUtils.hpp"
+
+// ------------------ BATTERY ------------------
+#include <IBatteryController.h>
+
+// ------------------ GPS ------------------
+#include <IGPS.h>
 
 // ------------------ ROUTER ------------------
 #include <Router.h>
+
 // ------------------ DISPLAY ------------------
 #include <IDisplay.h>
 
@@ -22,6 +31,9 @@
 
 // ------------------ PORTS ------------------
 #include <Ports/IPort.h>
+
+// ------------------ RTC ------------------
+#include "RTCController.hpp"
 
 // ------------------------- ROUTINES -------------------------
 #include <routines/SetNodeConfigurationRoutine/SetNodeConfigurationRoutine.h>
@@ -32,13 +44,15 @@
 // ------------------------- REPOSITORIES -------------------------
 #include <NodeConfigurationRepository/NodeConfigurationRepository.h>
 
-// ------------------------- SERVICES -------------------------
+// ------------------------- DRIVERS -------------------------
 #include <NodeOperationRunner/NodeOperationRunner.h>
 #include <ModuleProxy/ModuleProxy.hpp>
+#include <TaskScheduler/TaskScheduler.h>
 
+#endif
 
 // ================== DEPEDNING ON PLATFORM ==================
-#ifdef ARDUINO
+#if defined(PLATFORM_ARDUINO)
 #include <Arduino.h>
 #include "wiring_private.h"
 // ------------------ STORAGE ------------------
@@ -48,6 +62,7 @@
 #include <PMICBatteryController/PMICBatteryController.h>
 #include <AdafruitLCBatteryController/AdafruitLCBatteryController.h>
 #include <MockBatteryController/MockBatteryController.h>
+#include <SolarXBatteryController/SolarXBatteryController.h>
 
 // ------------------ GPS ------------------
 #include <MockGPS/MockGPS.h>
@@ -55,7 +70,6 @@
 #include <UBloxGPS/UBloxGPS.h>
 
 // ------------------ RTC ------------------
-#include "RTCController.hpp"
 #include "ZeroRTCController/ZeroRTCController.h"
 #include "MockRTCController/MockRTCController.h"
 
@@ -73,23 +87,17 @@
 #include <Ports/Serial/MockSerialPort.h>
 #include <Ports/GSM/GsmMQTTPort.hpp>
 
-
-// ------------------ CONTROLLERS ------------------
+// ------------------ DRIVERS  ------------------
 #include <MosfetController/MosfetController.hpp>
 #include <PiController/PiController.hpp>
-#include <SolarXBatteryController/SolarXBatteryController.h>
-#include <SystemMonitor/SystemMonitor.h>
-#include <Logger/Logger.h>
-#include <Result.h>
-#include <TaskScheduler/TaskScheduler.h>
 
-#else // NATIVE
+// ------------------ POLICIES  ------------------
+#include "BatteryProtectionPolicy/BatteryProtectionPolicy.hpp"
 
-#ifdef PLATFORM_NATIVE
-#warning "Compiling for PLATFORM_NATIVE"
-#endif
 
-#warning "Compiling for NATIVE platform"
+
+#elif defined(PLATFORM_NATIVE)
+
 // ------------------ STORAGE ------------------
 #include <StorageManager/HDDStorageManager/HddStorageManager.hpp>
 
@@ -109,10 +117,12 @@
 #include <Ports/Serial/MockSerialPort.h>
 #include <Ports/LoRa/MockLoRaPort.h>
 #include <Ports/Iridium/MockIridiumPort.h>
+#include <Ports/http/HttpPort.hpp>
+#include <Ports/Serial/NativeSerialPort.h>
 
-#ifndef UNIT_TESTING
-// #include "Ports/Serial/NativeSerialPort.h"
-// #include <Ports/http/HttpPort.hpp>
+
+#else // NATIVE
+#error "No valid PLATFORM defined. Please define PLATFORM as PLATFORM_ARDUINO or PLATFORM_NATIVE."
 #endif
 
 
@@ -136,6 +146,3 @@
 //#include <SparkFun_u-blox_GNSS_Arduino_Library.h> //http://librarymanager/All#SparkFun_u-blox_GNSS
 //#include <ArduinoLowPower.h>
 //#include <Adafruit_SleepyDog.h>
-
-
-#endif // ACOUSEA_LIBRARIES_H

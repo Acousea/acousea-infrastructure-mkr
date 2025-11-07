@@ -5,8 +5,6 @@
 
 #include <vector>
 #include <string>
-#include "TrustAnchors.h"
-
 
 inline CertType certTypeFromInt(int type)
 {
@@ -187,7 +185,8 @@ std::vector<StoredCert> UBlox201_GSMSSLClient::listCertificates(CertType type)
         return {}; // vacío
     }
     const unsigned int outLen = modemOutput.length();
-    if (outLen <= 0) {
+    if (outLen <= 0)
+    {
         LOG_CLASS_WARNING("listCertificates() -> Empty response");
         return {};
     }
@@ -217,8 +216,9 @@ std::vector<StoredCert> UBlox201_GSMSSLClient::listCertificates(CertType type)
     std::vector<StoredCert> certs = {};
     certs.reserve(numLines);
 
-   // Parsear cada línea CSV
-    for (size_t i = 0; i < numLines; ++i) {
+    // Parsear cada línea CSV
+    for (size_t i = 0; i < numLines; ++i)
+    {
         const char* linePtr = lines[i];
         if (linePtr == nullptr || linePtr[0] == '\0') continue;
         StoredCert cert = buildStoredCert(linePtr);
@@ -279,9 +279,9 @@ bool UBlox201_GSMSSLClient::removeTrustedRootCertificates(const GSMRootCert* cer
     return allOk;
 }
 
-bool UBlox201_GSMSSLClient::removeDefaultTrustedRoots()
+bool UBlox201_GSMSSLClient::removeCustomTrustedRoots()
 {
-    return removeTrustedRootCertificates(reinterpret_cast<const GSMRootCert*>(trust_anchors), trust_anchors_num);
+    return removeTrustedRootCertificates(GSM_ROOT_CERTS, GSM_NUM_ROOT_CERTS);
 }
 
 void UBlox201_GSMSSLClient::importTrustedRoot(const uint8_t* cert, const char* name, size_t size)
@@ -332,4 +332,64 @@ bool UBlox201_GSMSSLClient::logAndCheckResponse(const int result, const char* ac
         return false;
     }
 }
+
+#if ENVIRONMENT == ENV_TEST
+bool UBlox201_GSMSSLClient::testTLSConnection(const char* host, const uint16_t port, const char* path)
+{
+    LOG_CLASS_INFO(" -> Testing secure connection to %s:%u", host, port);
+
+    // Intentar conectar vía TLS
+    LOG_CLASS_INFO(" -> Using TLS (GSMSSLClient base)");
+    if (!connect(host, port))
+    {
+        LOG_CLASS_ERROR(" -> TLS connection FAILED");
+        stop(); // Asegurar limpieza
+        return false;
+    }
+
+    LOG_CLASS_INFO(" -> TLS connection SUCCESS");
+
+    // ----------- Construir y enviar petición HTTPs ----------- //
+    char request[256];
+    std::snprintf(request, sizeof(request),
+                  "GET %s HTTP/1.1\r\n"
+                  "Host: %s\r\n"
+                  "Connection: close\r\n\r\n",
+                  path, host);
+
+    print(request);
+    LOG_CLASS_INFO(" -> HTTPS request sent: %s", request);
+
+    // ----------- Leer respuesta limitada ----------- //
+    constexpr size_t MAX_RESPONSE_SIZE = 1024;
+    char response[MAX_RESPONSE_SIZE + 1];
+    size_t totalRead = 0;
+
+    LOG_CLASS_INFO(" -> Reading up to %zu bytes of HTTPS response...", MAX_RESPONSE_SIZE);
+
+    const uint32_t startTime = millis();
+    while (connected() && (millis() - startTime) < 10000 && totalRead < MAX_RESPONSE_SIZE)
+    {
+        while (available() && totalRead < MAX_RESPONSE_SIZE)
+        {
+            const int c = read();
+            if (c < 0) continue;
+            response[totalRead++] = static_cast<char>(c);
+        }
+    }
+
+    response[totalRead] = '\0'; // Null-terminate
+
+    if (totalRead >= MAX_RESPONSE_SIZE)
+        LOG_CLASS_WARNING(" -> Response truncated to %zu bytes", MAX_RESPONSE_SIZE);
+
+    LOG_CLASS_INFO(" -> HTTPS response (%zu bytes):\n%.1024s", totalRead, response);
+
+    stop();
+    LOG_CLASS_INFO(" -> Connection closed successfully.");
+
+    return true;
+}
+#endif
+
 #endif

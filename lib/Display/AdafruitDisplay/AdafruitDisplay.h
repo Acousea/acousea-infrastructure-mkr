@@ -1,7 +1,7 @@
 #ifndef ADAFRUIT_DISPLAY_H
 #define ADAFRUIT_DISPLAY_H
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #include "IDisplay.h"
 

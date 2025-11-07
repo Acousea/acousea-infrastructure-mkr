@@ -1,8 +1,6 @@
 #ifndef ACOUSEA_ERRORHANDLER_H
 #define ACOUSEA_ERRORHANDLER_H
 
-#define RESET_PIN 7
-
 
 #include "ClassName.h"
 
@@ -18,10 +16,10 @@ public:
     static void setHandler(ErrorHandlerCallback handler);
 
     // Maneja un error con formato printf-style
-    static void handleErrorf(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+    [[noreturn]] static void handleErrorf(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
 
     // Maneja un error simple sin formato
-    static void handleError(const char* msg);
+    [[noreturn]] static void handleError(const char* msg);
 
 private:
     static inline ErrorHandlerCallback customHandler = nullptr;

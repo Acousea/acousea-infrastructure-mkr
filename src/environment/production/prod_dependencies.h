@@ -3,9 +3,9 @@
 
 #include <libraries.h>
 #if __has_include("environment/credentials.hpp")
-  #include "environment/credentials.hpp"
+#include "environment/credentials.hpp"
 #else
-  #error "No credentials file found! Please provide environment/credentials.hpp. Find an example at environment/credentials.example.hpp"
+#error "No credentials file found! Please provide environment/credentials.hpp. Find an example at environment/credentials.example.hpp"
 #endif
 
 
@@ -13,12 +13,10 @@
 //       COMMON
 // =======================================================
 // ---- Batería ----
-extern MockBatteryController mockBatteryController;
-extern SolarXBatteryController solarXBatteryController;
-extern IBatteryController* batteryController;
+extern IBatteryController& batteryControllerRef;
 
 // ---- Display ----
-extern IDisplay* display;
+extern IDisplay& displayRef;
 
 // --- Puertos -----
 extern IPort* serialPort;
@@ -30,16 +28,16 @@ extern IPort* loraOrGsmPort;
 
 
 // ---- GPS ----
-extern IGPS* gps;
+extern IGPS& gpsRef;
 
 // ---- RTC ----
-extern RTCController* rtcController;
+extern RTCController& rtcControllerRef;
 
 // ---- Router ----
 extern Router router;
 
 // ---- Storage ----
-extern StorageManager* storageManager;
+extern StorageManager& storageManagerRef;
 
 // Repo + Services
 extern NodeConfigurationRepository nodeConfigurationRepository;
@@ -56,13 +54,12 @@ extern std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*> configurationRo
 extern NodeOperationRunner nodeOperationRunner;
 
 extern TaskScheduler scheduler;
-extern SystemMonitor systemMonitor;
 
 
 // =======================================================
 //       ARDUINO BUILD
 // =======================================================
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 extern Uart softwareSerialSercom1;
 extern Uart softwareSerialSercom0;
 
@@ -75,7 +72,8 @@ extern SerialArduinoDisplay serialUSBDisplay;
 #ifdef PLATFORM_HAS_GSM
 extern GsmMQTTPort gsmPort;
 #endif
-// RealLoraPort
+
+
 #ifdef PLATFORM_HAS_LORA
 extern LoraPort realLoraPort;
 #endif
@@ -83,7 +81,10 @@ extern LoraPort realLoraPort;
 
 // Power
 extern MosfetController mosfetController;
+extern SolarXBatteryController solarXBatteryController;
 extern PiController rockPiPowerController;
+
+extern BatteryProtectionPolicy batteryProtectionPolicy;
 
 
 // =======================================================
@@ -92,6 +93,6 @@ extern PiController rockPiPowerController;
 #else // NATIVE
 
 
-#endif // ARDUINO vs NATIVE
+#endif // PLATFORM_ARDUINO
 
 #endif // DEPENDENCIES_H

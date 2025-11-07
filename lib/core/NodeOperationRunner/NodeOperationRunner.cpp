@@ -126,7 +126,7 @@ void NodeOperationRunner::init()
 
 void NodeOperationRunner::run()
 {
-    LOG_CLASS_INFO("<Run> Operation Cycle for Operation mode %" PRId32 "=(%s)",
+    LOG_CLASS_INFO("<Start> Operation Cycle for Operation mode %" PRId32 "=(%s)",
                    cache.currentOperationMode.id,
                    cache.currentOperationMode.name
     );

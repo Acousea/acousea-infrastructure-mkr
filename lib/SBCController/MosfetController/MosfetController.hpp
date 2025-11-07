@@ -1,7 +1,7 @@
 #ifndef ACOUSEA_MOSFETCONTROLLER_HPP
 #define ACOUSEA_MOSFETCONTROLLER_HPP
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #include <Arduino.h>
 #include "ClassName.h"

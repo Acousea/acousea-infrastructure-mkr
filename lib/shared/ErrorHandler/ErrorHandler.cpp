@@ -3,7 +3,8 @@
 #include "Logger/Logger.h"
 #include <cstdarg>
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
+#define RESET_PIN 7
 #include <Arduino.h>
 #else
 #include <cstdio>
@@ -17,7 +18,7 @@
 // ------------------------------------------------------------------
 static void rawPrintLine(const char* msg)
 {
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
     SerialUSB.println(msg);
     SerialUSB.flush();
 #else
@@ -64,7 +65,7 @@ void ErrorHandler::defaultHandler(const char* msg)
     performHardwareReset();
 }
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 void ErrorHandler::performHardwareReset()
 {

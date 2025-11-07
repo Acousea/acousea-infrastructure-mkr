@@ -1,7 +1,7 @@
 #ifndef SERIAL_PORT_H
 #define SERIAL_PORT_H
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #include <Arduino.h>
 

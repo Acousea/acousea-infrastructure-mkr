@@ -1,7 +1,7 @@
 #ifndef SERIAL_UART_DISPLAY_H
 #define SERIAL_UART_DISPLAY_H
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #include <Arduino.h>
 #include "IDisplay.h"

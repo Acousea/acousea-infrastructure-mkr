@@ -2,7 +2,7 @@
 #define WAITFOR_HPP
 #include "time/getMillis.hpp"
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 #include <Arduino.h>
 #include <Adafruit_SleepyDog.h>
 #endif
@@ -13,7 +13,7 @@ void waitForOrUntil(const unsigned long durationMs, Condition stopIfTrue,
 {
     const unsigned long start = getMillis();
     unsigned long lastTick = 0, elapsed = 0;
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
     unsigned long lastWatchdogReset = 0;
     constexpr unsigned long WATCHDOG_FEED_INTERVAL_MS = 500;
 #endif
@@ -25,7 +25,7 @@ void waitForOrUntil(const unsigned long durationMs, Condition stopIfTrue,
             lastTick = elapsed;
             onTickCallback(elapsed);
         }
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
         // Feed the watchdog at a safe interval to avoid excessive resets
         if (elapsed - lastWatchdogReset >= WATCHDOG_FEED_INTERVAL_MS)
         {

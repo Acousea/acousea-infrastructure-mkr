@@ -1,4 +1,4 @@
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #include "PMICBatteryController.h"
 
@@ -22,7 +22,12 @@ bool PMICBatteryController::init() {
     printStatus();
 
     // Check if any errors occurred during configuration
-    return !error;
+    return !errorState;
+}
+
+bool PMICBatteryController::sync()
+{
+    return !errorState;
 }
 
 uint8_t PMICBatteryController::voltageSOC_rounded() {
@@ -56,31 +61,31 @@ void PMICBatteryController::printStatus() const {
 
 void PMICBatteryController::applySettings() {
     if (!PMIC.setInputCurrentLimit(INPUT_CURRENT_LIMIT)) {
-        error = true;
+        errorState = true;
         LOG_CLASS_ERROR("PMIC.setInputCurrentLimit() failed!");
     }
 
     if (!PMIC.setInputVoltageLimit(INPUT_VOLTAGE_LIMIT)) {
-        error = true;
+        errorState = true;
         LOG_CLASS_ERROR("PMIC.setInputVoltageLimit() failed!");
     }
 
     if (!PMIC.setMinimumSystemVoltage(MIN_SYSTEM_VOLTAGE)) {
-        error = true;
+        errorState = true;
         LOG_CLASS_ERROR("PMIC.setMinimumSystemVoltage() failed!");
     }
 
     if (!PMIC.setChargeVoltage(CHARGE_VOLTAGE)) {
-        error = true;
+        errorState = true;
         LOG_CLASS_ERROR("PMIC.setChargeVoltage() failed!");
     }
 
     if (!PMIC.setChargeCurrent(CHARGE_CURRENT)) {
-        error = true;
+        errorState = true;
         LOG_CLASS_ERROR("PMIC.setChargeCurrent() failed!");
     }
     if (!PMIC.enableCharge()) {
-        error = true;
+        errorState = true;
         LOG_CLASS_ERROR("PMIC.enableCharge() failed!");
     }
 }

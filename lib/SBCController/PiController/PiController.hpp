@@ -1,7 +1,7 @@
 #ifndef ACOUSEA_ROCKPIPOWERCONTROLLER_HPP
 #define ACOUSEA_ROCKPIPOWERCONTROLLER_HPP
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 #include <Arduino.h>
 #include "MosfetController/MosfetController.hpp"
 #include "Logger/Logger.h"

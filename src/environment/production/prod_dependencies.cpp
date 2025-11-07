@@ -2,11 +2,10 @@
 
 #include "environment/credentials.hpp"
 
-
 // =======================================================
 //       ARDUINO BUILD
 // =======================================================
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 Uart softwareSerialSercom0(&sercom0,
                            PIN_A6, // RX
                            PIN_A5, // TX
@@ -32,12 +31,12 @@ SolarXBatteryController solarXBatteryController(
     // INA219_ADDRESS + 4, // 0x44
     // INA219_ADDRESS + 5 // 0x45
 );
-IBatteryController* batteryController = &solarXBatteryController; // o PMIC según HW
+IBatteryController& batteryControllerRef = solarXBatteryController; // o PMIC según HW
 
 // --------- Display ----------
 // AdafruitDisplay adafruitDisplay;
 SerialArduinoDisplay serialUSBDisplay(&ConsoleSerial);
-IDisplay* display = &serialUSBDisplay;
+IDisplay& displayRef = serialUSBDisplay;
 
 // --------- Puertos ----------
 SerialPort realSerialPort(&Serial1, 4800);
@@ -61,7 +60,8 @@ GsmConfig gsmCfg(
     AWS_MQTT_CLIENT_ID,
     AWS_MQTT_BROKER,
     8883,
-    CLIENT_CERTIFICATE
+    CLIENT_CERTIFICATE,
+    CLIENT_PRIVATE_KEY
 );
 
 
@@ -85,26 +85,24 @@ IPort* iridiumPort = &mockIridiumPort;
 // MKRGPS mkrGPS;
 // IGPS* gps = &mkrGPS;
 UBloxGNSS uBloxGPS;
-IGPS* gps = &uBloxGPS;
+IGPS& gpsRef = uBloxGPS;
 
 // --------- RTC ----------
 ZeroRTCController zeroRTCController;
 // MockRTCController mockRTCController;
-RTCController* rtcController = &zeroRTCController;
+RTCController& rtcControllerRef = zeroRTCController;
 
 // --------- Storage ----------
 SDStorageManager sdStorageManager;
-StorageManager* storageManager = &sdStorageManager; // o hddStorageManager según build
+StorageManager& storageManagerRef = sdStorageManager; // o hddStorageManager según build
 
 // --------- Router ----------
 Router router({serialPort, loraOrGsmPort, iridiumPort});
 
 // --------- Power ----------
-TaskScheduler scheduler;
 MosfetController mosfetController;
 PiController rockPiPowerController;
-SystemMonitor systemMonitor(batteryController, &rockPiPowerController);
-
+BatteryProtectionPolicy batteryProtectionPolicy(batteryControllerRef, rockPiPowerController);
 
 // =======================================================
 //       NATIVE BUILD
@@ -113,11 +111,11 @@ SystemMonitor systemMonitor(batteryController, &rockPiPowerController);
 
 // --------- Batería ----------
 MockBatteryController mockBatteryController;
-IBatteryController* batteryController = &mockBatteryController;
+IBatteryController& batteryControllerRef = mockBatteryController;
 
 // --------- Display ----------
 ConsoleDisplay consoleDisplay;
-IDisplay* display = &consoleDisplay;
+IDisplay& displayRef = consoleDisplay;
 
 // --------- Puertos ----------
 MockSerialPort mockSerialPort;
@@ -133,15 +131,15 @@ IPort* iridiumPort = &httpPort;
 
 // --------- GPS ----------
 MockGPS mockGPS(0.0, 0.0, 1.0);
-IGPS* gps = &mockGPS;
+IGPS& gpsRef = mockGPS;
 
 // --------- RTC ----------
 MockRTCController mockRTCController;
-RTCController* rtcController = &mockRTCController;
+RTCController& rtcControllerRef = mockRTCController;
 
 // --------- Storage ----------
 HDDStorageManager hddStorageManager;
-StorageManager* storageManager = &hddStorageManager; // o hddStorageManager según build
+StorageManager& storageManagerRef = hddStorageManager; // o hddStorageManager según build
 
 // --------- Router ----------
 Router router({serialPort, loraPort, iridiumPort});
@@ -154,7 +152,7 @@ Router router({serialPort, loraPort, iridiumPort});
 // =======================================================
 
 
-NodeConfigurationRepository nodeConfigurationRepository(*storageManager);
+NodeConfigurationRepository nodeConfigurationRepository(storageManagerRef);
 
 // ============================================================
 // =========== Device port mappings ===========================
@@ -180,17 +178,17 @@ SetNodeConfigurationRoutine setNodeConfigurationRoutine(nodeConfigurationReposit
 
 GetUpdatedNodeConfigurationRoutine getUpdatedNodeConfigurationRoutine(nodeConfigurationRepository,
                                                                       moduleProxy,
-                                                                      gps,
-                                                                      batteryController,
-                                                                      rtcController
+                                                                      gpsRef,
+                                                                      batteryControllerRef,
+                                                                      rtcControllerRef
 );
 
 
 CompleteStatusReportRoutine completeStatusReportRoutine(nodeConfigurationRepository,
                                                         moduleProxy,
-                                                        gps,
-                                                        batteryController,
-                                                        rtcController
+                                                        gpsRef,
+                                                        batteryControllerRef,
+                                                        rtcControllerRef
 );
 
 
@@ -248,3 +246,5 @@ NodeOperationRunner nodeOperationRunner(
     nodeConfigurationRepository,
     routines
 );
+
+TaskScheduler scheduler;

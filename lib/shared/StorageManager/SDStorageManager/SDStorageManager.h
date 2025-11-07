@@ -1,10 +1,12 @@
 #ifndef SD_MANAGER_H
 #define SD_MANAGER_H
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #include "StorageManager/StorageManager.hpp"
 #include <cstddef>
+
+#include "ClassName.h"
 
 
 #define SDCARD_SS_PIN 4
@@ -14,6 +16,8 @@
  */
 class SDStorageManager final : public StorageManager
 {
+    CLASS_NAME(SDStorageManager)
+
 public:
     explicit SDStorageManager(uint8_t chipSelectPin = SDCARD_SS_PIN);
 

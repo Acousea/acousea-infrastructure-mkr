@@ -5,7 +5,7 @@
 // =======================================================
 //       ARDUINO BUILD
 // =======================================================
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 Uart softwareSerialSercom0(&sercom0,
                            PIN_A6, // RX
                            PIN_A5, // TX
@@ -100,7 +100,6 @@ Router router({serialPort, loraOrGsmPort, iridiumPort});
 TaskScheduler scheduler;
 MosfetController mosfetController;
 PiController rockPiPowerController;
-SystemMonitor systemMonitor(batteryController, &rockPiPowerController);
 
 
 // =======================================================

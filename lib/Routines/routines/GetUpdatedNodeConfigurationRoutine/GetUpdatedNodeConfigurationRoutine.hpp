@@ -14,9 +14,9 @@ class GetUpdatedNodeConfigurationRoutine final : public IRoutine<acousea_Communi
 private:
     NodeConfigurationRepository& nodeConfigurationRepository;
     ModuleProxy& moduleProxy;
-    IGPS* gps;
-    IBatteryController* battery;
-    RTCController* rtcController;
+    IGPS& gps;
+    IBatteryController& battery;
+    RTCController& rtcController;
 
 public:
     CLASS_NAME(GetUpdatedNodeConfigurationRoutine)
@@ -24,9 +24,9 @@ public:
     GetUpdatedNodeConfigurationRoutine(
         NodeConfigurationRepository& nodeConfigurationRepository,
         ModuleProxy& moduleProxy,
-        IGPS* gps,
-        IBatteryController* battery,
-        RTCController* rtcController
+        IGPS& gps,
+        IBatteryController& battery,
+        RTCController& rtcController
     );
 
     Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& optPacket) override;

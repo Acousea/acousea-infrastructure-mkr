@@ -1,9 +1,7 @@
 #if defined(ARDUINO) && defined(PLATFORM_HAS_GSM)
 #include "GsmMQTTPort.hpp"
-
-#include "UBlox201/TrustAnchors.h"
-#include "../../private_keys/cert.h"
-#include "../../private_keys/key.h"
+// #include "../../private_keys/cert.h"
+// #include "../../private_keys/key.h"
 
 GsmMQTTPort* GsmMQTTPort::instance = nullptr;
 
@@ -63,7 +61,7 @@ void GsmMQTTPort::printCertificates(const std::vector<StoredCert>& currentCerts)
 
 void GsmMQTTPort::init()
 {
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
     LOG_FREE_MEMORY("%s -> Initializing...", getClassNameCString());
 #endif
 
@@ -82,18 +80,17 @@ void GsmMQTTPort::init()
 
     // ========= Initialize SSL/TLS ==========
     // ublox_gsmSslClient.setModemDebug();
-    // auto result = ublox_gsmSslClient.removeTrustedRootCertificates(reinterpret_cast<const GSMRootCert*>(trust_anchors), trust_anchors_num);
-    // if (result){
-    //      LOG_CLASS_INFO(" -> Default trusted root CAs removed successfully.");
-    // }
-    // else{
-    //      LOG_CLASS_WARNING(" -> No default trusted root CAs to remove or error occurred.");
-    // }
-    LOG_FREE_MEMORY("%s -> Pre-loading root CAs...", getClassNameCString());
-    ublox_gsmSslClient.setUserRoots(reinterpret_cast<const GSMRootCert*>(trust_anchors), trust_anchors_num);
+    // const auto result = ublox_gsmSslClient.removeTrustedRootCertificates(
+    // reinterpret_cast<const GSMRootCert*>(GSM_ROOT_CERTS), GSM_NUM_ROOT_CERTS
+    // );
+    // result
+    // ? LOG_CLASS_INFO(" -> Default trusted root CAs removed successfully.")
+    // : LOG_CLASS_WARNING(" -> No default trusted root CAs to remove or error occurred.");
+
+    // LOG_FREE_MEMORY("%s -> Pre-loading root CAs...", getClassNameCString());
+    // ublox_gsmSslClient.setUserRoots(reinterpret_cast<const GSMRootCert*>(GSM_ROOT_CERTS), GSM_NUM_ROOT_CERTS);
     // ublox_gsmSslClient.importTrustedRoots(reinterpret_cast<const GSMRootCert*>(trust_anchors), trust_anchors_num);
     // ublox_gsmSslClient.setTrustedRoots(reinterpret_cast<const GSMRootCert*>(trust_anchors), trust_anchors_num);
-
 
     LOG_FREE_MEMORY("%s -> Pre-Listing current certificates...", getClassNameCString());
     {
@@ -109,10 +106,19 @@ void GsmMQTTPort::init()
     // --------------------------- TRUST ANCHORS ---------------------------
     // ublox_gsmSslClient.updateCerts(reinterpret_cast<const GSMRootCert*>(trust_anchors), trust_anchors_num);
     LOG_CLASS_INFO(" -> Loading device private key...");
-    ublox_gsmSslClient.setPrivateKey(private_key_pkcs1_pem, "my_device_key", private_key_pkcs1_pem_len);
+    // ublox_gsmSslClient.setPrivateKey(private_key_pkcs1_pem, "my_device_key", private_key_pkcs1_pem_len);
+    ublox_gsmSslClient.setPrivateKey(reinterpret_cast<const uint8_t*>(config.certificate),
+                                     "my_device_key",
+                                     strlen(config.certificate));
 
     LOG_CLASS_INFO(" -> Loading device certificate...");
-    ublox_gsmSslClient.setSignedCertificate(certificate_mkr1400_pem, "my_device_cert", certificate_mkr1400_pem_len);
+    // ublox_gsmSslClient.setSignedCertificate(certificate_mkr1400_pem, "my_device_cert", certificate_mkr1400_pem_len);
+    ublox_gsmSslClient.setSignedCertificate(reinterpret_cast<const uint8_t*>(config.privateKey),
+                                            "my_device_cert",
+                                            strlen(config.privateKey));
+
+    // --------------------------- DEVICE CERTIFICATE & PRIVATE KEY ---------------------------
+
 
     LOG_CLASS_INFO(" -> Using device private key for TLS...");
     ublox_gsmSslClient.usePrivateKey("my_device_key");
@@ -225,62 +231,5 @@ void GsmMQTTPort::mqttLoop()
     mqttClient.poll();
 }
 
-
-void GsmMQTTPort::testConnection(const char* host, int port, const char* path)
-{
-    LOG_CLASS_INFO(" -> Testing connection to %s:%d", host, port);
-
-    LOG_CLASS_INFO(" -> Using TLS (ublox_gsmSslClient)");
-    if (!ublox_gsmSslClient.connect(host, port))
-    {
-        LOG_CLASS_ERROR(" -> TLS connection FAILED");
-        return;
-    }
-
-    LOG_CLASS_INFO(" -> TLS connection SUCCESS");
-
-    // ----------- Construir y enviar petición HTTP -----------
-    char request[256];
-    std::snprintf(request, sizeof(request),
-                  "GET %s HTTP/1.1\r\n"
-                  "Host: %s\r\n"
-                  "Connection: close\r\n\r\n",
-                  path, host);
-
-    ublox_gsmSslClient.print(request);
-    LOG_CLASS_INFO(" -> HTTP request sent.");
-
-    // ----------- Leer respuesta (máx. 1024 bytes) -----------
-    constexpr size_t MAX_RESPONSE_SIZE = 1024;
-    char response[MAX_RESPONSE_SIZE + 1]; // +1 para '\0'
-    size_t totalRead = 0;
-
-    LOG_CLASS_INFO(" -> Reading up to %zu bytes of response...", MAX_RESPONSE_SIZE);
-
-    while (ublox_gsmSslClient.connected() && totalRead < MAX_RESPONSE_SIZE)
-    {
-        while (ublox_gsmSslClient.available() && totalRead < MAX_RESPONSE_SIZE)
-        {
-            int c = ublox_gsmSslClient.read();
-            if (c < 0)
-                continue;
-
-            response[totalRead++] = static_cast<char>(c);
-        }
-    }
-
-    // Terminar cadena correctamente
-    response[totalRead] = '\0';
-
-    // Si se truncó la respuesta, indicarlo
-    if (totalRead >= MAX_RESPONSE_SIZE)
-    {
-        LOG_CLASS_WARNING(" -> Response truncated to %zu bytes", MAX_RESPONSE_SIZE);
-    }
-
-    ublox_gsmSslClient.stop();
-
-    LOG_CLASS_INFO(" -> Connection closed. Response (%zu bytes):\n%.1024s", totalRead, response);
-}
 
 #endif // ARDUINO && PLATFORM_HAS_GSM

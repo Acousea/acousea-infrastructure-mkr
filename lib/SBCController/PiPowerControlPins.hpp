@@ -1,6 +1,6 @@
 #ifndef ACOUSEA_PIPOWERCONTROLPINS_HPP
 #define ACOUSEA_PIPOWERCONTROLPINS_HPP
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 // Notice: don't use pin 6. That is LED_BUILTIN for the MKR1310
 #define ROCK_PI_SHUTDOWN_PIN A1  // OUTPUT. This pin is driven high to command a shutdown in the rock pi

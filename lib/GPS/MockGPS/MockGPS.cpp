@@ -18,7 +18,7 @@ GPSLocation MockGPS::read(){
     return {latitude, longitude};
 }
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 unsigned long MockGPS::getTimestamp() {
     // Segundos desde el arranque
     return getMillis() / 1000UL;

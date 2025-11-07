@@ -2,10 +2,12 @@
 
 #include <string>
 
-#include "wiring_private.h"
 // #include "WVariant.h"
 
+#include "Ports/GSM/UBlox201/UBlox201_GSMSSLClient.hpp"
+#include "TaskScheduler/LambdaTask.hpp"
 
+#ifdef PLATFORM_ARDUINO
 void test_solar_x_battery_controller()
 {
     // Actualiza cálculos internos
@@ -48,16 +50,19 @@ void test_solar_x_battery_controller()
 }
 
 
+#ifdef PLATFORM_HAS_GSM
 void test_gsm_initialization()
 {
-#ifdef PLATFORM_HAS_GSM
     // ------------------------ Test GSM Connection ------------------------
     // gsmPort.init();
-    LOG_FREE_MEMORY("[MAIN] After GSM init");
-    ConsoleSerial.println("Preparing to send packet using GSM...");
-    // MyGSMSSLClient myGsmSslClient;
+    // LOG_FREE_MEMORY("[MAIN] After GSM init");
+    LOG_FREE_MEMORY("[FREEMEM] Before listing certs");
+    UBlox201_GSMSSLClient myGsmSslClient;
+    UBlox201_GSMSSLClient::setModemDebug();
+    const auto certs = myGsmSslClient.listCertificates(CertType::All);
+    GsmMQTTPort::printCertificates(certs);
     // myGsmSslClient.updateCerts(GSM_ROOT_CERTS, std::size(GSM_ROOT_CERTS));
-    // myGsmSslClient.listCertificates(CertType::All);
+    LOG_FREE_MEMORY("[MAIN] After listing certs");
 
     // Enviar usando tu GsmPort
     // const std::vector<uint8_t> payload = {
@@ -77,48 +82,16 @@ void test_gsm_initialization()
     // gsmPort.send(payload);
     // GsmPort::testConnection("example.com", 80, "/", false);
 
-    // gsmPort.testConnection("www.google.com", 443, "/", true);
-    // gsmPort.testConnection("antapagon.com", 443, "/", true);
-    // gsmPort.testConnection("test432091-framework22.antapagon.com", 443, "/", true);
-    // gsmPort.testConnection("www.antapagon.com", 443, "/", true);
+    // myGsmSslClient.testConnection("www.google.com", 443, "/");
+    // myGsmSslClient.testConnection("antapagon.com", 443, "/");
+    const auto connOk = myGsmSslClient.testTLSConnection("test432091-framework22.antapagon.com", 443, "/");
+
+    LOG_INFO("GSM TLS connection test result: %s", connOk ? "SUCCESS" : "FAILURE");
+    // myGsmSslClient.testConnection("www.antapagon.com", 443, "/", true);
 
 
     ConsoleSerial.println("Sent packet using GSM");
     // ---------------------------------------------------------------------
-#endif
-}
-
-void test_battery_usage()
-{
-    // nodeOperationRunner.init();
-    // nodeOperationRunner.run();
-    const auto percentage = batteryController->voltageSOC_rounded();
-    const auto status = batteryController->status();
-    LOG_INFO("[TEST_BATTERY_USAGE] Percentage: %d%%, Status: %d", percentage, static_cast<int>(status)
-    );
-}
-
-void test_rockpi_power_controller()
-{
-    ConsoleSerial.println("[Rockpi Power Controller Test]");
-    bool is_rockpi_up = piPowerController.isRockPiUp();
-    ConsoleSerial.print("[BEGIN] Rockpi is up? ");
-    ConsoleSerial.println(is_rockpi_up ? "true" : "false");
-
-
-    if (is_rockpi_up)
-    {
-        ConsoleSerial.println("[UP]: Rockpi is Up -> Shutting down");
-        piPowerController.commandShutdown();
-    }
-    else
-    {
-        ConsoleSerial.println("[DOWN]: Rockpi is Down -> Starting up");
-        piPowerController.commandStartup();
-    }
-    is_rockpi_up = piPowerController.isRockPiUp();
-    ConsoleSerial.print("[END] Rockpi is up? ");
-    ConsoleSerial.println(is_rockpi_up ? "true" : "false");
 }
 
 
@@ -146,17 +119,45 @@ void test_gsm_sending_packets()
 
     ConsoleSerial.println("Looping...");
 }
+#endif
+
+
+void test_rockpi_power_controller()
+{
+    ConsoleSerial.println("[Rockpi Power Controller Test]");
+    bool is_rockpi_up = piPowerController.isRockPiUp();
+    ConsoleSerial.print("[BEGIN] Rockpi is up? ");
+    ConsoleSerial.println(is_rockpi_up ? "true" : "false");
+
+
+    if (is_rockpi_up)
+    {
+        ConsoleSerial.println("[UP]: Rockpi is Up -> Shutting down");
+        piPowerController.commandShutdown();
+    }
+    else
+    {
+        ConsoleSerial.println("[DOWN]: Rockpi is Down -> Starting up");
+        piPowerController.commandStartup();
+    }
+    is_rockpi_up = piPowerController.isRockPiUp();
+    ConsoleSerial.print("[END] Rockpi is up? ");
+    ConsoleSerial.println(is_rockpi_up ? "true" : "false");
+}
+
 
 void test_sleep_and_wake()
 {
-    ConsoleSerial.println("Sleeping for 10 seconds...");
-    // systemMonitor.sleepFor(10000);
+    ConsoleSerial.println("Sleeping for 5 seconds...");
+    WatchdogUtils::sleepFor(5000); // 5 seconds
     ConsoleSerial.println("Woke up!");
 }
+#endif
+
 
 void test_setup()
 {
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
     ConsoleSerial.begin(9600);
     delay(1000);
     // while (!ConsoleSerial) {
@@ -171,30 +172,8 @@ void test_setup()
 #if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
     std::printf("[native] Setup: starting...\n");
 #endif
-    ENSURE(storageManager, "storageManager");
-    ENSURE(display, "display");
-    // ENSURE(gps, "gps");
-    // ENSURE(rtcController, "rtcController");
-    ENSURE(batteryController, "battery");
-    ENSURE(&solarXBatteryController, "solarXBatteryController");
-    // ENSURE(serialPort, "serialPort");
-#ifdef PLATFORM_HAS_GSM
-    // ENSURE(&gsmPort, "gsmPort");
-#endif
-#ifdef PLATFORM_HAS_LORA
-    ENSURE(loraPort, "loraPort");
-#endif
-    // ENSURE(iridiumPort, "iridiumPort");
 
-#ifdef ARDUINO
-    ConsoleSerial.println("[arduino] Setup: Ensured pointers");
-#endif
-
-#if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
-    std::printf("[native] Setup: Ensured pointers\n");
-#endif
-
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
     // Inicializa la comunicación serial a 9600 baudios
     // sercom0.resetUART();
@@ -219,59 +198,79 @@ void test_setup()
 
 #endif
 
+    WatchdogUtils::enable(15000); // 15 seconds
+
     // Inicializa el administrador de la tarjeta SD
-    storageManager->begin();
+    storageManagerRef.begin();
 
-    rtcController->init();
+    rtcControllerRef.init();
 
-    rtcController->setEpoch(1760441400);
+    rtcControllerRef.setEpoch(1760441400);
 
     // Logger initialization and configuration
     Logger::initialize(
-        display,
-        storageManager,
-        rtcController,
+        &displayRef,
+        &storageManagerRef,
+        &rtcControllerRef,
         "log.csv", // MAX 8 chars for 8.3 filenames
         Logger::Mode::Both
     );
     Logger::logInfo("================ Setting up Node =================");
 
-    // batteryController->init();
-    solarXBatteryController.init();
-
-    systemMonitor.init(15000); // 15 seconds
 
     // Initialize the gps
     // gps->init();
 
-    static MethodTask<SolarXBatteryController> solarXBatterySyncTask(15000,
-                                                                     &solarXBatteryController,
-                                                                     &SolarXBatteryController::sync);
 
-    static FunctionTask watchDogTask(5000, &SystemMonitor::reset);
+#ifdef PLATFORM_ARDUINO
+    // batteryController->init();
+    solarXBatteryController.init();
 
-    static MethodTask<SystemMonitor> systemMonitorTask(10000, // This must be less than watchdog timeout (10s)
-                                                       &systemMonitor,
-                                                       &SystemMonitor::protectBattery);
+
+    static LambdaTask solarXBatterySyncTask(15000, [&]()
+    {
+        solarXBatteryController.sync();
+    });
+
+    // static MethodTask<BatteryProtectionPolicy> batteryProtectionPolicyTask(
+    //     10000, // This must be less than watchdog timeout (10s)
+    //     &batteryProtectionPolicy,
+    //     &BatteryProtectionPolicy::enforce
+    // );
+    // scheduler.addTask(&batteryProtectionPolicyTask);
+
+    scheduler.addTask(&solarXBatterySyncTask);
+
+
     static FunctionTask batteryTestTask(
         30000,
         [] { withLedIndicator(test_solar_x_battery_controller); }
     );
-    scheduler.addTask(&watchDogTask);
-    scheduler.addTask(&systemMonitorTask);
-    scheduler.addTask(&solarXBatterySyncTask);
     scheduler.addTask(&batteryTestTask);
+#endif
 }
 
 
 void test_loop()
 {
-    scheduler.run();
+    executeEvery(5000, []
+    {
+        withLedIndicator([]
+        {
+            LOG_FREE_MEMORY("[🧪 TEST LOOP START]");
+            scheduler.run();
+            LOG_FREE_MEMORY("[🧪 TEST LOOP END]");
+        });
+    });
 
-    // executeEvery(15000, [] {
-    // withLedIndicator([] {
-    // test_sleep_and_wake();
-    // });
+    // scheduler.run();
+
+    // executeEvery(15000, []
+    // {
+    //     withLedIndicator([]
+    //     {
+    //         test_sleep_and_wake();
+    //     });
     // });
 
     // executeEvery(
@@ -299,7 +298,7 @@ void test_loop()
     // );
 }
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 #if defined(PLATFORM_HAS_LORA)
 void test_onReceiveWrapper(int packetSize)

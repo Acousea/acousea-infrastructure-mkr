@@ -2,6 +2,9 @@
 #ifndef TRUST_ANCHORS_H
 #define TRUST_ANCHORS_H
 
+#define _GSMROOT_CERTS_H_INCLUDED // This overrides the default GSMROOT_CERTS_H inclusion
+
+
 #define TRUST_ANCHORS_INCLUDE_AMAZONROOTCA1
 // --------- TRUST ANCHORS OPTIONS ----------- (UNCOMMENT TO INCLUDE)
 // #define TRUST_ANCHORS_INCLUDE_BALTIMORECYBERTRUST
@@ -18,8 +21,7 @@
 // #define TRUST_ANCHORS_INCLUDE_VERISIGN_CERTIFICATE
 
 
-
-struct TrustAnchor
+struct GSMRootCert
 {
     const char* name;
     const unsigned char* data;
@@ -105,7 +107,7 @@ extern const unsigned int VeriSign_der_len;
 #endif // TRUST_ANCHORS_INCLUDE_VERISIGN_CERTIFICATE
 
 
-extern const TrustAnchor trust_anchors[];
-extern const unsigned int trust_anchors_num;
+extern const GSMRootCert GSM_ROOT_CERTS[];
+extern const unsigned int GSM_NUM_ROOT_CERTS;
 
 #endif // TRUST_ANCHORS_H

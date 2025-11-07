@@ -1,5 +1,8 @@
 #include "HttpPort.hpp"
 #include <Logger/Logger.h>
+
+
+#ifdef PLATFORM_NATIVE
 #if defined(__linux__)
 #include <curl/curl.h>
 #include <cctype>
@@ -23,7 +26,6 @@ static size_t write_str_cb(char* ptr, size_t sz, size_t nm, void* userdata)
 #endif
 
 
-
 HttpPort::HttpPort(std::string baseUrl, std::string imei, long timeoutMs, int pollMax)
     : IPort(PortType::SBDPort),
       baseUrl_(std::move(baseUrl)),
@@ -35,44 +37,46 @@ HttpPort::HttpPort(std::string baseUrl, std::string imei, long timeoutMs, int po
 
 void HttpPort::init()
 {
+
 #if defined(__linux__)
-    CURLcode rc = curl_global_init(CURL_GLOBAL_DEFAULT);
-    if (rc != CURLE_OK)
+CURLcode rc = curl_global_init(CURL_GLOBAL_DEFAULT);
+    if (rc!= CURLE_OK)
     {
         LOG_CLASS_ERROR("HttpPort::init() -> curl_global_init failed");
         return;
     }
-    initialized_ = true;
-    LOG_CLASS_INFO("HttpPort::init() -> OK (libcurl)");
+initialized_=true;
+LOG_CLASS_INFO ("HttpPort::init() -> OK (libcurl)");
 #else
-    LOG_CLASS_ERROR("HttpPort solo soportado en Linux en esta implementación.");
+LOG_CLASS_ERROR ("HttpPort solo soportado en Linux en esta implementación.");
 #endif
 }
 
 bool HttpPort::send(const std::vector<uint8_t>& data)
 {
+
 #if defined(__linux__)
-    if (!initialized_)
+if (!initialized_)
     {
         LOG_CLASS_ERROR("HttpPort::send() -> not initialized");
         return false;
     }
 
-    const std::string url = baseUrl_ + "/enqueue_mo";
-    const std::string dataHex = bytesToHex(data);
-    LOG_CLASS_INFO("HttpPort::send() -> MO hex: %s", dataHex.c_str());
+const std::string url = baseUrl_ + "/enqueue_mo";
+const std::string dataHex = bytesToHex(data);
+LOG_CLASS_INFO ("HttpPort::send() -> MO hex: %s", dataHex.c_str());
 
-    CURL* curl = curl_easy_init();
+CURL* curl = curl_easy_init();
     if (!curl)
     {
         LOG_CLASS_ERROR("HttpPort::send() -> curl_easy_init failed");
         return false;
     }
 
-    struct curl_slist* hdrs = nullptr;
-    char* imeiEsc = nullptr;
+struct curl_slist* hdrs = nullptr;
+char* imeiEsc = nullptr;
 
-    bool success = false; // para control centralizado del resultado
+bool success = false; // para control centralizado del resultado
 
     do
     {
@@ -107,25 +111,25 @@ bool HttpPort::send(const std::vector<uint8_t>& data)
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
         if (code / 100 != 2)
         {
-            LOG_CLASS_ERROR("HttpPort::send() -> HTTP status %d", code);
+            LOG_CLASS_ERROR("HttpPort::send() -> HTTP status %ld", code);
             break;
         }
 
         // éxito total
-        LOG_CLASS_INFO("HttpPort::send() -> HTTP OK (%d)", code);
+        LOG_CLASS_INFO("HttpPort::send() -> HTTP OK (%ld)", code);
         success = true;
     }
     while (false);
 
     if (imeiEsc) curl_free(imeiEsc);
     if (hdrs) curl_slist_free_all(hdrs);
-    curl_easy_cleanup(curl);
+curl_easy_cleanup (curl);
 
     return success;
 
 #else
-    (void)data;
-    LOG_CLASS_ERROR("HttpPort::send() not supported on this platform");
+(void)data;
+LOG_CLASS_ERROR ("HttpPort::send() not supported on this platform");
     return false;
 #endif
 }
@@ -135,102 +139,104 @@ bool HttpPort::available()
 {
     if (!receivedRawPackets.empty()) return true;
 #if defined(__linux__)
-    (void)fetchOne(); // intenta traer 1 si está vacío
+(void)fetchOne(); // intenta traer 1 si está vacío
 #endif
-    return !receivedRawPackets.empty();
+return !receivedRawPackets.empty();
 }
 
 std::vector<std::vector<uint8_t>> HttpPort::read()
 {
+
 #if defined(__linux__)
-    if (receivedRawPackets.empty())
+if (receivedRawPackets.empty())
     {
         (void)fetchOne();
     }
 #endif
-    std::vector<std::vector<uint8_t>> out;
-    out.reserve(receivedRawPackets.size());
-    for (auto& pkt : receivedRawPackets) out.push_back(std::move(pkt));
-    receivedRawPackets.clear();
+std::vector<std::vector<uint8_t>> out;
+out.reserve (receivedRawPackets.size());
+    for (auto& pkt : receivedRawPackets) out.push_back (std::move(pkt));
+receivedRawPackets.clear();
     return out;
 }
 
 bool HttpPort::fetchOne()
 {
+
 #if defined(__linux__)
-    if (!initialized_) return false;
+if (!initialized_) return false;
 
-    // GET /modem/poll?imei=...&max=pollMax_
-    std::ostringstream u;
-    u << baseUrl_ << "/modem/poll?imei=" << imei_ << "&max=" << pollMax_;
+// GET /modem/poll?imei=...&max=pollMax_
+std::ostringstream u;
+u<< baseUrl_<< "/modem/poll?imei=" << imei_<< "&max=" << pollMax_;
 
-    CURL* curl = curl_easy_init();
+CURL* curl = curl_easy_init();
     if (!curl) return false;
 
-    std::string resp;
-    curl_easy_setopt(curl, CURLOPT_URL, u.str().c_str());
-    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, timeoutMs_);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_str_cb);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
+std::string resp;
+curl_easy_setopt(curl, CURLOPT_URL, u.str().c_str());
+curl_easy_setopt(curl, CURLOPT_HTTPGET, 1L);
+curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, timeoutMs_);
+curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_str_cb);
+curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
 
-    CURLcode rc = curl_easy_perform(curl);
-    if (rc != CURLE_OK)
+CURLcode rc = curl_easy_perform(curl);
+    if (rc!= CURLE_OK)
     {
-        LOG_CLASS_ERROR("HttpPort::fetchOne() -> CURL error: %s", curl_easy_strerror(rc).c_str());
+        LOG_CLASS_ERROR("HttpPort::fetchOne() -> CURL error: %s", curl_easy_strerror(rc));
         curl_easy_cleanup(curl);
         return false;
     }
 
-    long code = 0;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
-    curl_easy_cleanup(curl);
+long code = 0;
+curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
+curl_easy_cleanup (curl);
 
-    if (code / 100 != 2)
+    if (code/ 100 != 2)
     {
-        LOG_CLASS_ERROR("HttpPort::fetchOne() -> HTTP status %d", code);
+        LOG_CLASS_ERROR("HttpPort::fetchOne() -> HTTP status %ld", code);
 
         return false;
     }
 
-    // Respuesta esperada: JSON array. Ej: [] o [{"id":1,"data_hex":"A1B2","created_at":"..."}]
-    // Parser mínimo: busca el primer "data_hex":"...".
-    auto posKey = resp.find("\"data_hex\"");
-    if (posKey == std::string::npos)
+// Respuesta esperada: JSON array. Ej: [] o [{"id":1,"data_hex":"A1B2","created_at":"..."}]
+// Parser mínimo: busca el primer "data_hex":"...".
+auto posKey = resp.find("\"data_hex\"");
+    if (posKey== std::string::npos)
     {
         // array vacío o formato inesperado -> no hay nada
         return false;
     }
-    // Busca ':' y la primera comilla que abre el valor
-    auto posColon = resp.find(':', posKey);
-    if (posColon == std::string::npos) return false;
-    auto posQuote1 = resp.find('"', posColon + 1);
-    if (posQuote1 == std::string::npos) return false;
-    auto posQuote2 = resp.find('"', posQuote1 + 1);
-    if (posQuote2 == std::string::npos) return false;
+// Busca ':' y la primera comilla que abre el valor
+auto posColon = resp.find(':', posKey);
+    if (posColon== std::string::npos) return false;
+auto posQuote1 = resp.find('"', posColon + 1);
+    if (posQuote1== std::string::npos) return false;
+auto posQuote2 = resp.find('"', posQuote1 + 1);
+    if (posQuote2== std::string::npos) return false;
 
-    std::string hex = resp.substr(posQuote1 + 1, posQuote2 - (posQuote1 + 1));
+std::string hex = resp.substr(posQuote1 + 1, posQuote2 - (posQuote1 + 1));
 
-    // normaliza a minúsculas
-    for (auto& c : hex) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+// normaliza a minúsculas
+    for (auto& c : hex) c=static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 
-    std::vector<uint8_t> bytes;
+std::vector<uint8_t> bytes;
     if (!hexToBytes(hex, bytes))
     {
         LOG_CLASS_ERROR("HttpPort::fetchOne() -> invalid hex in data_hex");
         return false;
     }
 
-    if (receivedRawPackets.size() >= MAX_QUEUE_SIZE)
+    if (receivedRawPackets.size()>= MAX_QUEUE_SIZE)
     {
         LOG_CLASS_INFO("HttpPort::fetchOne(): queue full, dropping oldest");
         receivedRawPackets.pop_front();
     }
-    LOG_CLASS_INFO("HttpPort::fetchOne() -> RX %zu bytes (MT)", bytes.size());
-    receivedRawPackets.push_back(std::move(bytes));
+LOG_CLASS_INFO ("HttpPort::fetchOne() -> RX %zu bytes (MT)", bytes.size());
+receivedRawPackets.push_back (std::move(bytes));
     return true;
 #else
-    return false;
+return false;
 #endif
 }
 
@@ -269,3 +275,4 @@ bool HttpPort::hexToBytes(const std::string& hex, std::vector<uint8_t>& out)
     }
     return true;
 }
+#endif

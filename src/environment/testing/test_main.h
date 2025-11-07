@@ -1,13 +1,12 @@
 #pragma once
 
 #include "test_dependencies.h"
-#include "../shared_utils.hpp"
 // #include "../lib/MockLib/include/library.h"
 
 void test_setup();
 void test_loop();
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 #include <Arduino.h>
 
 #if defined(PLATFORM_HAS_LORA)

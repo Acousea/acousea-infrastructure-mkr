@@ -1,4 +1,4 @@
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 #include "ZeroRTCController.h"
 #include "RTCZero.h"
 

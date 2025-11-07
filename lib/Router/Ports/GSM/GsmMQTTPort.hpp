@@ -3,13 +3,16 @@
 
 #if defined(ARDUINO) && defined(PLATFORM_HAS_GSM)
 
+
+#include "UBlox201/UBlox201_GSMSSLClient.hpp" // UBlox201 GSM SSL Client. OVERRIDES internal GSMSSLClient configuration, MUST BE INCLUDED BEFORE <MKRGSM.h>
+
 #include <MKRGSM.h>
 #include <ArduinoMqttClient.h>
 #include <Logger/Logger.h>
 #include <ErrorHandler/ErrorHandler.h>
 
 #include "GsmConfig.hpp"
-#include "UBlox201/UBlox201_GSMSSLClient.hpp"
+
 #include "Ports/IPort.h"
 #include "ClassName.h"
 
@@ -19,7 +22,6 @@ class GsmMQTTPort final : public IPort{
 public:
     explicit GsmMQTTPort(const GsmConfig& cfg);
 
-    void testConnection(const char* host, int port, const char* path);
     static void printCertificates(const std::vector<StoredCert>& currentCerts);
 
     void init() override;

@@ -1,7 +1,7 @@
 #ifndef GETMILLIS_HPP
 #define GETMILLIS_HPP
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
   #include <Arduino.h>
 #else
   #include <chrono>

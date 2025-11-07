@@ -2,7 +2,8 @@
 #define ACOUSEA_INFRASTRUCTURE_MKR_GSMCONFIG_HPP
 #include <cstdio>
 
-struct GsmConfig {
+struct GsmConfig
+{
     const char* const pin;
     const char* const apn;
     const char* const user;
@@ -11,6 +12,7 @@ struct GsmConfig {
     const char* const broker;
     const int port;
     const char* const certificate;
+    const char* const privateKey;
 
     static constexpr const char* baseTopic = "acousea/nodes";
 
@@ -25,11 +27,13 @@ struct GsmConfig {
         const char* clientId_,
         const char* broker_,
         int port_,
-        const char* certificate_)
-        : pin(pin_), apn(apn_), user(user_), pass(pass_),
-          clientId(clientId_), broker(broker_), port(port_), certificate(certificate_)
+        const char* certificate_,
+        const char* privateKey_
+    )
+        : pin(pin_), apn(apn_), user(user_), pass(pass_), clientId(clientId_),
+          broker(broker_), port(port_), certificate(certificate_), privateKey(privateKey_)
     {
-        snprintf(inputTopic, sizeof(inputTopic),  "%s/mt/%s", baseTopic, clientId_);
+        snprintf(inputTopic, sizeof(inputTopic), "%s/mt/%s", baseTopic, clientId_);
         snprintf(outputTopic, sizeof(outputTopic), "%s/mo/%s", baseTopic, clientId_);
     }
 };

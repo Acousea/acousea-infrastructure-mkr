@@ -1,6 +1,6 @@
 #include "getMillis.hpp"
 
-#ifdef ARDUINO
+#ifdef PLATFORM_ARDUINO
 
 unsigned long getMillis() {
     return millis();
