@@ -1,7 +1,9 @@
-#pragma once
+#ifndef ACOUSEA_INFRASTRUCTURE_MKR_TEST_MAIN_HPP
+#define ACOUSEA_INFRASTRUCTURE_MKR_TEST_MAIN_HPP
 
-#include "test_dependencies.h"
 // #include "../lib/MockLib/include/library.h"
+#include "dependencies.hpp"
+#include "environment/sharedUtils.hpp"
 
 void test_setup();
 void test_loop();
@@ -18,3 +20,5 @@ void test_SERCOM3_Handler();
 void test_SERCOM1_Handler();
 void test_SERCOM0_Handler();
 #endif
+
+#endif // ACOUSEA_INFRASTRUCTURE_MKR_TEST_MAIN_HPP

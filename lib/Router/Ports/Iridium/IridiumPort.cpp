@@ -61,7 +61,7 @@ void IridiumPort::init()
 
 bool IridiumPort::send(const std::vector<uint8_t>& data)
 {
-    LOG_CLASS_INFO("IridiumPort::send() -> Sending packet... Data: %s, Size: %zu bytes",
+    LOG_CLASS_INFO("IridiumPort::send() -> Sending packet... Data: %s, Size: %d bytes",
                    Logger::vectorToHexString(data.data(), data.size()).c_str(), data.size()
     );
 

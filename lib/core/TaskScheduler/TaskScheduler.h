@@ -3,8 +3,7 @@
 
 #include "time/getMillis.hpp"
 #include <cstddef>  // for size_t
-#include "FunctionTask.hpp"
-#include "MethodTask.hpp"
+#include "ITask.hpp"
 #include "Logger/Logger.h"
 
 

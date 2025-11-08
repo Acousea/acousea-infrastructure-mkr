@@ -1,5 +1,12 @@
 #include "prod_main.h"
 
+namespace logic = Dependencies::Logic;
+namespace hardware = Dependencies::Hardware;
+namespace sys = Dependencies::System;
+namespace shared = SharedUtils;
+namespace watchdog = WatchdogUtils;
+
+
 void prod_saveLocalizerConfig()
 {
     acousea_NodeConfiguration localizerConfig = acousea_NodeConfiguration_init_default;
@@ -39,7 +46,7 @@ void prod_saveLocalizerConfig()
 
 
     // Save the configuration
-    nodeConfigurationRepository.saveConfiguration(localizerConfig);
+    logic::nodeConfigurationRepository().saveConfiguration(localizerConfig);
 }
 
 void prod_saveDrifterConfig()
@@ -100,9 +107,8 @@ void prod_saveDrifterConfig()
     drifterConfig.iridiumModule = iridiumModule;
 
     // Save the configuration
-    nodeConfigurationRepository.saveConfiguration(drifterConfig);
+    logic::nodeConfigurationRepository().saveConfiguration(drifterConfig);
 }
-
 
 void prod_setup()
 {
@@ -129,7 +135,7 @@ void prod_setup()
 #endif
 
     // Inicializa el administrador de la tarjeta SD
-    storageManagerRef.begin();
+    hardware::storage().begin();
 
 #if defined(_WIN32) && defined(PLATFORM_NATIVE) && !defined(ARDUINO)
     std::printf("[native] Setup: Began storageManager\n");
@@ -137,9 +143,9 @@ void prod_setup()
 
     // Logger initialization and configuration
     Logger::initialize(
-        &displayRef,
-        &storageManagerRef,
-        &rtcControllerRef,
+        &hardware::display(),
+        &hardware::storage(),
+        &hardware::rtc(),
         "log", // MAX 8 chars for 8.3 filenames
         Logger::Mode::Both
     );
@@ -163,8 +169,8 @@ void prod_setup()
     // Logger::setCurrentTime(gps->getTimestamp());
 
     // Inicializa el controlador de tiempo real
-    rtcControllerRef.init();
-    rtcControllerRef.syncTime(gpsRef.getTimestamp());
+    hardware::rtc().init();
+    hardware::rtc().syncTime(hardware::gps().getTimestamp());
 
 
     // Set a custom error handler
@@ -181,32 +187,32 @@ void prod_setup()
     //    nodeConfigurationRepository.reset();
 
     // Inicializa el repositorio de configuración
-    nodeConfigurationRepository.init();
+    logic::nodeConfigurationRepository().init();
 
-    WatchdogUtils::enable(10000); // 10 seconds
+    watchdog::enable(10000); // 10 seconds
 
     // Initialize the gps
     // gps->init();
 
 #ifdef PLATFORM_ARDUINO
-    solarXBatteryController.init();
+    hardware::solarXBatteryController().init();
 
     static MethodTask<BatteryProtectionPolicy> batteryProtectionTask(
         10000, // This must be less than watchdog timeout (10s)
-        &batteryProtectionPolicy,
+        &logic::batteryProtectionPolicy(),
         &BatteryProtectionPolicy::enforce
     );
-    scheduler.addTask(&batteryProtectionTask);
+    sys::scheduler().addTask(&batteryProtectionTask);
 
 #endif
-    nodeOperationRunner.init();
+    logic::nodeOperationRunner().init();
 
     static MethodTask<NodeOperationRunner> nodeOperationTask(
         15000, // 15 seconds
-        &nodeOperationRunner,
+        &logic::nodeOperationRunner(),
         &NodeOperationRunner::run
     );
-    scheduler.addTask(&nodeOperationTask);
+    sys::scheduler().addTask(&nodeOperationTask);
 
 
 #if MODE == DRIFTER_MODE
@@ -218,7 +224,15 @@ void prod_setup()
 
 void prod_loop()
 {
-    scheduler.run();
+    shared::executeEvery(5000, []
+    {
+        shared::withLedIndicator([]
+        {
+            LOG_FREE_MEMORY("[🚀 PROD LOOP START]");
+            sys::scheduler().run();
+            LOG_FREE_MEMORY("[🚀 PROD LOOP END]");
+        });
+    });
 }
 #ifdef PLATFORM_ARDUINO
 
@@ -233,13 +247,13 @@ void prod_onReceiveWrapper(int packetSize)
 void prod_SERCOM0_Handler()
 {
     // SerialUSB.println("INTERRUPT SERCOM0");
-    softwareSerialSercom0.IrqHandler();
+    hardware::uart0().IrqHandler();
 }
 
 void prod_SERCOM1_Handler()
 {
     // SerialUSB.println("INTERRUPT SERCOM0");
-    softwareSerialSercom1.IrqHandler();
+    hardware::uart1().IrqHandler();
 }
 
 

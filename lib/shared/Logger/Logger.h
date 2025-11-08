@@ -82,7 +82,7 @@ private:
 
     static void getTimestamp(char* buffer, size_t len);
 
-    static void vlog(const char* logType, const char* fmt, va_list args);
+    static void vlog(const char* logType, const char* fmt, va_list &args);
     static void vlog(const char* logType, const char* message);
 
     static bool clearLog();

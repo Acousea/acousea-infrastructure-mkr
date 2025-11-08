@@ -1,7 +1,10 @@
-#include "prod_dependencies.h"
-#include "../shared_utils.hpp"
+#ifndef ACOUSEA_INFRASTRUCTURE_MKR_PROD_MAIN_HPP
+#define ACOUSEA_INFRASTRUCTURE_MKR_PROD_MAIN_HPP
 
 // #include "../lib/MockLib/include/library.h"
+
+#include "dependencies.hpp"
+#include "environment/sharedUtils.hpp"
 
 #define DRIFTER_MODE 0
 #define LOCALIZER_MODE 1
@@ -27,3 +30,6 @@ void prod_SERCOM1_Handler();
 void prod_SERCOM3_Handler();
 
 #endif
+
+
+#endif // ACOUSEA_INFRASTRUCTURE_MKR_PROD_MAIN_HPP

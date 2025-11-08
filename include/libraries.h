@@ -48,6 +48,9 @@
 #include <NodeOperationRunner/NodeOperationRunner.h>
 #include <ModuleProxy/ModuleProxy.hpp>
 #include <TaskScheduler/TaskScheduler.h>
+#include <TaskScheduler/FunctionTask.hpp>
+#include <TaskScheduler/LambdaTask.hpp>
+#include <TaskScheduler/MethodTask.hpp>
 
 #endif
 

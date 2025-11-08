@@ -6,10 +6,9 @@
 
 #include "UBlox201/UBlox201_GSMSSLClient.hpp" // UBlox201 GSM SSL Client. OVERRIDES internal GSMSSLClient configuration, MUST BE INCLUDED BEFORE <MKRGSM.h>
 
-#include <MKRGSM.h>
 #include <ArduinoMqttClient.h>
 #include <Logger/Logger.h>
-#include <ErrorHandler/ErrorHandler.h>
+
 
 #include "GsmConfig.hpp"
 
@@ -40,14 +39,8 @@ private:
 
 private:
     GsmConfig config;
-
-    GSM gsmAccess;
-    GPRS gprs;
-
     UBlox201_GSMSSLClient ublox_gsmSslClient;
     MqttClient mqttClient; // Cliente MQTT moderno (ArduinoMqttClient)
-
-private:
     static constexpr char HEXMAP[] = "0123456789ABCDEF";
     static GsmMQTTPort* instance; // puntero a la instancia activa
 };

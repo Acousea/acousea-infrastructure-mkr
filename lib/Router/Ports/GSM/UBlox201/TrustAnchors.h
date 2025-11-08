@@ -3,10 +3,8 @@
 #define TRUST_ANCHORS_H
 
 #define _GSMROOT_CERTS_H_INCLUDED // This overrides the default GSMROOT_CERTS_H inclusion
-
-
-#define TRUST_ANCHORS_INCLUDE_AMAZONROOTCA1
 // --------- TRUST ANCHORS OPTIONS ----------- (UNCOMMENT TO INCLUDE)
+#define TRUST_ANCHORS_INCLUDE_AMAZONROOTCA1
 // #define TRUST_ANCHORS_INCLUDE_BALTIMORECYBERTRUST
 // #define TRUST_ANCHORS_INCLUDE_COMODORSA_CERTIFICATION_AUTHORITY
 // #define TRUST_ANCHORS_INCLUDE_DIGICERTGLOBALROOTCA
@@ -23,10 +21,17 @@
 
 struct GSMRootCert
 {
-    const char* name;
-    const unsigned char* data;
-    const int size;
+     const char* name;
+     const unsigned char* data;
+     const int size;
 };
+
+// #define GSM_NUM_ROOT_CERTS (sizeof(GSM_ROOT_CERTS) / sizeof(GSM_ROOT_CERTS[0]))
+extern const GSMRootCert GSM_ROOT_CERTS[];
+extern const unsigned int GSM_NUM_ROOT_CERTS;
+
+extern const GSMRootCert GSM_CUSTOM_ROOT_CERTS[];
+extern const unsigned int GSM_CUSTOM_NUM_ROOT_CERTS;
 
 // Certificado: AmazonRootCA1
 #ifdef TRUST_ANCHORS_INCLUDE_AMAZONROOTCA1
@@ -105,9 +110,5 @@ extern const unsigned int MicrosoftRSARootCertificateAuthority2017_der_len;
 extern const unsigned char VeriSign_der[];
 extern const unsigned int VeriSign_der_len;
 #endif // TRUST_ANCHORS_INCLUDE_VERISIGN_CERTIFICATE
-
-
-extern const GSMRootCert GSM_ROOT_CERTS[];
-extern const unsigned int GSM_NUM_ROOT_CERTS;
 
 #endif // TRUST_ANCHORS_H

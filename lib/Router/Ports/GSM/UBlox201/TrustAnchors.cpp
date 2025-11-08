@@ -1,5 +1,10 @@
 // Auto-generated trust anchors implementation
 #include "TrustAnchors.h"
+
+const GSMRootCert GSM_ROOT_CERTS[] = {};
+const unsigned int GSM_NUM_ROOT_CERTS = 0;
+
+
 #ifdef TRUST_ANCHORS_INCLUDE_AMAZONROOTCA1
 // Certificado: AmazonRootCA1
 const unsigned char AmazonRootCA1_der[] = {
@@ -1282,7 +1287,7 @@ const unsigned char VeriSign_der[] = {
 const unsigned int VeriSign_der_len = 1239;
 #endif
 
-const GSMRootCert GSM_ROOT_CERTS[] = {
+const GSMRootCert GSM_CUSTOM_ROOT_CERTS[] = {
 #ifdef TRUST_ANCHORS_INCLUDE_AMAZONROOTCA1
     {"AmazonRootCA1", AmazonRootCA1_der, static_cast<int>(AmazonRootCA1_der_len)},
 #endif
@@ -1349,4 +1354,5 @@ const GSMRootCert GSM_ROOT_CERTS[] = {
 
 };
 
-const unsigned int GSM_NUM_ROOT_CERTS = sizeof(GSM_ROOT_CERTS) / sizeof(GSM_ROOT_CERTS[0]); // 13 total maximum
+const unsigned int GSM_CUSTOM_NUM_ROOT_CERTS = sizeof(GSM_CUSTOM_ROOT_CERTS) / sizeof(GSM_CUSTOM_ROOT_CERTS[0]);
+// 13 total maximum

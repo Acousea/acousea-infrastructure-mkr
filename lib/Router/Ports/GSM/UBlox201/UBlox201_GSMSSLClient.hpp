@@ -4,6 +4,7 @@
 #if defined(ARDUINO) && defined(PLATFORM_HAS_GSM)
 
 #define OVERRIDE_DEFAULT_GSMROOT_CERTS_H // Uncomment to use custom trust anchors
+
 #ifdef OVERRIDE_DEFAULT_GSMROOT_CERTS_H
 #warning "Using custom root certificates for GSM, default GSMRootCerts will NOT be included."
 #include "TrustAnchors.h" // include default trust anchors (MUST be included BEFORE GSMSSLClient.h)
@@ -13,7 +14,9 @@
 #include <GSMSSLClient.h>
 #include <vector>
 #include "ClassName.h"
+#include "GPRS.h"
 #include "Logger/Logger.h"
+#include "Ports/GSM/GsmConfig.hpp"
 
 
 enum class CertType : uint8_t
@@ -34,7 +37,7 @@ struct StoredCert
 };
 
 // Estructura para contener el certificado
-struct GSMCertificate
+struct GSMUserCertificate
 {
     const char* name; // Nombre del certificado
     const uint8_t* data; // Datos del certificado (en formato binario)
@@ -49,17 +52,37 @@ struct GSMPrivateKey
     unsigned int size; // Tamaño de la clave privada
 };
 
+
 /**
  * https://kmpelectronics.eu/wp-content/uploads/2018/08/SARA-U2_ATCommands.pdf [PAGE 622 SPECIFICATION]
  */
 class UBlox201_GSMSSLClient final : public GSMSSLClient
 {
-    CLASS_NAME(MyGSMSSLClient)
+    CLASS_NAME(UBlox201_GSMSSLClient)
+    GSM gsmAccess;
+    GPRS gprs;
 
 public:
-    // using GSMSSLClient::GSMSSLClient; // heredar constructores
     UBlox201_GSMSSLClient() : GSMSSLClient()
     {
+        GSMSSLClient::setUserRoots(GSM_CUSTOM_ROOT_CERTS, GSM_CUSTOM_NUM_ROOT_CERTS);
+    }
+
+    void init(const GsmConfig& config)
+    {
+        LOG_CLASS_INFO(" -> Connecting to GSM network...");
+        while ((gsmAccess.begin(config.pin) != GSM_READY) ||
+            (gprs.attachGPRS(config.apn, config.user, config.pass) != GPRS_READY))
+        {
+            LOG_CLASS_WARNING(" -> GSM/GPRS not available, retrying...");
+            delay(2000);
+        }
+        LOG_CLASS_INFO(" -> GSM/GPRS connected");
+    }
+
+    unsigned long getTime()
+    {
+        return gsmAccess.getTime();
     }
 
     int connect(const char* host, uint16_t port) override
@@ -71,43 +94,59 @@ public:
     static void setModemNoDebug() { MODEM.noDebug(); }
 
     // 🔹 Helper centralizado
-    static bool logAndCheckResponse(const int result, const char* action, const char* name);
+    static bool logAndCheckResponse(int result, const char* action, const char* name);
 
 
-    [[nodiscard]] bool updateCerts(const GSMRootCert* rootCerts,
-                                   const size_t rootCertsSize,
-                                   const char* testBroker = "google.com"
-    );
+    // 🔹 Actualizar certificados raíz de confianza
+    [[nodiscard]] bool updateCerts(const GSMRootCert* rootCerts, size_t rootCertsSize,
+                                   const char* testBroker = "google.com");
 
-    [[nodiscard]] std::vector<StoredCert> listCertificates(CertType type);
+    // 🔹 Listar certificados almacenados
+    [[nodiscard]] static std::vector<StoredCert> listCertificates(CertType type);
 
 
-    // 🔹 Eliminar un certificado de cliente
-    [[nodiscard]] bool removeClientCertificate(const char* name);
+    // // 🔹 Eliminar un certificado de cliente
+    [[nodiscard]] static bool removeClientCertificate(const char* name);
 
     // 🔹 Eliminar una clave privada
-    [[nodiscard]] bool removePrivateKey(const char* name);
+    [[nodiscard]] static bool removePrivateKey(const char* name);
 
     // 🔹 Eliminar un certificado raíz por nombre
-    [[nodiscard]] bool removeRootCertificateByName(const char* name);
+    [[nodiscard]] static bool removeRootCertificateByName(const char* name);
 
     // 🔹 Eliminar múltiples certificados raíz (vector<string>)
-    [[nodiscard]] bool removeTrustedRootCertificates(const std::vector<char*>& names);
+    [[nodiscard]] static bool removeTrustedRootCertificates(const std::vector<char*>& names);
 
     // 🔹 Eliminar múltiples certificados raíz (array GSMRootCert)
-    [[nodiscard]] bool removeTrustedRootCertificates(const GSMRootCert* certs, size_t count);
+    [[nodiscard]] static bool removeTrustedRootCertificates(const GSMRootCert* certs, size_t count);
 
-    // 🔹 Eliminar todos los certificados raíz por defecto (trust_anchors)
-    [[nodiscard]] bool removeCustomTrustedRoots();
+    // 🔹 Eliminar todos los certificados raíz custom (trust_anchors)
+    [[nodiscard]] static bool removeCustomTrustedRoots();
+
+    // 🔹 Eliminar todos los certificados raíz por defecto (defined in GSM_ROOT_CERTS))
+    [[nodiscard]] static bool removeDefaultTrustedRoots();
 
     // 🔹 Importar un certificado raíz
-    void importTrustedRoot(const uint8_t* cert, const char* name, size_t size);
+    static void importTrustedRoot(const uint8_t* cert, const char* name, size_t size);
 
     // 🔹 Importar múltiples certificados raíz
-    void importTrustedRoots(const GSMRootCert* certs, size_t count);
+    static void importTrustedRoots(const GSMRootCert* certs, size_t count);
 
     // 🔹 Establecer múltiples certificados raíz de confianza para la conexión SSL
-    void setTrustedRoots(const GSMRootCert* gsm_root_cert, const size_t size);
+    void setTrustedRoots(const GSMRootCert* gsm_root_cert, size_t size);
+
+    // 🔹 Establecer certificado de cliente y clave privada
+    void setSignedCertificate(const uint8_t* cert, const char* name, size_t size) override;
+
+    // 🔹 Establecer clave privada de cliente
+    void setPrivateKey(const uint8_t* key, const char* name, size_t size) override;
+
+    [[nodiscard]] static bool setClockFromUnix(uint32_t unixTime, int8_t tzQuarterHours = 0);
+
+    [[nodiscard]] static bool getClock(String& outTime, uint32_t* outUnix = nullptr);
+
+    static void printTLSProfileStatus();
+
 
 #if ENVIRONMENT == ENV_TEST
     // 🔹 Probar conexión HTTPS/TLS a un host y puerto dados

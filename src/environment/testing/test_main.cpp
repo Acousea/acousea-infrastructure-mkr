@@ -3,15 +3,20 @@
 #include <string>
 
 // #include "WVariant.h"
-
-#include "Ports/GSM/UBlox201/UBlox201_GSMSSLClient.hpp"
-#include "TaskScheduler/LambdaTask.hpp"
+namespace logic = Dependencies::Logic;
+namespace sys = Dependencies::System;
+namespace comm = Dependencies::Comm;
+namespace hardware = Dependencies::Hardware;
+namespace shared = SharedUtils;
+namespace watchdog = WatchdogUtils;
 
 #ifdef PLATFORM_ARDUINO
+
 void test_solar_x_battery_controller()
 {
     // Actualiza cálculos internos
     // solarXBatteryController.sync();
+    auto solarXBatteryController = hardware::solarXBatteryController();
 
     const auto voltageSOCAcc = solarXBatteryController.voltageSOC_accurate();
     const auto voltageSOCRnd = solarXBatteryController.voltageSOC_rounded();
@@ -51,16 +56,19 @@ void test_solar_x_battery_controller()
 
 
 #ifdef PLATFORM_HAS_GSM
+
+
 void test_gsm_initialization()
 {
     // ------------------------ Test GSM Connection ------------------------
     // gsmPort.init();
-    // LOG_FREE_MEMORY("[MAIN] After GSM init");
+    comm::gsm().init();
+    LOG_FREE_MEMORY("[MAIN] After GSM init");
     LOG_FREE_MEMORY("[FREEMEM] Before listing certs");
     UBlox201_GSMSSLClient myGsmSslClient;
-    UBlox201_GSMSSLClient::setModemDebug();
-    const auto certs = myGsmSslClient.listCertificates(CertType::All);
-    GsmMQTTPort::printCertificates(certs);
+    // UBlox201_GSMSSLClient::setModemDebug();
+    // const auto certs = myGsmSslClient.listCertificates(CertType::All);
+    // GsmMQTTPort::printCertificates(certs);
     // myGsmSslClient.updateCerts(GSM_ROOT_CERTS, std::size(GSM_ROOT_CERTS));
     LOG_FREE_MEMORY("[MAIN] After listing certs");
 
@@ -84,9 +92,9 @@ void test_gsm_initialization()
 
     // myGsmSslClient.testConnection("www.google.com", 443, "/");
     // myGsmSslClient.testConnection("antapagon.com", 443, "/");
-    const auto connOk = myGsmSslClient.testTLSConnection("test432091-framework22.antapagon.com", 443, "/");
+    // const auto connOk = myGsmSslClient.testTLSConnection("test432091-framework22.antapagon.com", 443, "/");
 
-    LOG_INFO("GSM TLS connection test result: %s", connOk ? "SUCCESS" : "FAILURE");
+    // LOG_INFO("GSM TLS connection test result: %s", connOk ? "SUCCESS" : "FAILURE");
     // myGsmSslClient.testConnection("www.antapagon.com", 443, "/", true);
 
 
@@ -98,7 +106,7 @@ void test_gsm_initialization()
 void test_gsm_sending_packets()
 {
     // Try to send a packet
-    const auto packets = gsmPort.read();
+    const auto packets = comm::gsm().read();
     if (packets.empty())
     {
         ConsoleSerial.println("No packets received.");
@@ -115,7 +123,7 @@ void test_gsm_sending_packets()
 
     ConsoleSerial.println("Sending packet...");
     const std::vector<uint8_t> data = {0x01, 0x02, 0x03, 0x04, 0x05};
-    gsmPort.send(data);
+    comm::gsm().send(data);
 
     ConsoleSerial.println("Looping...");
 }
@@ -125,7 +133,7 @@ void test_gsm_sending_packets()
 void test_rockpi_power_controller()
 {
     ConsoleSerial.println("[Rockpi Power Controller Test]");
-    bool is_rockpi_up = piPowerController.isRockPiUp();
+    bool is_rockpi_up = hardware::pi().isRockPiUp();
     ConsoleSerial.print("[BEGIN] Rockpi is up? ");
     ConsoleSerial.println(is_rockpi_up ? "true" : "false");
 
@@ -133,14 +141,14 @@ void test_rockpi_power_controller()
     if (is_rockpi_up)
     {
         ConsoleSerial.println("[UP]: Rockpi is Up -> Shutting down");
-        piPowerController.commandShutdown();
+        hardware::pi().commandShutdown();
     }
     else
     {
         ConsoleSerial.println("[DOWN]: Rockpi is Down -> Starting up");
-        piPowerController.commandStartup();
+        hardware::pi().commandStartup();
     }
-    is_rockpi_up = piPowerController.isRockPiUp();
+    is_rockpi_up = hardware::pi().isRockPiUp();
     ConsoleSerial.print("[END] Rockpi is up? ");
     ConsoleSerial.println(is_rockpi_up ? "true" : "false");
 }
@@ -149,7 +157,7 @@ void test_rockpi_power_controller()
 void test_sleep_and_wake()
 {
     ConsoleSerial.println("Sleeping for 5 seconds...");
-    WatchdogUtils::sleepFor(5000); // 5 seconds
+    watchdog::sleepFor(5000); // 5 seconds
     ConsoleSerial.println("Woke up!");
 }
 #endif
@@ -160,12 +168,13 @@ void test_setup()
 #ifdef PLATFORM_ARDUINO
     ConsoleSerial.begin(9600);
     delay(1000);
-    // while (!ConsoleSerial) {
-    //     digitalWrite(LED_BUILTIN, HIGH);
-    //     delay(100);
-    //     digitalWrite(LED_BUILTIN, LOW);
-    //     delay(100);
-    // }
+    while (!ConsoleSerial)
+    {
+        digitalWrite(LED_BUILTIN, HIGH);
+        delay(100);
+        digitalWrite(LED_BUILTIN, LOW);
+        delay(100);
+    }
     ConsoleSerial.println("[arduino] Setup: starting...");
 #endif
 
@@ -198,67 +207,68 @@ void test_setup()
 
 #endif
 
-    WatchdogUtils::enable(15000); // 15 seconds
-
     // Inicializa el administrador de la tarjeta SD
-    storageManagerRef.begin();
+    hardware::sd().begin();
 
-    rtcControllerRef.init();
+    hardware::rtc().init();
 
-    rtcControllerRef.setEpoch(1760441400);
+    hardware::rtc().setEpoch(1760441400);
 
     // Logger initialization and configuration
     Logger::initialize(
-        &displayRef,
-        &storageManagerRef,
-        &rtcControllerRef,
+        &hardware::display(),
+        &hardware::storage(),
+        &hardware::rtc(),
         "log.csv", // MAX 8 chars for 8.3 filenames
-        Logger::Mode::Both
+        Logger::Mode::SerialOnly
     );
     Logger::logInfo("================ Setting up Node =================");
 
-
     // Initialize the gps
-    // gps->init();
+    hardware::gps().init();
 
 
 #ifdef PLATFORM_ARDUINO
     // batteryController->init();
-    solarXBatteryController.init();
+    hardware::solarXBatteryController().init();
 
 
-    static LambdaTask solarXBatterySyncTask(15000, [&]()
-    {
-        solarXBatteryController.sync();
-    });
-
-    // static MethodTask<BatteryProtectionPolicy> batteryProtectionPolicyTask(
-    //     10000, // This must be less than watchdog timeout (10s)
-    //     &batteryProtectionPolicy,
-    //     &BatteryProtectionPolicy::enforce
-    // );
-    // scheduler.addTask(&batteryProtectionPolicyTask);
-
-    scheduler.addTask(&solarXBatterySyncTask);
-
-
-    static FunctionTask batteryTestTask(
-        30000,
-        [] { withLedIndicator(test_solar_x_battery_controller); }
+    static LambdaTask solarXBatterySyncTask(15000,
+                                            [&]() { hardware::solarXBatteryController().sync(); }
     );
-    scheduler.addTask(&batteryTestTask);
+
+
+    static MethodTask<BatteryProtectionPolicy> batteryProtectionPolicyTask(10000,
+                                                                           &logic::batteryProtectionPolicy(),
+                                                                           &BatteryProtectionPolicy::enforce
+    );
+
+    static FunctionTask batteryTestTask(30000,
+                                        [] { SharedUtils::withLedIndicator(test_solar_x_battery_controller); }
+    );
+    sys::scheduler().addTask(&solarXBatterySyncTask);
+    // scheduler.addTask(&batteryProtectionPolicyTask);
+    // scheduler.addTask(&batteryTestTask);
+
 #endif
+
+#ifdef PLATFORM_HAS_GSM
+    test_gsm_initialization();
+#endif
+
+
+    watchdog::enable(15000); // 15 seconds
 }
 
 
 void test_loop()
 {
-    executeEvery(5000, []
+    shared::executeEvery(5000, []
     {
-        withLedIndicator([]
+        shared::withLedIndicator([]
         {
             LOG_FREE_MEMORY("[🧪 TEST LOOP START]");
-            scheduler.run();
+            sys::scheduler().run();
             LOG_FREE_MEMORY("[🧪 TEST LOOP END]");
         });
     });
@@ -311,19 +321,19 @@ void test_onReceiveWrapper(int packetSize)
 // Attach the interrupt handler to the SERCOM (DON'T DELETE Essential for the mySerial3 to work)
 void test_SERCOM3_Handler()
 {
-    // mySerial3.IrqHandler();
+    mySerial3.IrqHandler();
 }
 
 void test_SERCOM1_Handler()
 {
     // SerialUSB.println("INTERRUPT SERCOM0");
-    softwareSerialSercom1.IrqHandler();
+    hardware::uart1().IrqHandler();
 }
 
 void test_SERCOM0_Handler()
 {
     // SerialUSB.println("INTERRUPT SERCOM0");
-    softwareSerialSercom0.IrqHandler();
+    hardware::uart0().IrqHandler();
 }
 
 

@@ -160,7 +160,7 @@ void Logger::vlog(const char* logType, const char* message)
 }
 
 
-void Logger::vlog(const char* logType, const char* fmt, va_list args)
+void Logger::vlog(const char* logType, const char* fmt, va_list &args)
 {
     char timestamp[20];
     getTimestamp(timestamp, sizeof(timestamp));

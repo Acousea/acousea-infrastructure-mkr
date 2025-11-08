@@ -13,9 +13,10 @@ const auto SECRET_GPRS_PASSWORD = "pass";
 const auto AWS_MQTT_BROKER = "mock-broker.amazonaws.com";
 const auto AWS_MQTT_CLIENT_ID = "MockClientId";
 
-const auto CLIENT_CERTIFICATE = R"(-----BEGIN CERTIFICATE-----
-MOCK
------END CERTIFICATE-----)";
+const auto CLIENT_CERTIFICATE =
+    "(-----BEGIN CERTIFICATE-----"
+    "MOCK"
+    "-----END CERTIFICATE-----)";
 
 
 #endif
