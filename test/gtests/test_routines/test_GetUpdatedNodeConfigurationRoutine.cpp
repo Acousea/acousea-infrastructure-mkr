@@ -74,7 +74,7 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, ExecuteReturnsUpdatedConfiguratio
     req.body.command.command.requestedConfiguration.requestedModules_count = 1;
     req.body.command.command.requestedConfiguration.requestedModules[0] = acousea_ModuleCode_BATTERY_MODULE;
 
-    GetUpdatedNodeConfigurationRoutine routine(repo, proxy, &gps, &battery, &rtc);
+    GetUpdatedNodeConfigurationRoutine routine(repo, proxy, gps, battery, rtc);
     auto result = routine.execute(req);
 
     ASSERT_TRUE(result.isSuccess()) << "Expected success but got: " << result.getError();
@@ -112,7 +112,7 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, ReturnsPendingIfICListenNotFresh)
     req.body.command.command.requestedConfiguration.requestedModules_count = 1;
     req.body.command.command.requestedConfiguration.requestedModules[0] = acousea_ModuleCode_ICLISTEN_HF;
 
-    GetUpdatedNodeConfigurationRoutine routine(repo, proxy, &gps, &battery, &rtc);
+    GetUpdatedNodeConfigurationRoutine routine(repo, proxy, gps, battery, rtc);
     auto result = routine.execute(req);
 
     EXPECT_TRUE(result.isPending());
@@ -133,7 +133,7 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfPacketNotCommandType) {
     acousea_CommunicationPacket invalidPkt = acousea_CommunicationPacket_init_default;
     invalidPkt.which_body = acousea_CommunicationPacket_report_tag; // no es command
 
-    GetUpdatedNodeConfigurationRoutine routine(repo, proxy, &gps, &battery, &rtc);
+    GetUpdatedNodeConfigurationRoutine routine(repo, proxy, gps, battery, rtc);
     auto result = routine.execute(invalidPkt);
 
     EXPECT_TRUE(result.isError());
@@ -151,7 +151,7 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfNoPacketProvided) {
     MockBatteryController battery;
     MockRTCController rtc;
 
-    GetUpdatedNodeConfigurationRoutine routine(repo, proxy, &gps, &battery, &rtc);
+    GetUpdatedNodeConfigurationRoutine routine(repo, proxy, gps, battery, rtc);
     auto result = routine.execute(std::nullopt);
 
     EXPECT_TRUE(result.isError());
@@ -179,7 +179,7 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, ReturnsRTCModuleCorrectly) {
     req.body.command.command.requestedConfiguration.requestedModules_count = 1;
     req.body.command.command.requestedConfiguration.requestedModules[0] = acousea_ModuleCode_RTC_MODULE;
 
-    GetUpdatedNodeConfigurationRoutine routine(repo, proxy, &gps, &battery, &rtc);
+    GetUpdatedNodeConfigurationRoutine routine(repo, proxy, gps, battery, rtc);
     auto result = routine.execute(req);
 
     ASSERT_TRUE(result.isSuccess());

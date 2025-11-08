@@ -90,7 +90,7 @@ TEST_F(CompleteStatusReportRoutineTest, Execute_SuccessfulReportPacket)
         "ICListenHF module should be fresh in cache for this test.";
 
     proxy.injectHFModuleFresh(wrapper);
-    CompleteStatusReportRoutine routine(repo, proxy, &gps, &battery, &rtc);
+    CompleteStatusReportRoutine routine(repo, proxy, gps, battery, rtc);
     auto result = routine.execute(std::nullopt);
 
     ASSERT_TRUE(result.isSuccess()) << "Routine should produce success result. Error: " << result.getError();
@@ -131,7 +131,7 @@ TEST_F(CompleteStatusReportRoutineTest, Execute_ReturnsPendingIfICListenNotFresh
     MockBatteryController battery;
     MockRTCController rtc;
 
-    CompleteStatusReportRoutine routine(repo, proxy, &gps, &battery, &rtc);
+    CompleteStatusReportRoutine routine(repo, proxy, gps, battery, rtc);
     auto result = routine.execute(std::nullopt);
 
     EXPECT_TRUE(result.isPending());
@@ -153,7 +153,7 @@ TEST_F(CompleteStatusReportRoutineTest, Execute_FailsWithoutOperationModesModule
     MockBatteryController battery;
     MockRTCController rtc;
 
-    CompleteStatusReportRoutine routine(repo, proxy, &gps, &battery, &rtc);
+    CompleteStatusReportRoutine routine(repo, proxy, gps, battery, rtc);
     auto result = routine.execute(std::nullopt);
 
     EXPECT_TRUE(result.isError());
@@ -175,7 +175,7 @@ TEST_F(CompleteStatusReportRoutineTest, Execute_FailsWithoutReportTypesModule)
     MockBatteryController battery;
     MockRTCController rtc;
 
-    CompleteStatusReportRoutine routine(repo, proxy, &gps, &battery, &rtc);
+    CompleteStatusReportRoutine routine(repo, proxy, gps, battery, rtc);
     auto result = routine.execute(std::nullopt);
 
     EXPECT_TRUE(result.isError());
@@ -199,7 +199,7 @@ TEST_F(CompleteStatusReportRoutineTest, Execute_IgnoresUnsupportedModulesGracefu
     MockBatteryController battery;
     MockRTCController rtc;
 
-    CompleteStatusReportRoutine routine(repo, proxy, &gps, &battery, &rtc);
+    CompleteStatusReportRoutine routine(repo, proxy, gps, battery, rtc);
     auto result = routine.execute(std::nullopt);
 
     EXPECT_TRUE(result.isSuccess());
