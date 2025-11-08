@@ -18,6 +18,7 @@ struct GsmConfig
 
     char inputTopic[100]{};
     char outputTopic[100]{};
+    char statusTopic[100]{};
 
     GsmConfig(
         const char* pin_,
@@ -35,6 +36,7 @@ struct GsmConfig
     {
         snprintf(inputTopic, sizeof(inputTopic), "%s/mt/%s", baseTopic, clientId_);
         snprintf(outputTopic, sizeof(outputTopic), "%s/mo/%s", baseTopic, clientId_);
+        snprintf(statusTopic, sizeof(statusTopic), "%s/status/%s", baseTopic, clientId_);
     }
 };
 

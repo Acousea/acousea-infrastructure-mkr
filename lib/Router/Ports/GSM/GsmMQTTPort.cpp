@@ -17,6 +17,7 @@ unsigned long GsmMQTTPort::getTime()
 
 void GsmMQTTPort::mqttMessageHandler(int messageSize)
 {
+    LOG_CLASS_INFO(" -> MQTT Message Handler invoked. Message size: %d bytes", messageSize);
     std::vector<uint8_t> packet;
     packet.reserve(messageSize);
 
@@ -26,6 +27,7 @@ void GsmMQTTPort::mqttMessageHandler(int messageSize)
         packet.push_back(static_cast<uint8_t>(c));
     }
 
+    LOG_CLASS_INFO(" -> MQTT Message Handler: Received %d bytes", packet.size());
     if (!packet.empty())
     {
         if (instance->receivedRawPackets.size() >= GsmMQTTPort::MAX_QUEUE_SIZE)
@@ -63,6 +65,24 @@ void GsmMQTTPort::printCertificates(const std::vector<StoredCert>& currentCerts)
             cert.expiration
         );
     }
+}
+
+bool GsmMQTTPort::tryConnect()
+{
+    if (mqttClient.connected())
+    {
+        LOG_CLASS_INFO(" -> Already connected to MQTT broker");
+        return true;
+    }
+    constexpr unsigned long MAX_MQTT_CONNECT_RETRIES = 3; // 30 seconds
+    unsigned long attempt = 0;
+    while (!mqttClient.connect(config.broker, config.port) && (attempt++ < MAX_MQTT_CONNECT_RETRIES))
+    {
+        LOG_CLASS_WARNING(" -> MQTT connection failed, retrying...");
+        delay(5000);
+    }
+    LOG_CLASS_INFO(" -> Successfully connected to MQTT broker");
+    return mqttClient.connected();
 }
 
 void GsmMQTTPort::init()
@@ -164,21 +184,32 @@ void GsmMQTTPort::init()
     // ========== Initialize MQTT broker ==========
     mqttClient.onMessage(GsmMQTTPort::mqttMessageHandler);
     mqttClient.setId(config.clientId);
+    mqttClient.setCleanSession(false); // Persisted session to receive messages while offline
+    mqttClient.setKeepAliveInterval(60 * 1000L); // 60 seconds keep-alive
+    mqttClient.setConnectionTimeout(30 * 1000L); // 30 seconds for connection timeout
+
 
     LOG_CLASS_INFO(" -> Connecting to MQTT broker %s:%d... Modem Time is %lu",
                    config.broker, config.port, getTime()
     );
 
-    while (!mqttClient.connect(config.broker, config.port)
-    )
-    {
-        LOG_CLASS_WARNING(" -> MQTT connection failed, retrying...");
-        delay(5000);
-    }
-    LOG_CLASS_INFO(" -> Successfully connected to MQTT broker");
+
+    // Try to connect to the MQTT broker
+    tryConnect();
+
+    // Setup Last Will and Testament (LWT)
+    // setupLastWill();
+    // LOG_CLASS_INFO(" -> Last Will and Testament (LWT) configured.");
 
     // Automatically subscribe to input topic
     mqttSubscribeToTopic(config.inputTopic);
+    LOG_CLASS_INFO(" -> Subscribed to input topic: %s", config.inputTopic);
+
+    // Publish online status: Status topic, retain=true, QoS=1 (retain the last status)
+    mqttPublishToTopic(MQTT_CONNECT_MESSAGE,
+                       config.statusTopic,
+                       false,
+                       1);
 
     LOG_CLASS_INFO(" -> Finished initialization.");
 }
@@ -186,7 +217,7 @@ void GsmMQTTPort::init()
 
 bool GsmMQTTPort::send(const std::vector<uint8_t>& data)
 {
-    return mqttPublishToTopic(data.data(), data.size(), config.outputTopic);
+    return mqttPublishToTopic(data.data(), data.size(), config.outputTopic, false, 1);
 }
 
 bool GsmMQTTPort::available()
@@ -203,9 +234,14 @@ std::vector<std::vector<uint8_t>> GsmMQTTPort::read()
 }
 
 
-bool GsmMQTTPort::mqttPublishToTopic(const uint8_t* data, size_t size, const char* topic)
+bool GsmMQTTPort::mqttPublishToTopic(const uint8_t* data, size_t size, const char* topic, const bool retained,
+                                     const uint8_t qos)
 {
-    if (!mqttClient.beginMessage(topic))
+    // Try to connect to the MQTT broker
+    tryConnect();
+    LOG_CLASS_INFO(" -> Publishing %d bytes to topic: %s (retain=%s, QoS=%d)",
+                   size, topic, retained ? "true" : "false", qos);
+    if (!mqttClient.beginMessage(topic, false, 1)) // QoS 1, retain =false
     {
         LOG_CLASS_ERROR("Failed to begin MQTT message on %s", topic);
         return false;
@@ -231,28 +267,68 @@ bool GsmMQTTPort::mqttPublishToTopic(const uint8_t* data, size_t size, const cha
     return true;
 }
 
+bool GsmMQTTPort::mqttPublishToTopic(const char* payload, const char* topic, const bool retained, const uint8_t qos)
+{
+    // Try to connect to the MQTT broker
+    tryConnect();
+
+    LOG_CLASS_INFO(" -> Preparing to publish payload=%s to topic=%s |(retain=%s, QoS=%d)",
+                   payload, topic, retained ? "true" : "false", qos);
+
+    if (!payload || !topic || strlen(topic) == 0)
+    {
+        LOG_CLASS_ERROR("Invalid MQTT publish parameters (null or empty)");
+        return false;
+    }
+
+    if (!mqttClient.beginMessage(topic, retained, qos))
+    {
+        LOG_CLASS_ERROR("Failed to begin MQTT message on topic: %s", topic);
+        return false;
+    }
+
+    const size_t expectedSize = strlen(payload);
+    const size_t written = mqttClient.print(payload);
+
+    if (written != expectedSize)
+    {
+        LOG_CLASS_WARNING(
+            "Partial MQTT payload write on topic %s (expected %d bytes, wrote %d bytes)",
+            topic, expectedSize, written
+        );
+    }
+
+    if (!mqttClient.endMessage())
+    {
+        LOG_CLASS_ERROR("Failed to finalize MQTT message on topic: %s (only wrote %d of %d bytes)",
+                        topic, written, expectedSize);
+        return false;
+    }
+
+    LOG_CLASS_INFO("Published %d bytes to %s", written, topic);
+    return true;
+}
+
 
 void GsmMQTTPort::mqttSubscribeToTopic(const char* topic)
 {
-    const int result = mqttClient.subscribe(topic);
+    const int result = mqttClient.subscribe(topic, 1);
 
-    switch (result)
+    if (result == 0)
     {
-    case 0:
         LOG_CLASS_ERROR("Failed to subscribe to topic: %s", topic);
-        break;
-    case 1:
-        LOG_CLASS_INFO("Successfully subscribed to topic %s with QoS 0", topic);
-        break;
-    case 2:
-        LOG_CLASS_INFO("Successfully subscribed to topic %s with QoS 1", topic);
-        break;
-    case 3:
-        LOG_CLASS_INFO("Successfully subscribed to topic %s with QoS 2", topic);
-        break;
-    default:
-        LOG_CLASS_WARNING("Unexpected subscribe return code (%d) for topic %s", result, topic);
-        break;
+        return;
+    }
+
+    // Obtener el QoS confirmado por el broker
+    if (const int qosGranted = mqttClient.subscribeQoS();
+        qosGranted >= 0 && qosGranted <= 2)
+    {
+        LOG_CLASS_INFO("Successfully subscribed to topic %s with granted QoS %d", topic, qosGranted);
+    }
+    else
+    {
+        LOG_CLASS_WARNING("Subscription to %s succeeded, but invalid QoS response (%d)", topic, qosGranted);
     }
 }
 
@@ -260,6 +336,50 @@ void GsmMQTTPort::mqttSubscribeToTopic(const char* topic)
 void GsmMQTTPort::mqttLoop()
 {
     mqttClient.poll();
+}
+
+void GsmMQTTPort::setupLastWill()
+{
+    LOG_CLASS_INFO(" -> Configuring Last Will and Testament (LWT)...");
+
+    if (!config.statusTopic || strlen(config.statusTopic) == 0)
+    {
+        LOG_CLASS_WARNING(" -> Skipping LWT setup: status topic not defined");
+        return;
+    }
+
+    // Begin LWT configuration (retain = true, QoS = 1)
+    if (!mqttClient.beginWill(config.statusTopic, true, 1))
+    {
+        LOG_CLASS_ERROR(" -> Failed to begin LWT message setup on topic: %s", config.statusTopic);
+        return;
+    }
+
+    // Payload = "offline"
+    mqttClient.print(MQTT_DISCONNECT_MESSAGE);
+
+    if (!mqttClient.endWill())
+    {
+        LOG_CLASS_ERROR(" -> Failed to finalize LWT message on topic: %s", config.statusTopic);
+        return;
+    }
+
+    LOG_CLASS_INFO(" -> LWT configured successfully on topic: %s (retain=true, QoS=1)",
+                   config.statusTopic);
+}
+
+
+void GsmMQTTPort::mqttStop()
+{
+    if (mqttClient.connected())
+    {
+        // Status topic, retain=true, QoS=1 (retain the last status)
+        mqttPublishToTopic(MQTT_DISCONNECT_MESSAGE,
+                           config.statusTopic,
+                           true,
+                           1);
+        mqttClient.stop();
+    }
 }
 
 

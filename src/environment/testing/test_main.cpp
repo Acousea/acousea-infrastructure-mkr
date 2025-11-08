@@ -87,7 +87,8 @@ void test_gsm_initialization()
         0x20, 0x70, 0x61, 0x63, 0x6B, 0x65, 0x74
     };
 
-    // gsmPort.send(payload);
+    comm::gsm().send(payload);
+
     // GsmPort::testConnection("example.com", 80, "/", false);
 
     // myGsmSslClient.testConnection("www.google.com", 443, "/");
@@ -243,10 +244,16 @@ void test_setup()
                                                                            &BatteryProtectionPolicy::enforce
     );
 
+    static MethodTask<GsmMQTTPort> mqttPollTask(10000,
+                                                &comm::gsm(),
+                                                &GsmMQTTPort::mqttLoop
+    );
+
     static FunctionTask batteryTestTask(30000,
                                         [] { SharedUtils::withLedIndicator(test_solar_x_battery_controller); }
     );
     sys::scheduler().addTask(&solarXBatterySyncTask);
+    sys::scheduler().addTask(&mqttPollTask);
     // scheduler.addTask(&batteryProtectionPolicyTask);
     // scheduler.addTask(&batteryTestTask);
 
