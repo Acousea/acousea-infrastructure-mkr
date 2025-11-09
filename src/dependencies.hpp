@@ -308,7 +308,7 @@ namespace Dependencies
         inline std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType>& devicePortMap()
         {
             static std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType> map = {
-                {ModuleProxy::DeviceAlias::ICListen, IPort::PortType::SerialPort},
+                {ModuleProxy::DeviceAlias::PIDevice, IPort::PortType::SerialPort},
                 {ModuleProxy::DeviceAlias::VR2C, IPort::PortType::SerialPort}
             };
             return map;
@@ -371,6 +371,14 @@ namespace Dependencies
             return instance;
         }
 
+        inline RelayPacketRoutine& relayPacketRoutine()
+        {
+            static RelayPacketRoutine instance(
+                Comm::router(), {IPort::PortType::GsmMqttPort, IPort::PortType::SBDPort}
+            );
+            return instance;
+        }
+
         // ===================== Routines Map =====================
         // Igual que en tu código: std::map<uint8_t, std::map<uint8_t, IRoutine<...>*>>.
         inline std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>>& routinesMap()
@@ -391,6 +399,11 @@ namespace Dependencies
                 {
                     acousea_CommunicationPacket_report_tag, {
                         {acousea_ReportBody_statusPayload_tag, &completeStatusReportRoutine()}
+                    }
+                },
+                {
+                    acousea_CommunicationPacket_error_tag, {
+                        {acousea_ErrorBody_errorMessage_tag, &relayPacketRoutine()} // Reenvía errores
                     }
                 }
             };

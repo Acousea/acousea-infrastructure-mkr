@@ -1,22 +1,26 @@
+#ifndef UNIT_TESTING
+#define UNIT_TESTING
+#endif
+
+
 #include <gtest/gtest.h>
 #include "ModuleProxy/ModuleProxy.hpp"
 #include "Logger/Logger.h"
 #include "ErrorHandler/ErrorHandler.h"
 #include <ConsoleDisplay/ConsoleDisplay.hpp>
+
+#include <Ports/IPort.h>
 #include <Ports/Iridium/MockIridiumPort.h>
 #include <Ports/LoRa/MockLoRaPort.h>
 #include <Ports/Serial/MockSerialPort.h>
 
-
-#ifndef UNIT_TESTING
-#define UNIT_TESTING
-#endif
 
 #ifdef UNIT_TESTING
 #define DBG(msg) std::cerr << "[DBG] " << msg << std::endl
 #else
 #define DBG(msg)
 #endif
+
 
 
 class ModuleProxyTest : public ::testing::Test
@@ -104,7 +108,7 @@ TEST_F(ModuleProxyTest, SendModuleBuildsValidPacket)
     DBG("Created wrapper with serialNumber: " << wrapper.module.icListenHF.serialNumber);
 
     // Simular el envío
-    bool result = proxy.sendModule(acousea_ModuleCode_ICLISTEN_HF, wrapper, ModuleProxy::DeviceAlias::ICListen);
+    bool result = proxy.sendModule(acousea_ModuleCode_ICLISTEN_HF, wrapper, ModuleProxy::DeviceAlias::PIDevice);
 
     EXPECT_TRUE(result);
 

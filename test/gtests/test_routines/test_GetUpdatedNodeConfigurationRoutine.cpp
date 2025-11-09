@@ -2,6 +2,7 @@
 #define UNIT_TESTING
 #endif
 
+
 #include <gtest/gtest.h>
 #include "Logger/Logger.h"
 #include <ConsoleDisplay/ConsoleDisplay.hpp>
@@ -16,31 +17,36 @@
 
 // ................. Common test resources ..................
 #include "../common_test_resources/InMemoryStorageManager.hpp"
+#include "../common_test_resources/DummyPort.hpp"
 #include "../common_test_resources/TestableNodeConfigurationRepository.hpp"
-
 
 // =====================================================================
 // Mock Router & Proxy
 // =====================================================================
-class DummyRouter {};
 
-class MockModuleProxy : public ModuleProxy {
+class MockModuleProxy : public ModuleProxy
+{
 public:
-    explicit MockModuleProxy() : ModuleProxy(reinterpret_cast<Router&>(dummyRouter)) {}
+    explicit MockModuleProxy() : ModuleProxy(reinterpret_cast<Router &>(router)) {}
 
 private:
-    DummyRouter dummyRouter;
+    DummyPort serialPort{IPort::PortType::SerialPort};
+    DummyPort iridiumPort{IPort::PortType::SBDPort};
+    DummyPort loraPort{IPort::PortType::LoraPort};
+
+    Router router{std::vector<IPort *>{&serialPort, &iridiumPort, &loraPort}};
 };
 
 // =====================================================================
 // Fixture común con Logger y ErrorHandler seguro
 // =====================================================================
-class GetUpdatedNodeConfigurationRoutineTest : public ::testing::Test {
+class GetUpdatedNodeConfigurationRoutineTest : public ::testing::Test
+{
 protected:
-    void SetUp() override {
-        ErrorHandler::setHandler([](const char* msg) {
-            fprintf(stderr, "[TEST_ERROR_HANDLER] %s\n", msg);
-        });
+    void SetUp() override
+    {
+        ErrorHandler::setHandler([](const char *msg)
+                                 { fprintf(stderr, "[TEST_ERROR_HANDLER] %s\n", msg); });
 
         Logger::initialize(&display, nullptr, nullptr, "LOG.TXT", Logger::Mode::SerialOnly);
     }
@@ -53,7 +59,8 @@ protected:
 // =====================================================================
 
 // Caso 1: Devuelve con éxito la configuración actual codificada en UpdatedNodeConfigurationPayload
-TEST_F(GetUpdatedNodeConfigurationRoutineTest, ExecuteReturnsUpdatedConfigurationPacket) {
+TEST_F(GetUpdatedNodeConfigurationRoutineTest, ExecuteReturnsUpdatedConfigurationPacket)
+{
     InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
     repo.saveConfiguration(TestableNodeConfigurationRepository::makeDefault());
@@ -78,22 +85,21 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, ExecuteReturnsUpdatedConfiguratio
     auto result = routine.execute(req);
 
     ASSERT_TRUE(result.isSuccess()) << "Expected success but got: " << result.getError();
-    const auto& pkt = result.getValueConst();
+    const auto &pkt = result.getValueConst();
     EXPECT_TRUE(pkt.has_routing);
     EXPECT_EQ(pkt.which_body, acousea_CommunicationPacket_response_tag);
 
-    const auto& resp = pkt.body.response;
-    EXPECT_EQ(resp.which_response, acousea_ResponseBody_updatedConfiguration_tag) <<
-        "Expected updatedConfiguration response type = " <<  acousea_ResponseBody_updatedConfiguration_tag << ", but got " << resp.which_response;
-    const auto& updated = resp.response.updatedConfiguration;
+    const auto &resp = pkt.body.response;
+    EXPECT_EQ(resp.which_response, acousea_ResponseBody_updatedConfiguration_tag) << "Expected updatedConfiguration response type = " << acousea_ResponseBody_updatedConfiguration_tag << ", but got " << resp.which_response;
+    const auto &updated = resp.response.updatedConfiguration;
 
     EXPECT_GT(updated.modules_count, 0) << "Expected at least one module in updated configuration";
-    EXPECT_EQ(updated.modules[0].key, acousea_ModuleCode_BATTERY_MODULE) <<
-        "Expected first module key to be BATTERY_MODULE, but got " << updated.modules[0].key;
+    EXPECT_EQ(updated.modules[0].key, acousea_ModuleCode_BATTERY_MODULE) << "Expected first module key to be BATTERY_MODULE, but got " << updated.modules[0].key;
 }
 
 // Caso 2: Devuelve pending si se solicita un módulo no fresco
-TEST_F(GetUpdatedNodeConfigurationRoutineTest, ReturnsPendingIfICListenNotFresh) {
+TEST_F(GetUpdatedNodeConfigurationRoutineTest, ReturnsPendingIfICListenNotFresh)
+{
     InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
     repo.saveConfiguration(TestableNodeConfigurationRepository::makeDefault());
@@ -120,7 +126,8 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, ReturnsPendingIfICListenNotFresh)
 }
 
 // Caso 3: Falla si el paquete no tiene el body esperado
-TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfPacketNotCommandType) {
+TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfPacketNotCommandType)
+{
     InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
     repo.saveConfiguration(TestableNodeConfigurationRepository::makeDefault());
@@ -141,7 +148,8 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfPacketNotCommandType) {
 }
 
 // Caso 4: Falla si no se pasa ningún paquete
-TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfNoPacketProvided) {
+TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfNoPacketProvided)
+{
     InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
     repo.saveConfiguration(TestableNodeConfigurationRepository::makeDefault());
@@ -159,7 +167,8 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, FailsIfNoPacketProvided) {
 }
 
 // Caso 5: Devuelve correctamente la hora del RTC
-TEST_F(GetUpdatedNodeConfigurationRoutineTest, ReturnsRTCModuleCorrectly) {
+TEST_F(GetUpdatedNodeConfigurationRoutineTest, ReturnsRTCModuleCorrectly)
+{
     InMemoryStorageManager storage;
     NodeConfigurationRepository repo(storage);
     repo.saveConfiguration(TestableNodeConfigurationRepository::makeDefault());
@@ -183,8 +192,8 @@ TEST_F(GetUpdatedNodeConfigurationRoutineTest, ReturnsRTCModuleCorrectly) {
     auto result = routine.execute(req);
 
     ASSERT_TRUE(result.isSuccess());
-    const auto& pkt = result.getValueConst();
-    const auto& updated = pkt.body.response.response.updatedConfiguration;
+    const auto &pkt = result.getValueConst();
+    const auto &updated = pkt.body.response.response.updatedConfiguration;
     ASSERT_GE(updated.modules_count, 1);
     EXPECT_EQ(updated.modules[0].key, acousea_ModuleCode_RTC_MODULE);
 }

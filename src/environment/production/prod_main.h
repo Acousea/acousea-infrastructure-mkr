@@ -2,7 +2,6 @@
 #define ACOUSEA_INFRASTRUCTURE_MKR_PROD_MAIN_HPP
 
 // #include "../lib/MockLib/include/library.h"
-
 #include "dependencies.hpp"
 #include "environment/sharedUtils.hpp"
 

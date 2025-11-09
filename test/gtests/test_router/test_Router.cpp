@@ -4,7 +4,6 @@
 
 #include <gtest/gtest.h>
 
-
 #include "Logger/Logger.h"
 #include <ConsoleDisplay/ConsoleDisplay.hpp>
 
@@ -12,6 +11,7 @@
 
 #include "../common_test_resources/DummyPort.hpp"
 #include "../common_test_resources/PacketUtils.hpp"
+
 
 
 // ======================================================================

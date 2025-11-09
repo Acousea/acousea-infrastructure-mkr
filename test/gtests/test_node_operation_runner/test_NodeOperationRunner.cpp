@@ -2,6 +2,8 @@
 #define UNIT_TESTING
 #endif
 
+
+
 #include <gtest/gtest.h>
 #include "NodeOperationRunner/NodeOperationRunner.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
@@ -158,17 +160,17 @@ TEST_F(NodeOperationRunnerTest, TryTransitionChangesModeWhenDurationReached)
 TEST_F(NodeOperationRunnerTest, GetReportingEntryReturnsCorrectEntry)
 {
     auto cfg = TestableNodeConfigurationRepository::makeValidNodeConfig();
-    cfg.has_loraModule = true;
-    cfg.loraModule.entries_count = 1;
-    cfg.loraModule.entries[0].modeId = cfg.operationModesModule.modes[0].id;
-    cfg.loraModule.entries[0].period = 60;
+    cfg.has_iridiumModule = true;
+    cfg.iridiumModule.entries_count = 1;
+    cfg.iridiumModule.entries[0].modeId = cfg.operationModesModule.modes[0].id;
+    cfg.iridiumModule.entries[0].period = 60;
     repo.saveConfiguration(cfg);
 
     NodeOperationRunner runner(router, repo, {});
     runner.init();
 
     auto result = runner.getReportingEntryForCurrentOperationMode(
-        cfg.operationModesModule.modes[0].id, IPort::PortType::LoraPort);
+        cfg.operationModesModule.modes[0].id, IPort::PortType::SBDPort);
     ASSERT_TRUE(result.isSuccess());
     EXPECT_EQ(result.getValueConst().period, 60);
 }

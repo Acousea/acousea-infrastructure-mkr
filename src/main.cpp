@@ -1,6 +1,3 @@
-#include "dependencies.hpp"
-#include "environment/sharedUtils.hpp"
-
 #if ENVIRONMENT == ENV_PROD
 #include "environment/production/prod_main.h"
 #define ENV_SETUP() prod_setup()

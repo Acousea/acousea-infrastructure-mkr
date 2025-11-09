@@ -1,6 +1,9 @@
 #include "GetUpdatedNodeConfigurationRoutine.hpp"
 #include "Logger/Logger.h"
 
+// Macro para obtener el nombre de la clase como cadena de caracteres
+#define MODULE_CODE_NAME(x) #x
+
 GetUpdatedNodeConfigurationRoutine::GetUpdatedNodeConfigurationRoutine(
     NodeConfigurationRepository& nodeConfigurationRepository,
     ModuleProxy& moduleProxy,
@@ -58,7 +61,19 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
         {
         case acousea_ModuleCode_AMBIENT_MODULE:
             {
-                LOG_CLASS_ERROR("FIXME: REQUESTED AMBIENT MODULE (NOT IMPLEMENTED YET)");
+                auto optAmbientModule = fetchModuleEntry(
+                    acousea_ModuleCode_AMBIENT_MODULE,
+                    acousea_ModuleWrapper_ambient_tag,
+                    ModuleProxy::DeviceAlias::PIDevice
+                );
+
+                if (!optAmbientModule.has_value())
+                {
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                                                 "Ambient module data is not fresh yet (requested from device)");
+                }
+
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = *optAmbientModule;
                 break;
             }
 
@@ -69,7 +84,19 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
             }
         case acousea_ModuleCode_STORAGE_MODULE:
             {
-                LOG_CLASS_ERROR("FIXME: REQUESTED STORAGE MODULE (NOT IMPLEMENTED YET)");
+                auto optAmbientModule = fetchModuleEntry(
+                    acousea_ModuleCode_STORAGE_MODULE,
+                    acousea_ModuleWrapper_storage_tag,
+                    ModuleProxy::DeviceAlias::PIDevice
+                );
+
+                if (!optAmbientModule.has_value())
+                {
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                                                 "Storage module data is not fresh yet (requested from device)");
+                }
+
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = *optAmbientModule;
                 break;
             }
 
@@ -86,8 +113,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 batteryModule.batteryPercentage = battery.voltageSOC_rounded();
 
                 batteryEntry.value.module.battery = batteryModule;
-                updatedConfiguration.modules[updatedConfiguration.modules_count] = batteryEntry;
-                updatedConfiguration.modules_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = batteryEntry;
                 break;
             }
         case acousea_ModuleCode_LOCATION_MODULE:
@@ -103,8 +129,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 locationModule.latitude = latitude;
                 locationModule.longitude = longitude;
                 locationEntry.value.module.location = locationModule;
-                updatedConfiguration.modules[updatedConfiguration.modules_count] = locationEntry;
-                updatedConfiguration.modules_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = locationEntry;
                 break;
             }
 
@@ -122,8 +147,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 }
                 acousea_ReportTypesModule reportTypesModule = nodeConfig.reportTypesModule;
                 reportingTypesEntry.value.module.reportTypes = reportTypesModule;
-                updatedConfiguration.modules[updatedConfiguration.modules_count] = reportingTypesEntry;
-                updatedConfiguration.modules_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = reportingTypesEntry;
                 break;
             }
         case acousea_ModuleCode_OPERATION_MODES_MODULE:
@@ -140,8 +164,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 }
                 acousea_OperationModesModule operationModesModule = nodeConfig.operationModesModule;
                 opModesGraphEntry.value.module.operationModes = operationModesModule;
-                updatedConfiguration.modules[updatedConfiguration.modules_count] = opModesGraphEntry;
-                updatedConfiguration.modules_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = opModesGraphEntry;
                 break;
             }
         case acousea_ModuleCode_LORA_REPORTING_MODULE:
@@ -158,8 +181,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 }
                 acousea_LoRaReportingModule loraModule = nodeConfig.loraModule;
                 loraEntry.value.module.loraReporting = loraModule;
-                updatedConfiguration.modules[updatedConfiguration.modules_count] = loraEntry;
-                updatedConfiguration.modules_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = loraEntry;
                 break;
             }
         case acousea_ModuleCode_IRIDIUM_REPORTING_MODULE:
@@ -177,8 +199,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 }
                 acousea_IridiumReportingModule iridiumModule = nodeConfig.iridiumModule;
                 iridiumEntry.value.module.iridiumReporting = iridiumModule;
-                updatedConfiguration.modules[updatedConfiguration.modules_count] = iridiumEntry;
-                updatedConfiguration.modules_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = iridiumEntry;
                 break;
             }
         case acousea_ModuleCode_GSM_MQTT_REPORTING_MODULE:
@@ -196,8 +217,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 }
                 acousea_GsmMqttReportingModule mqttModule = nodeConfig.gsmMqttModule;
                 gsmMqttEntry.value.module.gsmMqttReporting = mqttModule;
-                updatedConfiguration.modules[updatedConfiguration.modules_count] = gsmMqttEntry;
-                updatedConfiguration.modules_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = gsmMqttEntry;
                 break;
             }
         case acousea_ModuleCode_RTC_MODULE:
@@ -210,112 +230,90 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 acousea_RTCModule rtcModule = acousea_RTCModule_init_default;
                 rtcModule.epochSeconds = rtcController.getEpoch();
                 rtcEntry.value.module.rtc = rtcModule;
-                updatedConfiguration.modules[updatedConfiguration.modules_count] = rtcEntry;
-                updatedConfiguration.modules_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = rtcEntry;
                 break;
             }
 
         case acousea_ModuleCode_ICLISTEN_STATUS:
             {
-                acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenStatusEntry =
-                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
+                auto icListenLoggingEntry = fetchModuleEntry(
+                    acousea_ModuleCode_ICLISTEN_STATUS,
+                    acousea_ModuleWrapper_icListenStatus_tag,
+                    ModuleProxy::DeviceAlias::PIDevice
+                );
 
-                icListenStatusEntry.has_value = true;
-                icListenStatusEntry.key = acousea_ModuleCode_ICLISTEN_STATUS;
-                icListenStatusEntry.value.which_module = acousea_ModuleWrapper_icListenStatus_tag;
+                if (!icListenLoggingEntry.has_value())
+                {
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                                                 "ICListen status is not fresh (requested from device)");
+                }
 
-                const auto optICListenStatus_ModuleWrapper = moduleProxy.getCache()
-                                                                        .getIfFresh(
-                                                                            acousea_ModuleCode_ICLISTEN_STATUS);
-                if (!optICListenStatus_ModuleWrapper)
-                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket, "ICListen status is not fresh");
-                icListenStatusEntry.value = *optICListenStatus_ModuleWrapper;
-
-                updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenStatusEntry;
-                updatedConfiguration.modules_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = *icListenLoggingEntry;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG:
             {
-                acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenLoggingEntry =
-                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
+                auto optICListenLoggingModule = fetchModuleEntry(
+                    acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG,
+                    acousea_ModuleWrapper_icListenLoggingConfig_tag,
+                    ModuleProxy::DeviceAlias::PIDevice
+                );
 
-                icListenLoggingEntry.has_value = true;
-                icListenLoggingEntry.key = acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG;
-                icListenLoggingEntry.value.which_module = acousea_ModuleWrapper_icListenLoggingConfig_tag;
-
-                const auto optICListenLogging_ModuleWrapper = moduleProxy.getCache()
-                                                                         .getIfFresh(
-                                                                             acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG);
-                if (!optICListenLogging_ModuleWrapper)
+                if (!optICListenLoggingModule.has_value())
                 {
-                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket, "ICListen logging config is not fresh");
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                                                 "ICListen logging config is not fresh (requested from device)");
                 }
-                icListenLoggingEntry.value = *optICListenLogging_ModuleWrapper;
 
-                updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenLoggingEntry;
-                updatedConfiguration.modules_count++;
-
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = *optICListenLoggingModule;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG:
             {
-                acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenStreamingEntry =
-                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
-
-                icListenStreamingEntry.has_value = true;
-                icListenStreamingEntry.key = acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG;
-                icListenStreamingEntry.value.which_module = acousea_ModuleWrapper_icListenStreamingConfig_tag;
-
-                const auto optICListenStreaming_ModuleWrapper = moduleProxy.getCache()
-                                                                           .getIfFresh(
-                                                                               acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG);
-                if (!optICListenStreaming_ModuleWrapper)
+                auto optICListenStreamingModule = fetchModuleEntry(
+                    acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG,
+                    acousea_ModuleWrapper_icListenStreamingConfig_tag,
+                    ModuleProxy::DeviceAlias::PIDevice
+                );
+                if (!optICListenStreamingModule.has_value())
                 {
-                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket, "ICListen streaming config is not fresh");
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                                                 "ICListen streaming config is not fresh (requested from device)");
                 }
-                icListenStreamingEntry.value = *optICListenStreaming_ModuleWrapper;
 
-                updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenStreamingEntry;
-                updatedConfiguration.modules_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = *optICListenStreamingModule;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_RECORDING_STATS:
             {
-                acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenRecordingStatsEntry =
-                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
+                auto optICListenRecordingStatsModule = fetchModuleEntry(
+                    acousea_ModuleCode_ICLISTEN_RECORDING_STATS,
+                    acousea_ModuleWrapper_icListenRecordingStats_tag,
+                    ModuleProxy::DeviceAlias::PIDevice
+                );
+                if (!optICListenRecordingStatsModule.has_value())
+                {
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                                                 "ICListen recording stats is not fresh (requested from device)");
+                }
 
-                icListenRecordingStatsEntry.has_value = true;
-                icListenRecordingStatsEntry.key = acousea_ModuleCode_ICLISTEN_RECORDING_STATS;
-                icListenRecordingStatsEntry.value.which_module = acousea_ModuleWrapper_icListenRecordingStats_tag;
-
-                const auto optICListenRecordingStats_ModuleWrapper = moduleProxy.getCache()
-                    .getIfFresh(acousea_ModuleCode_ICLISTEN_RECORDING_STATS);
-                if (!optICListenRecordingStats_ModuleWrapper)
-                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket, "ICListen recording stats is not fresh");
-
-                icListenRecordingStatsEntry.value = *optICListenRecordingStats_ModuleWrapper;
-                updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenRecordingStatsEntry;
-                updatedConfiguration.modules_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = *optICListenRecordingStatsModule;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_HF:
             {
-                acousea_UpdatedNodeConfigurationPayload_ModulesEntry icListenHfEntry =
-                    acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
+                auto optICListenModule = fetchModuleEntry(
+                    acousea_ModuleCode_ICLISTEN_HF,
+                    acousea_ModuleWrapper_icListenHF_tag,
+                    ModuleProxy::DeviceAlias::PIDevice
+                );
+                if (!optICListenModule.has_value())
+                {
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                                                 "ICListen HF is not fresh (requested from device)");
+                }
 
-                icListenHfEntry.has_value = true;
-                icListenHfEntry.key = acousea_ModuleCode_ICLISTEN_HF;
-                icListenHfEntry.value.which_module = acousea_ModuleWrapper_icListenHF_tag;
-
-                const auto optICListenHf_ModuleWrapper = moduleProxy.getCache()
-                                                                    .getIfFresh(acousea_ModuleCode_ICLISTEN_HF);
-                if (!optICListenHf_ModuleWrapper)
-                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket, "ICListen HF is not fresh");
-
-                icListenHfEntry.value = *optICListenHf_ModuleWrapper;
-                updatedConfiguration.modules[updatedConfiguration.modules_count] = icListenHfEntry;
-                updatedConfiguration.modules_count++;
+                updatedConfiguration.modules[updatedConfiguration.modules_count++] = *optICListenModule;
                 break;
             }
         default:
@@ -328,4 +326,27 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
     responsePacket.body.response.response.updatedConfiguration = updatedConfiguration;
 
     return RESULT_SUCCESS(acousea_CommunicationPacket, responsePacket);
+}
+
+
+std::optional<acousea_UpdatedNodeConfigurationPayload_ModulesEntry>
+GetUpdatedNodeConfigurationRoutine::fetchModuleEntry(
+    acousea_ModuleCode code,
+    pb_size_t whichTag,
+    ModuleProxy::DeviceAlias alias) const
+{
+    auto optWrapper = moduleProxy.getIfFreshOrRequestFromDevice(code, alias);
+    if (!optWrapper)
+    {
+        return std::nullopt;
+    }
+
+    acousea_UpdatedNodeConfigurationPayload_ModulesEntry entry =
+        acousea_UpdatedNodeConfigurationPayload_ModulesEntry_init_default;
+    entry.has_value = true;
+    entry.key = code;
+    entry.value = *optWrapper;
+    entry.value.which_module = whichTag;
+
+    return entry;
 }

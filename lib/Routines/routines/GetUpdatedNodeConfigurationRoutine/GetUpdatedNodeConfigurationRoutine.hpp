@@ -30,6 +30,8 @@ public:
     );
 
     Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& optPacket) override;
+    [[nodiscard]] std::optional<acousea_UpdatedNodeConfigurationPayload_ModulesEntry> fetchModuleEntry(
+        acousea_ModuleCode code, pb_size_t whichTag, ModuleProxy::DeviceAlias alias) const;
 };
 
 

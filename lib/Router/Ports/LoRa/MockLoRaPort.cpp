@@ -1,3 +1,5 @@
+#ifdef PLATFORM_HAS_LORA
+
 #include "MockLoRaPort.h"
 
 #include <Logger/Logger.h>
@@ -28,3 +30,5 @@ std::vector<std::vector<uint8_t>> MockLoRaPort::read()
 {
     return std::vector<std::vector<uint8_t>>();
 }
+
+#endif // PLATFORM_HAS_LORA || UNIT_TESTING

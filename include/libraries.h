@@ -40,6 +40,7 @@
 #include <routines/CompleteStatusReportRoutine/CompleteStatusReportRoutine.h>
 #include <routines/GetUpdatedNodeConfigurationRoutine/GetUpdatedNodeConfigurationRoutine.hpp>
 #include "routines/StoreNodeConfigurationRoutine/StoreNodeConfigurationRoutine.h"
+#include "routines/RelayPacketRoutine/RelayPacketRoutine.hpp"
 
 // ------------------------- REPOSITORIES -------------------------
 #include <NodeConfigurationRepository/NodeConfigurationRepository.h>

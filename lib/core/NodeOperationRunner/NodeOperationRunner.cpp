@@ -244,17 +244,21 @@ void NodeOperationRunner::processReportingRoutines()
         ERROR_HANDLE_CLASS(" No current node configuration loaded.");
         return;
     }
-    currentNodeConfiguration->has_loraModule
-        ? tryReport(IPort::PortType::LoraPort, cache.lastReportMinute.lora, currentMinute)
-        : LOG_CLASS_INFO("LoRa module not present, skipping LoRa report.");
 
     currentNodeConfiguration->has_iridiumModule
         ? tryReport(IPort::PortType::SBDPort, cache.lastReportMinute.sbd, currentMinute)
         : LOG_CLASS_INFO("Iridium module not present, skipping Iridium report.");
 
+#ifdef PLATFORM_HAS_LORA
+    currentNodeConfiguration->has_loraModule
+        ? tryReport(IPort::PortType::LoraPort, cache.lastReportMinute.lora, currentMinute)
+        : LOG_CLASS_INFO("LoRa module not present, skipping LoRa report.");
+#endif
+#ifdef PLATFORM_HAS_GSM
     currentNodeConfiguration->has_gsmMqttModule
         ? tryReport(IPort::PortType::GsmMqttPort, cache.lastReportMinute.gsmMqtt, currentMinute)
         : LOG_CLASS_INFO("GSM-MQTT module not present, skipping GSM-MQTT report.");
+#endif
 }
 
 void NodeOperationRunner::processIncomingPackets(const uint8_t& localAddress)
@@ -304,8 +308,11 @@ std::optional<acousea_CommunicationPacket> NodeOperationRunner::processPacket(IP
         return buildErrorPacket("Routine not found.");
     }
     IRoutine<acousea_CommunicationPacket>*& routine = *routineOpt;
-    return executeRoutine(routine, packet, portType,
-                          PendingRoutines<0>::MAX_ATTEMPTS, isRequeueAllowed(bodyTag, payloadTag)
+    return executeRoutine(routine,
+                          packet,
+                          portType,
+                          PendingRoutines<0>::MAX_ATTEMPTS,
+                          isRequeueAllowed(bodyTag, payloadTag)
     );
 }
 
@@ -436,41 +443,45 @@ Result<acousea_ReportingPeriodEntry> NodeOperationRunner::getReportingEntryForCu
     size_t entryCount = 0;
     switch (portType)
     {
-    case IPort::PortType::LoraPort:
-        {
-            if (!currentNodeConfiguration->has_loraModule || currentNodeConfiguration->loraModule.entries_count == 0)
-            {
-                return RESULT_CLASS_FAILUREF(acousea_ReportingPeriodEntry,
-                                       "No LoRa reporting entries defined in configuration.");
-            }
-            entries = currentNodeConfiguration->loraModule.entries;
-            entryCount = currentNodeConfiguration->loraModule.entries_count;
-            break;
-        }
     case IPort::PortType::SBDPort:
         {
             if (!currentNodeConfiguration->has_iridiumModule ||
                 currentNodeConfiguration->iridiumModule.entries_count == 0)
             {
                 return RESULT_CLASS_FAILUREF(acousea_ReportingPeriodEntry,
-                                       "No Iridium reporting entries defined in configuration.");
+                                             "No Iridium reporting entries defined in configuration.");
             }
             entries = currentNodeConfiguration->iridiumModule.entries;
             entryCount = currentNodeConfiguration->iridiumModule.entries_count;
             break;
         }
+#ifdef PLATFORM_HAS_LORA
+    case IPort::PortType::LoraPort:
+        {
+            if (!currentNodeConfiguration->has_loraModule || currentNodeConfiguration->loraModule.entries_count == 0)
+            {
+                return RESULT_CLASS_FAILUREF(acousea_ReportingPeriodEntry,
+                                             "No LoRa reporting entries defined in configuration.");
+            }
+            entries = currentNodeConfiguration->loraModule.entries;
+            entryCount = currentNodeConfiguration->loraModule.entries_count;
+            break;
+        }
+#endif // PLATFORM_HAS_LORA
+#ifdef PLATFORM_HAS_GSM
     case IPort::PortType::GsmMqttPort:
         {
             if (!currentNodeConfiguration->has_gsmMqttModule ||
                 currentNodeConfiguration->gsmMqttModule.entries_count == 0)
             {
                 return RESULT_CLASS_FAILUREF(acousea_ReportingPeriodEntry,
-                                       "No GSM-MQTT reporting entries defined in configuration.");
+                                             "No GSM-MQTT reporting entries defined in configuration.");
             }
             entries = currentNodeConfiguration->gsmMqttModule.entries;
             entryCount = currentNodeConfiguration->gsmMqttModule.entries_count;
             break;
         }
+#endif // PLATFORM_HAS_GSM
     default:
         return RESULT_CLASS_FAILUREF(acousea_ReportingPeriodEntry, "Unsupported port type for reporting entry.");
     }
@@ -480,7 +491,7 @@ Result<acousea_ReportingPeriodEntry> NodeOperationRunner::getReportingEntryForCu
         if (entries[i].modeId == modeId) return RESULT_SUCCESS(acousea_ReportingPeriodEntry, entries[i]);
     }
     return RESULT_CLASS_FAILUREF(acousea_ReportingPeriodEntry,
-                           "::getReportingEntryForCurrentOperationMode() Reporting entry for mode %d not found.",
-                           modeId
+                                 "::getReportingEntryForCurrentOperationMode() Reporting entry for mode %d not found.",
+                                 modeId
     );
 }

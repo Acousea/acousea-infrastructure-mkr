@@ -2,6 +2,8 @@
 #define UNIT_TESTING
 #endif
 
+
+
 #include <gtest/gtest.h>
 #include "Logger/Logger.h"
 #include <ConsoleDisplay/ConsoleDisplay.hpp>
@@ -16,6 +18,7 @@
 // ................. Common test resources ..................
 #include "../common_test_resources/InMemoryStorageManager.hpp"
 #include "../common_test_resources/TestableNodeConfigurationRepository.hpp"
+#include "../common_test_resources/DummyPort.hpp"
 
 // =====================================================================
 // Mock ModuleProxy para controlar el cache de módulos
@@ -29,7 +32,7 @@ class DummyRouter
 class MockModuleProxy : public ModuleProxy
 {
 public:
-    explicit MockModuleProxy() : ModuleProxy(reinterpret_cast<Router&>(dummyRouter))
+    explicit MockModuleProxy() : ModuleProxy(reinterpret_cast<Router&>(router))
     {
     }
 
@@ -38,8 +41,11 @@ public:
     }
 
 private:
-    
-    DummyRouter dummyRouter;
+    DummyPort serialPort{IPort::PortType::SerialPort};
+    DummyPort iridiumPort{IPort::PortType::SBDPort};
+    DummyPort loraPort{IPort::PortType::LoraPort};
+
+    Router router{std::vector<IPort*>{&serialPort, &iridiumPort, &loraPort}};
 };
 
 

@@ -181,7 +181,7 @@ Result<void> SetNodeConfigurationRoutine::setICListenConfiguration(
 
     // Reenviar directamente el módulo recibido
     moduleProxy.sendModule(static_cast<acousea_ModuleCode>(entry.key), entry.value,
-                           ModuleProxy::DeviceAlias::ICListen);
+                           ModuleProxy::DeviceAlias::PIDevice);
 
     // Comprobar frescura de los módulos relacionados
     const auto loggingFresh = moduleProxy.getCache().getIfFresh(acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG);

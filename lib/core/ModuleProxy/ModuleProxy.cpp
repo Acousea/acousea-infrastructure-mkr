@@ -9,7 +9,7 @@ constexpr const char* ModuleProxy::toString(const ModuleProxy::DeviceAlias alias
 {
     switch (alias)
     {
-    case ModuleProxy::DeviceAlias::ICListen: return "ICListen";
+    case ModuleProxy::DeviceAlias::PIDevice: return "PIDevice";
     case ModuleProxy::DeviceAlias::VR2C: return "VR2C";
     default: return "Unknown";
     }
@@ -151,6 +151,23 @@ std::optional<acousea_ModuleWrapper> ModuleProxy::ModuleCache::getIfFresh(acouse
     if (it == cache.end() || !it->second.fresh()) return std::nullopt;
     return it->second.get();
 }
+
+std::optional<acousea_ModuleWrapper> ModuleProxy::getIfFreshOrRequestFromDevice(
+    const acousea_ModuleCode code, const DeviceAlias alias
+)
+{
+    if (const auto optModule = getCache().getIfFresh(code); !optModule.has_value())
+    {
+        if (const auto reqOk = requestModule(code, alias); !reqOk)
+        {
+            LOG_CLASS_WARNING("ModuleProxy::getIfFreshOrRequestTo() -> Failed to request module %d to %s",
+                              static_cast<int>(code), toString(alias));
+        }
+        return std::nullopt;
+    }
+    else return optModule;
+}
+
 
 void ModuleProxy::ModuleCache::invalidate(acousea_ModuleCode code)
 {
