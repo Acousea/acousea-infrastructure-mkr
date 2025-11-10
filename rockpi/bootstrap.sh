@@ -72,8 +72,8 @@ util_linux::install() {
 
 libboost::install() {
   log "Installing Boost libraries..."
-  sudo apt install -y libboost-thread-dev libboost-system-dev libxxhash-dev
-
+#  sudo apt install -y libboost-thread-dev libboost-system-dev libxxhash-dev
+   sudo apt install -y libboost-thread1.74-dev libboost-system1.74-dev libboost-program-options1.74-dev libxxhash-dev
 }
 
 # -------------------------
@@ -564,6 +564,7 @@ all::install() {
   protobuf::install
   libusb::install
   util_linux::install
+  libboost::install
   gtest::install
   asio::install
   sndfile::install
@@ -585,6 +586,8 @@ only_packages::install() {
   sqlite::install
   protobuf::install
   libusb::install
+  util_linux::install
+  libboost::install
   gtest::install
   asio::install
   sndfile::install
@@ -603,6 +606,7 @@ case "${1:-}" in
   protobuf)   protobuf::install ;;
   libusb)     libusb::install ;;
   util_linux) util_linux::install ;;
+  libboost)   libboost::install ;;
   gtest)      gtest::install ;;
   asio)       asio::install ;;
   sndfile)    sndfile::install ;;
@@ -612,5 +616,5 @@ case "${1:-}" in
   daemon)     daemon::install ;;
   iclisten)   iclisten::info; iclisten::api; iclisten::configure_network_eth_route ;;
   test)       test::deps ;;
-  *)          echo "Usage: $0 {all|only_packages|system|sqlite|protobuf|libusb|util_linux|gtest|asio|sndfile|crow|overlays|pps|daemon|iclisten|test}" ;;
+  *)          echo "Usage: $0 {all|only_packages|system|sqlite|protobuf|libusb|util_linux|libboost|gtest|asio|sndfile|crow|overlays|pps|daemon|iclisten|test}" ;;
 esac

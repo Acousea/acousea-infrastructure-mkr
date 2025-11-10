@@ -16,14 +16,11 @@
 class Router
 {
     CLASS_NAME(Router)
+
 public:
     static constexpr uint8_t originAddress = 0;
     static constexpr uint8_t broadcastAddress = 255;
 
-private:
-    std::vector<IPort*> relayedPorts;
-
-public:
     explicit Router(const std::vector<IPort*>& relayedPorts);
 
     void addRelayedPort(IPort* port);
@@ -71,6 +68,12 @@ public:
     };
 
 private:
+#ifdef UNIT_TESTING
+    friend class TestableRouter;
+#endif
+
+    std::vector<IPort*> relayedPorts;
+
     // ---------------------- Packet encoding/decoding ----------------------
     static Result<acousea_CommunicationPacket> decodePacket(const std::vector<uint8_t>& raw);
     static Result<std::vector<uint8_t>> encodePacket(const acousea_CommunicationPacket& pkt);
