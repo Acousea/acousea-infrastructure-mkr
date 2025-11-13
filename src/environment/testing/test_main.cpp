@@ -229,11 +229,12 @@ void test_setup()
     hardware::_gpsMock().init();
 
     // Logger initialization and configuration
+    const auto logPath = SD_PATH("/log.csv");
     Logger::initialize(
         &hardware::display(),
         &hardware::storage(),
         &hardware::rtc(),
-        "log.csv", // MAX 8 chars for 8.3 filenames
+        logPath,
         Logger::Mode::SerialOnly
     );
     Logger::logInfo("================ Setting up Node =================");

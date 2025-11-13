@@ -8,6 +8,7 @@
 #include "ClassName.h"
 #include "LoRa.h"
 #include "Ports/IPort.h"
+#include "PacketQueue/PacketQueue.hpp"
 
 typedef struct
 {
@@ -44,7 +45,7 @@ class LoraPort : public IPort
     CLASS_NAME(LoraPort)
 
 public:
-    LoraPort(FlashPacketQueue& flashQueue, const LoRaConfig& config = defaultLoraConfig);
+    LoraPort(PacketQueue& packetQueue, const LoRaConfig& config = defaultLoraConfig);
 
     void init() override;
 
@@ -60,6 +61,8 @@ public:
 
 private:
     const LoRaConfig& config;
+    PacketQueue& packetQueue_;
+
 
     void configureLora(const LoRaConfig& config);
 };

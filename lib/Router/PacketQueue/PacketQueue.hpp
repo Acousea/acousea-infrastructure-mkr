@@ -3,64 +3,48 @@
 
 #include <cstdint>
 
+#include "ClassName.h"
+#include "RTCController.hpp"
+#include "Ports/IPort.h"
+#include "StorageManager/StorageManager.hpp"
+#include "StorageManager/SDStorageManager/SDPath/SDPath.hpp"
+
+
 /**
- * @brief Interfaz común para colas de paquetes binarios.
- *
- * Las implementaciones concretas (FlashPacketQueue, SDPacketQueue, etc.)
- * se encargan del almacenamiento subyacente.
+ * @brief Clase que implementa una cola de paquetes persistente utilizando un StorageManager.
  */
 class PacketQueue
 {
+    CLASS_NAME(PacketQueue)
+
 public:
-    virtual ~PacketQueue() = default;
+    static constexpr uint8_t START_BYTE = 0x7E;
+    static constexpr uint8_t END_BYTE = 0x7F;
 
-    /**
-     * @brief Inicializa el backend (memoria flash, SD, etc.)
-     * @return true si la inicialización fue exitosa.
-     */
-    virtual bool begin() = 0;
+    static constexpr size_t HEADER_SIZE = 1 + 4 + 2; // start + timestamp(4) + length(2)
+    static constexpr size_t FOOTER_SIZE = 1; // end
 
-    /**
-     * @brief Indica si la cola está completamente vacía.
-     */
-    virtual bool isEmpty() const = 0;
+    explicit PacketQueue(StorageManager& storage, RTCController& rtc);
 
-    /**
-     * @brief Indica si no hay paquetes pendientes para un puerto concreto.
-     * @param targetPortType Tipo de puerto (PortType codificado como uint8_t)
-     */
-    virtual bool isEmptyForPort(uint8_t targetPortType) = 0;
+    [[nodiscard]] bool begin();
+    [[nodiscard]] bool clear(uint8_t port);
+    bool isEmpty() const;
+    bool arePortsEmpty(const uint8_t* ports, size_t portCount) const;
+    [[nodiscard]] bool isPortEmpty(uint8_t port) const;
 
-    /**
-     * @brief Inserta un nuevo paquete en la cola.
-     * @param portType Código del puerto que lo genera.
-     * @param data Puntero al buffer de datos (ya codificados, por ejemplo Protobuf).
-     * @param length Longitud del buffer.
-     * @return true si la inserción fue exitosa.
-     */
-    virtual bool push(uint8_t portType, const uint8_t* data, uint16_t length) = 0;
+    [[nodiscard]] bool push(uint8_t port, const uint8_t* data, uint16_t length);
+    [[nodiscard]] uint16_t popNext(uint8_t port, uint8_t* outBuffer, uint16_t maxOutSize);
+    [[nodiscard]] uint16_t popAny(uint8_t* outBuffer, uint16_t maxOutSize);
+    uint16_t popAnyFromPorts(const uint8_t* ports, size_t portCount, uint8_t* outBuffer, uint16_t maxOutSize);
 
-    /**
-     * @brief Extrae el primer paquete de la cola, sin filtrar por puerto.
-     * @param outBuffer Buffer destino.
-     * @param maxSize Tamaño máximo del buffer destino.
-     * @return Número de bytes leídos (0 si vacío o error).
-     */
-    virtual uint16_t popAny(uint8_t* outBuffer, uint16_t maxSize) = 0;
+private:
+    StorageManager& storage_;
+    RTCController& rtc_;
+    const char* queueBaseName_ = SD_PATH("/queue");
+    static constexpr uint8_t MAX_PORT = static_cast<uint8_t>(IPort::MAX_PORT_TYPE_U8);
 
-    /**
-     * @brief Extrae el primer paquete perteneciente a un puerto específico.
-     * @param targetPortType Tipo de puerto a buscar.
-     * @param outBuffer Buffer destino donde se almacenará el paquete.
-     * @param maxSize Tamaño máximo del buffer destino.
-     * @return Longitud del paquete leído (0 si no hay ninguno).
-     */
-    virtual uint16_t popForPort(uint8_t targetPortType, uint8_t* outBuffer, uint16_t maxSize) = 0;
-
-    /**
-     * @brief Borra completamente la cola (todos los paquetes).
-     */
-    virtual void clear() = 0;
+    uint64_t writeOffset_[MAX_PORT + 1]; // Current write offsets for each port (1-based index)
+    uint64_t readOffset_[MAX_PORT + 1];  // Current read offsets for each port (1-based index)
 };
 
 

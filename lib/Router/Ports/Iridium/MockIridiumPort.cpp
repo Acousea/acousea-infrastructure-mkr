@@ -2,7 +2,7 @@
 
 #include <Logger/Logger.h>
 
-MockIridiumPort::MockIridiumPort(PacketQueue& packetQueue) : IPort(PortType::SBDPort, packetQueue)
+MockIridiumPort::MockIridiumPort() : IPort(PortType::SBDPort)
 {
 }
 

@@ -1,7 +1,7 @@
 #include "MockSerialPort.h"
 
-MockSerialPort::MockSerialPort(PacketQueue& packetQueue)
-    : IPort(PortType::SerialPort, packetQueue)
+MockSerialPort::MockSerialPort()
+    : IPort(PortType::SerialPort)
 {
 }
 

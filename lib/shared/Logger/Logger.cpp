@@ -83,8 +83,9 @@ void Logger::initialize(IDisplay* display_,
 
     // Usamos el buffer compartido global para evitar stack local
     snprintf(sharedBuffer, sizeof(sharedBuffer),
-             validPath ? "[Logger] Log file path: %s"
-                        : "[Logger] Invalid path (must follow 8.3 format).",
+             validPath
+                 ? "[Logger] Log file path: %s"
+                 : "[Logger] Invalid path (must follow 8.3 format).",
              validPath ? logFilePath_ : "");
 
 #if defined(ARDUINO)
@@ -264,7 +265,7 @@ bool Logger::clearLog()
 {
     if (mode == Mode::SDCard && storageManager)
     {
-        return storageManager->overwriteFile(logFilePath, "");
+        return storageManager->deleteFile(logFilePath) && storageManager->createEmptyFile(logFilePath);
     }
     return false;
 }
@@ -299,11 +300,11 @@ void Logger::logToSDCard(const char* line)
     if (len == 0)
         return;
 
-    storageManager->appendToFile(logFilePath, line);
+    storageManager->appendBytesToFile(logFilePath, reinterpret_cast<const uint8_t*>(line), len);
 
     // Añadimos salto de línea final si no lo tiene
     if (line[len - 1] != '\n')
     {
-        storageManager->appendToFile(logFilePath, "\n");
+        storageManager->appendBytesToFile(logFilePath, reinterpret_cast<const uint8_t*>("\n"), 1);
     }
 }

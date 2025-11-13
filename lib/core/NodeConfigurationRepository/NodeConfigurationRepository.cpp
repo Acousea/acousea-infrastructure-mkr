@@ -21,7 +21,7 @@ NodeConfigurationRepository::NodeConfigurationRepository(StorageManager& sdManag
 void NodeConfigurationRepository::init()
 {
     char content[256] = {};
-    const size_t bytesRead = storageManager.readFile(configFilePath, content, sizeof(content));
+    const size_t bytesRead = storageManager.readTxtFromFile(configFilePath, content, sizeof(content));
 
     LOG_CLASS_INFO("::init() -> Reading configuration from file %s", configFilePath);
 

@@ -10,7 +10,7 @@ class MockIridiumPort : public IPort
     CLASS_NAME(MockIridiumPort)
 
 public:
-    explicit MockIridiumPort(PacketQueue& packetQueue);
+    explicit MockIridiumPort();
 
     void init() override;
 

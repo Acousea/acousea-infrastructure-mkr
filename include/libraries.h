@@ -13,6 +13,7 @@
 #include <ClassName.h>
 #include "time/getMillis.hpp"
 #include "WatchDog/WatchDogUtils.hpp"
+#include "PacketQueue/PacketQueue.hpp"
 
 // ------------------ BATTERY ------------------
 #include <IBatteryController.h>
@@ -61,6 +62,7 @@
 #include "wiring_private.h"
 // ------------------ STORAGE ------------------
 #include <StorageManager/SDStorageManager/SDStorageManager.h>
+#include <StorageManager/SDStorageManager/SDPath/SDPath.hpp>
 
 // ------------------ BATTERY ------------------
 #include <PMICBatteryController/PMICBatteryController.h>

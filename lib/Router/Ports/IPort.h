@@ -6,7 +6,6 @@
 #include <deque>
 #include <cstdint>
 
-#include "PacketQueue/PacketQueue.hpp"
 
 // Definición de la interfaz de comunicador
 class IPort
@@ -25,10 +24,11 @@ public:
         SerialPort = 4,
     };
 
+    static constexpr uint8_t MAX_PORT_TYPE_U8 = static_cast<uint8_t>(PortType::SerialPort);
+
     explicit IPort(
-        const PortType type,
-        PacketQueue& flashPacketQueue)
-        : type(type), packetQueue_(flashPacketQueue)
+        const PortType type)
+        : type(type)
     {
     }
 
@@ -75,7 +75,6 @@ public:
 protected:
     ~IPort() = default;
     PortType type;
-    PacketQueue& packetQueue_;
     // std::deque<std::vector<uint8_t>> receivedRawPackets;
     // static constexpr size_t MAX_QUEUE_SIZE = 10;
     // static constexpr size_t MAX_RECEIVED_PACKET_SIZE = 340;

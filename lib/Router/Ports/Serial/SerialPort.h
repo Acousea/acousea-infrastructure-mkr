@@ -8,6 +8,7 @@
 #include "ClassName.h"
 #include "Ports/IPort.h"
 #include "Logger/Logger.h"
+#include "PacketQueue/PacketQueue.hpp"
 
 class SerialPort final : public IPort
 {
@@ -16,6 +17,7 @@ class SerialPort final : public IPort
 private:
     Uart& serialPort;
     int baudRate;
+    PacketQueue& packetQueue_;
     static constexpr uint8_t kSOF = 0x2A; // Start Of Frame
     static constexpr size_t kMaxBuf = 4096; // cota de seguridad del RX buffer
 

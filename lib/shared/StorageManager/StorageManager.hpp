@@ -9,22 +9,33 @@ class StorageManager
 public:
     virtual ~StorageManager() = default;
 
-    virtual bool begin() = 0;
+    [[nodiscard]] virtual bool begin() = 0;
+
+    [[nodiscard]] virtual bool createEmptyFile(const char* path) = 0;
 
     // Escribe al final / sobrescribe
-    virtual bool appendToFile(const char* path, const char* content) = 0;
-    virtual bool overwriteFile(const char* path, const char* content) = 0;
+    [[nodiscard]] virtual bool appendBytesToFile(const char* path, const uint8_t* data, size_t length) = 0;
 
-    // Lee un archivo completo como texto (NULL-terminated). // Devuelve la longitud leída (sin incluir '\0').
-    virtual size_t readFile(const char* path, char* outBuffer, size_t maxLen) = 0;
+    [[nodiscard]] virtual bool overwriteBytesToFile(const char* path, const uint8_t* data, size_t length) = 0;
 
-    // Borra un archivo
-    virtual bool deleteFile(const char* path) = 0;
+    [[nodiscard]] virtual size_t readFileBytes(const char* path, uint8_t* outBuffer, size_t maxLen) = 0;
 
-    // En StorageManager.hpp
-    virtual bool writeFileBytes(const char* path, const uint8_t* data, size_t length) = 0;
+    [[nodiscard]] virtual size_t readFileRegionBytes(const char* path, size_t offset, uint8_t* outBuffer, size_t len) =
+    0;
 
-    virtual size_t readFileBytes(const char* path, uint8_t* outBuffer, size_t maxLen) = 0;
+    [[nodiscard]] virtual bool writeFileBytes(const char* path, const uint8_t* data, size_t length) = 0;
+
+    [[nodiscard]] virtual bool truncateFileFromOffset(const char* path, size_t offset) = 0;
+
+    [[nodiscard]] virtual bool deleteFile(const char* path) = 0;
+
+    [[nodiscard]] virtual bool fileExists(const char* path) = 0;
+
+    [[nodiscard]] virtual bool renameFile(const char* oldPath, const char* newPath) = 0;
+
+    [[nodiscard]] virtual bool createDirectory(const char* str) = 0;
+
+    [[nodiscard]] virtual size_t fileSize(const char* str) = 0;
 };
 
 

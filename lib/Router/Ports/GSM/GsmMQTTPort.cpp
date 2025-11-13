@@ -60,9 +60,10 @@ void GsmMQTTPort::mqttMessageHandler(int messageSize)
 
 GsmMQTTPort::GsmMQTTPort(const GsmConfig& cfg, PacketQueue& packetQueue)
 // : IPort(PortType::GsmPort), config(cfg), sslClient(gsmClient), mqttClient(sslClient){
-    : IPort(PortType::GsmMqttPort, packetQueue),
+    : IPort(PortType::GsmMqttPort),
       config(cfg),
-      mqttClient(ublox_gsmSslClient)
+      mqttClient(ublox_gsmSslClient),
+      packetQueue_(packetQueue)
 {
 }
 
@@ -247,12 +248,12 @@ bool GsmMQTTPort::send(const uint8_t* data, const size_t length)
 
 bool GsmMQTTPort::available()
 {
-    return !packetQueue_.isEmptyForPort(getTypeU8());
+    return !packetQueue_.isPortEmpty(getTypeU8());
 }
 
-uint16_t GsmMQTTPort::readInto(uint8_t* buffer, uint16_t maxSize)
+uint16_t GsmMQTTPort::readInto(uint8_t* buffer, const uint16_t maxSize)
 {
-    return packetQueue_.popForPort(getTypeU8(), buffer, maxSize);
+    return packetQueue_.popNext(getTypeU8(), buffer, maxSize);
 }
 
 
@@ -362,11 +363,13 @@ void GsmMQTTPort::mqttSubscribeToTopic(const char* topic)
 
 bool GsmMQTTPort::sync()
 {
-    if (instance == nullptr) {
+    if (instance == nullptr)
+    {
         LOG_CLASS_WARNING(" -> GsmMQTTPort::sync() called before init(). Ignoring.");
         return false;
     }
-    if (!instance->mqttClient.connected()) {
+    if (!instance->mqttClient.connected())
+    {
         LOG_CLASS_WARNING(" -> MQTT client not connected, skipping sync()");
         return false;
     }
