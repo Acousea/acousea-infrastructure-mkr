@@ -9,6 +9,7 @@
 #include "wiring_private.h"
 #include "Ports/IPort.h"
 #include "IridiumSBD.h"
+#include "PacketQueue/PacketQueue.hpp"
 
 // Define the necessary hardware connections for the Iridium modem
 #define SBD_TX_PIN 0 // OUTPUT, connect to RX of Iridium
@@ -42,15 +43,15 @@ public:
     bool sync() override;
 
 private:
-    static void handleError(int err);
+    static void logError(int err);
 
     void storeReceivedPacket(const uint8_t* data, size_t length);
 
-    void receiveIncomingMessages();
-
-    void checkRingAlertsAndWaitingMsgCount();
+    void _receiveIncomingMessages();
 
     void checkSignalQuality();
+private:
+    PacketQueue& packetQueue_;
 };
 
 

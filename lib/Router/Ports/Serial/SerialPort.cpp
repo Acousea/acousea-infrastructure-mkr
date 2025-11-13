@@ -7,7 +7,7 @@
 
 
 SerialPort::SerialPort(Uart& serialPort, const int baudRate, PacketQueue& packetQueue)
-    : IPort(PortType::SerialPort, packetQueue), serialPort(serialPort), baudRate(baudRate)
+    : IPort(PortType::SerialPort), serialPort(serialPort), baudRate(baudRate), packetQueue_(packetQueue)
 {
 }
 
@@ -22,7 +22,13 @@ void SerialPort::init()
 
 bool SerialPort::available()
 {
-    return !packetQueue_.isEmptyForPort(getTypeU8());
+    return !packetQueue_.isPortEmpty(getTypeU8());
+
+}
+
+uint16_t SerialPort::readInto(uint8_t* buffer, const uint16_t maxSize)
+{
+    return packetQueue_.popNext(getTypeU8(), buffer, maxSize);
 }
 
 bool SerialPort::send(const uint8_t* data, const size_t length)
@@ -38,11 +44,6 @@ bool SerialPort::send(const uint8_t* data, const size_t length)
     serialPort.write(&len, 1);
     serialPort.write(data, length);
     return true;
-}
-
-uint16_t SerialPort::readInto(uint8_t* buffer, const uint16_t maxSize)
-{
-    return packetQueue_.popForPort(getTypeU8(), buffer, maxSize);
 }
 
 bool SerialPort::sync()

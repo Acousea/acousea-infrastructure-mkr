@@ -25,7 +25,7 @@ void ISBDDiagsCallback(IridiumSBD* device, char c)
 
 #endif
 
-IridiumPort::IridiumPort(PacketQueue& packetQueue) : IPort(PortType::SBDPort, packetQueue)
+IridiumPort::IridiumPort(PacketQueue& packetQueue) : IPort(PortType::SBDPort), packetQueue_(packetQueue)
 {
 }
 
@@ -47,7 +47,7 @@ void IridiumPort::init()
 
     // According to the documentation this should go before calling begin()
     sbd_modem.enableRingAlerts(true);
-    // WARNING: FIXME: Must check if its really necessary to call pinPeripheral, and if so, if this call should
+    // WARNING: Must check if its really necessary to call pinPeripheral, and if so, if this call should
     // be done before or after sbd_modem.begin(), most likely after, due to the internal Uart.begin() implementation
     IridiumSerial.begin(SBD_MODEM_BAUDS);
 
@@ -55,7 +55,7 @@ void IridiumPort::init()
 
     if (const int err = sbd_modem.begin(); err != ISBD_SUCCESS)
     {
-        handleError(err);
+        logError(err);
     }
     sbd_modem.enableRingAlerts(true); // Documentations says this should go before begin(), but not sure if it works
     LOG_CLASS_INFO("IridiumPort::init() -> Iridium modem initialized");
@@ -73,7 +73,7 @@ bool IridiumPort::send(const uint8_t* data, const size_t length)
     const int err = sbd_modem.sendReceiveSBDBinary(data, length, rxBuffer, rxBufferSize);
     if (err != ISBD_SUCCESS)
     {
-        handleError(err);
+        logError(err);
         return false;
     }
     // Store received packet if available
@@ -85,34 +85,47 @@ bool IridiumPort::send(const uint8_t* data, const size_t length)
     // Check for additional waiting messages if any
     if (sbd_modem.getWaitingMessageCount() > 0)
     {
-        receiveIncomingMessages();
+        _receiveIncomingMessages();
     }
     return true;
 }
 
 bool IridiumPort::available()
 {
-    // checkSignalQuality();
-    checkRingAlertsAndWaitingMsgCount();
-    // receiveIncomingMessages();
     return !packetQueue_.isEmpty();
 }
 
 uint16_t IridiumPort::readInto(uint8_t* buffer, const uint16_t maxSize)
 {
-    return packetQueue_.popForPort(getTypeU8(), buffer, maxSize);
+    return packetQueue_.popNext(getTypeU8(), buffer, maxSize);
 }
 
+/// Synchronize the port: check for ring alerts and incoming messages
 bool IridiumPort::sync()
 {
+    checkSignalQuality();
+    const bool ringAlert = sbd_modem.hasRingAsserted();
+    const int incomingMessages = sbd_modem.getWaitingMessageCount();
+
+    LOG_CLASS_INFO(
+        "IridiumPort::checkRingAlerts() -> hasRingAsserted(): %s, getWaitingMessageCount(): %d",
+        ringAlert ? "true" : "false",
+        incomingMessages
+    );
+
+    if (ringAlert || incomingMessages > 0)
+    {
+        LOG_CLASS_INFO("IridiumPort::checkRingAlerts() -> Checking for incoming messages.");
+        _receiveIncomingMessages();
+    }
     return true;
 }
 
 
-void IridiumPort::handleError(const int err)
+void IridiumPort::logError(const int err)
 {
     char errorMessage[128]; // tamaño ajustable según tus logs
-    int written = snprintf(errorMessage, sizeof(errorMessage), "IridiumPort::handleError(): %d - ", err);
+    int written = snprintf(errorMessage, sizeof(errorMessage), "logError(): %d - ", err);
 
     const char* desc = nullptr;
     switch (err)
@@ -172,16 +185,16 @@ void IridiumPort::storeReceivedPacket(const uint8_t* data, size_t length)
     LOG_CLASS_INFO("::storeReceivedPacket() -> Stored received packet in flash queue.");
 }
 
-void IridiumPort::receiveIncomingMessages()
+void IridiumPort::_receiveIncomingMessages()
 {
     LOG_CLASS_INFO("IridiumPort::receiveIncomingMessages() -> Checking for incoming messages...");
-    uint8_t* rxBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    const auto rxBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
     size_t rxBufferSize = SharedMemory::tmpBufferSize();
     do
     {
         if (const int err = sbd_modem.sendReceiveSBDBinary(NULL, 0, rxBuffer, rxBufferSize); err != ISBD_SUCCESS)
         {
-            handleError(err);
+            logError(err);
             break;
         }
         if (rxBufferSize <= 0)
@@ -195,31 +208,13 @@ void IridiumPort::receiveIncomingMessages()
     while (sbd_modem.getWaitingMessageCount() > 0);
 }
 
-void IridiumPort::checkRingAlertsAndWaitingMsgCount()
-{
-    const bool ringAlert = sbd_modem.hasRingAsserted();
-    const int incomingMessages = sbd_modem.getWaitingMessageCount();
-
-    LOG_CLASS_INFO(
-        "IridiumPort::checkRingAlerts() -> hasRingAsserted(): %s, getWaitingMessageCount(): %d",
-        ringAlert ? "true" : "false",
-        incomingMessages
-    );
-
-    if (ringAlert || incomingMessages > 0)
-    {
-        LOG_CLASS_INFO("IridiumPort::checkRingAlerts() -> Checking for incoming messages.");
-        receiveIncomingMessages();
-    }
-}
-
 void IridiumPort::checkSignalQuality()
 {
     LOG_CLASS_INFO("IridiumPort::checkSignalQuality() -> Checking signal quality...");
     int signalQuality = -1;
     if (const int err = sbd_modem.getSignalQuality(signalQuality); err != ISBD_SUCCESS)
     {
-        handleError(err);
+        logError(err);
         return;
     }
     LOG_CLASS_INFO(

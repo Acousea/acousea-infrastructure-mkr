@@ -13,6 +13,7 @@
 #include "GsmConfig.hpp"
 #include "Ports/IPort.h"
 #include "ClassName.h"
+#include "PacketQueue/PacketQueue.hpp"
 
 /**
  * @brief MQTT over GSM/TLS client for AWS IoT Core.
@@ -76,6 +77,7 @@ private:
     GsmConfig config;
     UBlox201_GSMSSLClient ublox_gsmSslClient;
     MqttClient mqttClient; // Cliente MQTT moderno (ArduinoMqttClient)
+    PacketQueue& packetQueue_;
     static constexpr char HEXMAP[] = "0123456789ABCDEF";
     static GsmMQTTPort* instance; // puntero a la instancia activa
     static constexpr char MQTT_DISCONNECT_MESSAGE[] = R"({"state":"offline"})";

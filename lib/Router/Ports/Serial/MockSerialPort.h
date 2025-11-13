@@ -10,7 +10,7 @@ class MockSerialPort : public IPort
     CLASS_NAME(MockSerialPort)
 
 public:
-    explicit MockSerialPort(PacketQueue& packetQueue);
+    explicit MockSerialPort();
     // Inicialización del puerto serial
     void init() override;
 

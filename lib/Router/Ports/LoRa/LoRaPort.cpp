@@ -18,9 +18,10 @@ double bandwidth_kHz[10] = {
     7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, 250E3, 500E3
 };
 
-LoraPort::LoraPort(FlashPacketQueue& flashQueue, const LoRaConfig& config) :
-    IPort(PortType::LoraPort, flashQueue),
-    config(config)
+LoraPort::LoraPort(PacketQueue& packetQueue, const LoRaConfig& config) :
+    IPort(PortType::LoraPort),
+    config(config),
+    packetQueue_(packetQueue)
 {
 }
 
@@ -60,12 +61,12 @@ bool LoraPort::send(const uint8_t* data, size_t length)
 
 bool LoraPort::available()
 {
-    return !flashPacketQueue_.isEmptyForPort(getTypeU8());
+    return !packetQueue_.isPortEmpty(getTypeU8());
 }
 
 uint16_t LoraPort::readInto(uint8_t* buffer, const uint16_t maxSize)
 {
-    return flashPacketQueue_.popForPort(getTypeU8(), buffer, maxSize);
+    return packetQueue_.popNext(getTypeU8(), buffer, maxSize);
 }
 
 bool LoraPort::sync()
