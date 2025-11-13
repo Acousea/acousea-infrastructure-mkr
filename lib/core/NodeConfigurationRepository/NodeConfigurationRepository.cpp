@@ -20,19 +20,9 @@ NodeConfigurationRepository::NodeConfigurationRepository(StorageManager& sdManag
 
 void NodeConfigurationRepository::init()
 {
-    char content[256] = {};
-    const size_t bytesRead = storageManager.readTxtFromFile(configFilePath, content, sizeof(content));
+    LOG_CLASS_INFO("Initializing NodeConfigurationRepository");
 
-    LOG_CLASS_INFO("::init() -> Reading configuration from file %s", configFilePath);
-
-    if (bytesRead == 0)
-    {
-        LOG_CLASS_ERROR("::init() -> No configuration file found. Creating default configuration.");
-        if (!saveConfiguration(makeDefault()))
-        {
-            ERROR_HANDLE_CLASS("::begin() -> Error saving default configuration.");
-        }
-    }
+    [[maybe_unused]] const auto& nodeConfig = getNodeConfiguration();
 
     LOG_CLASS_INFO("Successfully Initialized.");
 }
@@ -49,7 +39,6 @@ void NodeConfigurationRepository::reset()
 
 void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfiguration& cfg)
 {
-
     // Usar el buffer temporal global de SharedMemory
     char* line = SharedMemory::tmpBuffer();
     constexpr size_t lineSize = SharedMemory::tmpBufferSize();
@@ -201,6 +190,7 @@ acousea_NodeConfiguration& NodeConfigurationRepository::getNodeConfiguration() c
     const size_t bytesRead = storageManager.readFileBytes(configFilePath, tmpBuf, tmpBufSize);
     if (bytesRead == 0)
     {
+        LOG_CLASS_ERROR("No configuration file <%s> found or empty. Setting default configuration.", configFilePath);
         const auto& defaultConfig = makeDefault();
         SharedMemory::setNodeConfiguration(defaultConfig);
         return SharedMemory::nodeConfigurationRef();
@@ -209,8 +199,7 @@ acousea_NodeConfiguration& NodeConfigurationRepository::getNodeConfiguration() c
     const Result<void> decodedResult = pb::decodeInto(tmpBuf, bytesRead, &SharedMemory::nodeConfigurationRef());
     if (!decodedResult.isSuccess())
     {
-        LOG_CLASS_ERROR("::getNodeConfiguration() -> Error decoding configuration: %s",
-                        decodedResult.getError());
+        LOG_CLASS_ERROR("::getNodeConfiguration() -> Error decoding configuration: %s", decodedResult.getError());
         const auto& defaultConfig = makeDefault();
         SharedMemory::setNodeConfiguration(defaultConfig);
         return SharedMemory::nodeConfigurationRef();

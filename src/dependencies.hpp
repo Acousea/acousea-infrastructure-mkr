@@ -235,7 +235,7 @@ namespace Dependencies
         {
             static PacketQueue instance(
                 Hardware::storage(),
-                "/packet_queue.dat"
+                Hardware::rtc()
             );
             return instance;
         }
@@ -243,7 +243,7 @@ namespace Dependencies
         // =============== Serial / Mocks / HTTP / Native =========
         inline MockSerialPort &_mockSerial()
         {
-            static MockSerialPort instance(packetQueue());
+            static MockSerialPort instance;
             return instance;
         }
 
@@ -294,7 +294,7 @@ namespace Dependencies
         // ======================== Iridium =======================
         inline MockIridiumPort &_mockIridium()
         {
-            static MockIridiumPort instance(packetQueue());
+            static MockIridiumPort instance;
             return instance;
         }
 
