@@ -5,6 +5,7 @@
 #include "ModuleProxy/ModuleProxy.hpp"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
 
+
 class StoreNodeConfigurationRoutine final : public IRoutine<acousea_CommunicationPacket>
 {
 private:
@@ -19,7 +20,7 @@ public:
         ModuleProxy& moduleProxy
     );
 
-    Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& optPacket) override;
+    Result<acousea_CommunicationPacket*> execute(acousea_CommunicationPacket* optPacket) override;
 
 };
 

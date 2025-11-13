@@ -7,6 +7,8 @@
 #include <optional>
 #include <unordered_map>
 
+#include "ProtoUtils/ProtoUtils.hpp"
+
 /**
  * @brief Proporciona una interfaz genérica para solicitar y enviar configuraciones
  *        de módulos al backend (Raspberry Pi u otro nodo), manteniendo una caché local.
@@ -30,55 +32,52 @@ public:
 
     ModuleProxy(Router& router, const std::unordered_map<DeviceAlias, IPort::PortType>& devicePortMap);
 
-    [[nodiscard]] std::optional<acousea_ModuleWrapper> getIfFreshOrRequestFromDevice(
-        acousea_ModuleCode code, DeviceAlias alias);
+    [[nodiscard]] const acousea_ModuleWrapper* getIfFreshOrRequestFromDevice(
+        acousea_ModuleCode code,
+        DeviceAlias alias
+    );
+
+    [[nodiscard]] const acousea_ModuleWrapper* getIfFreshOrSetOnDevice(acousea_ModuleCode code,
+                                                                 const acousea_ModuleWrapper& module,
+                                                                 DeviceAlias alias);
 
     // ===================== Send / Receive =====================
-    bool requestModule(acousea_ModuleCode code, DeviceAlias alias) const;
+    bool requestModule(acousea_ModuleCode code, DeviceAlias alias);
 
-    bool sendModule(acousea_ModuleCode code, const acousea_ModuleWrapper& module, DeviceAlias alias) const;
+    bool sendModule(acousea_ModuleCode code, const acousea_ModuleWrapper& module, DeviceAlias alias);
 
     // ===================== Caché =====================
     class CachedValue
     {
     public:
-        CachedValue() = default;
-
-        explicit CachedValue(const acousea_ModuleWrapper& v, bool hasValue = true, bool fresh = true)
-            : value(v), hasValue(hasValue), isFresh(fresh)
-        {
-        }
-
-        void store(const acousea_ModuleWrapper& v)
-        {
-            value = v;
-            hasValue = isFresh = true;
-        }
-
-        void invalidate() { isFresh = false; }
-
-        static CachedValue empty()
-        {
-            return {}; // usa el constructor por defecto
-        }
-
-        [[nodiscard]] bool valid() const { return hasValue; }
-        [[nodiscard]] bool fresh() const { return hasValue && isFresh; }
-        [[nodiscard]] const acousea_ModuleWrapper& get() const { return value; }
+        CachedValue();
+        explicit CachedValue(const acousea_ModuleWrapper& v, bool hasValue = true, bool fresh = true);
+        void store(const acousea_ModuleWrapper& v);
+        void invalidate();
+        static CachedValue empty();
+        [[nodiscard]] bool isFresh() const;
+        [[nodiscard]] const acousea_ModuleWrapper& get() const;
 
     private:
         acousea_ModuleWrapper value{};
-        bool hasValue{false};
-        bool isFresh{false};
+        bool isFresh_{false};
     };
+
 
     class ModuleCache
     {
     public:
-        void store(acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper);
+        struct Entry
+        {
+            CachedValue value{};
+            bool occupied{false};
+        };
+
+
+        [[nodiscard]] bool store(acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper);
         [[nodiscard]] CachedValue get(acousea_ModuleCode code) const;
-        [[nodiscard]] std::optional<acousea_ModuleWrapper> getIfFresh(acousea_ModuleCode code) const;
-        void invalidate(acousea_ModuleCode code);
+        [[nodiscard]] const acousea_ModuleWrapper* getIfFresh(acousea_ModuleCode code) const;
+        void invalidateModule(acousea_ModuleCode code);
         void invalidateAll();
         [[nodiscard]] bool isFresh(acousea_ModuleCode code) const;
         [[nodiscard]] ModuleCache clone() const;
@@ -86,7 +85,8 @@ public:
         friend void swap(ModuleCache& a, ModuleCache& b) noexcept;
 
     private:
-        std::map<acousea_ModuleCode, CachedValue> cache;
+        static constexpr const auto MAX_MODULES = ProtoUtils::ACOUSEA_MAX_MODULE_COUNT;
+        Entry entries[MAX_MODULES]{};
     };
 
     [[nodiscard]] ModuleCache& getCache() { return cache; }
@@ -102,7 +102,7 @@ private:
         {DeviceAlias::VR2C, IPort::PortType::SerialPort}
     };
 
-    std::optional<IPort::PortType> resolvePort(DeviceAlias alias) const;
+    IPort::PortType resolvePort(DeviceAlias alias) const noexcept;
 
     // ===================== Construcción de paquetes =====================
     [[nodiscard]] static acousea_CommunicationPacket buildRequestPacket(acousea_ModuleCode code);

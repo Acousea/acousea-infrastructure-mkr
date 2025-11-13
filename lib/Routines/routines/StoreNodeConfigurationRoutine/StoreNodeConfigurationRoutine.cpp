@@ -2,15 +2,47 @@
 
 #include <cinttypes>
 
-#include "Logger/Logger.h"
 
-// Plantilla genérica oculta en este fichero (no exportada)
+#include "Logger/Logger.h"
+#include "RollbackAgent/RollbackAgent.hpp"
+
+// PUNTEROS en vez de referencias -> default-constructible y sin copias
+struct StoreCtx
+{
+    ModuleProxy::ModuleCache* cache{nullptr};
+    acousea_ModuleCode code{};
+    const acousea_ModuleWrapper* wrapper{nullptr};
+};
+
+// ====================== Acción de commit ======================
+void storeModuleAction(void* ctx)
+{
+    const auto* data = static_cast<StoreCtx*>(ctx);
+    const bool storeOk = data->cache->store(data->code, *data->wrapper);
+    if (!storeOk)
+    {
+        LOG_CLASS_ERROR("storeModuleAction() -> Failed to store module with key %" PRId32 " in cache",
+                        static_cast<int32_t>(data->code));
+        return;
+    }
+    LOG_CLASS_INFO("Processed module with key %" PRId32 " into working cache",
+                   static_cast<int32_t>(data->code));
+}
+
+// ====================== Procesamiento genérico ======================
+
 template <typename EntryT>
 Result<void> processModules(
-    ModuleProxy::ModuleCache& workingCache,
-    const EntryT* modules, const pb_size_t modules_count)
+    RollbackAgent& agent,
+    ModuleProxy::ModuleCache& cache,
+    const EntryT* modules,
+    const uint16_t modules_count)
 {
-    for (pb_size_t i = 0; i < modules_count; ++i)
+
+    static StoreCtx contexts[RollbackAgent::MAX_ACTIONS]; // Max possible modules (static allocation to preserve
+    size_t ctxIndex = 0;
+
+    for (uint16_t i = 0; i < modules_count; ++i)
     {
         const auto& entry = modules[i];
         if (!entry.has_value)
@@ -18,8 +50,17 @@ Result<void> processModules(
             return RESULT_VOID_FAILUREF("Module with key %" PRId32 " has no value", entry.key);
         }
 
-        const auto code = static_cast<acousea_ModuleCode>(entry.key);
-        workingCache.store(code, entry.value);
+        if (ctxIndex >= std::size(contexts))
+        {
+            return RESULT_VOID_FAILUREF("Too many modules in payload (%d)", modules_count);
+        }
+
+        StoreCtx& ctx = contexts[ctxIndex++];
+        ctx.cache = &cache;
+        ctx.code = static_cast<acousea_ModuleCode>(entry.key);
+        ctx.wrapper = &entry.value;
+
+        agent.registerAction(&storeModuleAction, &ctx);
     }
 
     return RESULT_VOID_SUCCESS();
@@ -34,54 +75,61 @@ StoreNodeConfigurationRoutine::StoreNodeConfigurationRoutine(
 {
 }
 
-Result<acousea_CommunicationPacket> StoreNodeConfigurationRoutine::execute(
-    const std::optional<acousea_CommunicationPacket>& optPacket)
+Result<acousea_CommunicationPacket*> StoreNodeConfigurationRoutine::execute(
+    acousea_CommunicationPacket* optPacket)
 {
-    if (!optPacket.has_value())
+    if (!optPacket) // Check for null pointer
     {
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket, "No packet provided");
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*, "No packet provided");
     }
 
-    const acousea_CommunicationPacket& packet = optPacket.value();
-    if (packet.which_body != acousea_CommunicationPacket_response_tag)
+    acousea_CommunicationPacket& inPacket = *optPacket;
+
+    if (inPacket.which_body != acousea_CommunicationPacket_response_tag)
     {
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket, "Packet is not a response");
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*, "Packet is not a response");
     }
 
-    auto workingCache = moduleProxy.getCache().clone();
+    RollbackAgent rollbackAgent;
+    auto& workingCache = moduleProxy.getCache();
     Result<void> processResult = RESULT_VOID_SUCCESS();
 
-    switch (packet.body.response.which_response)
+    switch (inPacket.body.response.which_response)
     {
     case acousea_ResponseBody_setConfiguration_tag:
         processResult = processModules(
+            rollbackAgent,
             workingCache,
-            packet.body.response.response.setConfiguration.modules,
-            packet.body.response.response.setConfiguration.modules_count);
+            inPacket.body.response.response.setConfiguration.modules,
+            inPacket.body.response.response.setConfiguration.modules_count);
         break;
 
     case acousea_ResponseBody_updatedConfiguration_tag:
         processResult = processModules(
+            rollbackAgent,
             workingCache,
-            packet.body.response.response.updatedConfiguration.modules,
-            packet.body.response.response.updatedConfiguration.modules_count
+            inPacket.body.response.response.updatedConfiguration.modules,
+            inPacket.body.response.response.updatedConfiguration.modules_count
         );
         break;
 
     default:
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket,
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*,
                                      "Packet response does not contain configuration modules. Type=%d",
-                                     packet.body.response.which_response);
+                                     inPacket.body.response.which_response);
     }
 
     if (processResult.isError())
     {
         LOG_CLASS_ERROR(": Cache changes discarded due to error: %s", processResult.getError());
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket, "Error processing modules: %s",
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*, "Error processing modules: %s",
                                      processResult.getError());
     }
 
-    moduleProxy.getCache().swap(workingCache);
+    // Commit all cache stores
+    rollbackAgent.commit();
+
     LOG_CLASS_INFO("Stored modules from node configuration packet in cache.");
-    return RESULT_SUCCESS(acousea_CommunicationPacket, packet);
+
+    return RESULT_SUCCESS(acousea_CommunicationPacket*, &inPacket); // Return the same packet
 }

@@ -3,16 +3,15 @@
 
 
 #include "Result.h"
-#include "bindings/nodeDevice.pb.h"
 
 /**
  * @brief Interfaz base para todas las rutinas del sistema.
  */
-template <typename In>
+template <typename Type>
 class IRoutine
 {
 public:
-    const char* routineName;  // Nombre estático, sin asignación dinámica
+    const char* routineName; // Nombre estático, sin asignación dinámica
 
 
     explicit constexpr IRoutine(const char* name) noexcept
@@ -24,7 +23,7 @@ public:
 
     // input == nullptr  -> rutina "interna" (sin input)
     // input != nullptr  -> rutina "externa" (usa input)
-    virtual Result<acousea_CommunicationPacket> execute(const std::optional<In>& input) = 0;
+    virtual Result<Type*> execute(Type* input) = 0; // CONST POINTER. NOT CONST DATA
 };
 
 #endif // IROUTINE_H

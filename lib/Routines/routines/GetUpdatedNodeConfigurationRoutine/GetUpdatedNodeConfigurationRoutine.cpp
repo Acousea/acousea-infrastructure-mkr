@@ -1,4 +1,6 @@
 #include "GetUpdatedNodeConfigurationRoutine.hpp"
+
+#include "SharedMemory/SharedMemory.hpp"
 #include "Logger/Logger.h"
 
 // Macro para obtener el nombre de la clase como cadena de caracteres
@@ -17,45 +19,53 @@ GetUpdatedNodeConfigurationRoutine::GetUpdatedNodeConfigurationRoutine(
 {
 }
 
-Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
-    const std::optional<acousea_CommunicationPacket>& optPacket)
+Result<acousea_CommunicationPacket*> GetUpdatedNodeConfigurationRoutine::execute(
+    acousea_CommunicationPacket* const optPacket) // Const pointer, not const data!
 {
-    acousea_NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
+    const acousea_NodeConfiguration& nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
 
-    if (!optPacket.has_value())
+    if (!optPacket) // Check for null pointer
     {
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket, "No packet provided to process");
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*, "No packet provided to process");
     }
-    const acousea_CommunicationPacket& packet = optPacket.value();
+    const acousea_CommunicationPacket& inPacket = *optPacket;
 
-    if (packet.which_body != acousea_CommunicationPacket_command_tag)
+    if (inPacket.which_body != acousea_CommunicationPacket_command_tag)
     {
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket, "Packet is not of type command");
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*, "Packet is not of type command");
     }
 
-    if (packet.body.command.which_command != acousea_CommandBody_requestedConfiguration_tag)
+    if (inPacket.body.command.which_command != acousea_CommandBody_requestedConfiguration_tag)
     {
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket,
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*,
                                      "Packet command is not of type requestedConfiguration");
     }
 
-    acousea_GetUpdatedNodeConfigurationPayload requestedConfigurationPayload = packet.body.command.command.
-        requestedConfiguration;
 
-    acousea_CommunicationPacket responsePacket = acousea_CommunicationPacket_init_default;
+    // ----------------  Prepare response packet ----------------
+    SharedMemory::resetCommunicationPacket();
+    acousea_CommunicationPacket& responsePacket = SharedMemory::communicationPacketRef();
     // Routing
     responsePacket.has_routing = true;
     responsePacket.routing = acousea_RoutingChunk_init_default;
-    responsePacket.routing.sender = packet.routing.receiver;
-    responsePacket.routing.receiver = packet.routing.sender;
+    responsePacket.routing.sender = inPacket.routing.receiver;
+    responsePacket.routing.receiver = inPacket.routing.sender;
     responsePacket.routing.ttl = 0;
 
     // Payload
     responsePacket.which_body = acousea_CommunicationPacket_response_tag;
+    responsePacket.body.response = acousea_ResponseBody_init_default;
+    responsePacket.body.response.which_response = acousea_ResponseBody_updatedConfiguration_tag;
+    responsePacket.body.response.response.updatedConfiguration = acousea_UpdatedNodeConfigurationPayload_init_default;
 
-    acousea_UpdatedNodeConfigurationPayload updatedConfiguration = acousea_UpdatedNodeConfigurationPayload_init_default;
+    acousea_UpdatedNodeConfigurationPayload& updatedConfiguration = responsePacket.body.response.response.
+        updatedConfiguration;
+    updatedConfiguration.modules_count = 0;
 
-    for (pb_size_t i = 0; i < requestedConfigurationPayload.requestedModules_count; ++i)
+    const acousea_GetUpdatedNodeConfigurationPayload& requestedConfigurationPayload = inPacket.body.command.command.
+        requestedConfiguration;
+
+    for (uint16_t i = 0; i < requestedConfigurationPayload.requestedModules_count; ++i)
     {
         switch (const acousea_ModuleCode configItem = requestedConfigurationPayload.requestedModules[i])
         {
@@ -69,7 +79,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
 
                 if (!optAmbientModule.has_value())
                 {
-                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket*,
                                                  "Ambient module data is not fresh yet (requested from device)");
                 }
 
@@ -92,7 +102,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
 
                 if (!optAmbientModule.has_value())
                 {
-                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket*,
                                                  "Storage module data is not fresh yet (requested from device)");
                 }
 
@@ -244,7 +254,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
 
                 if (!icListenLoggingEntry.has_value())
                 {
-                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket*,
                                                  "ICListen status is not fresh (requested from device)");
                 }
 
@@ -261,7 +271,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
 
                 if (!optICListenLoggingModule.has_value())
                 {
-                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket*,
                                                  "ICListen logging config is not fresh (requested from device)");
                 }
 
@@ -277,7 +287,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 );
                 if (!optICListenStreamingModule.has_value())
                 {
-                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket*,
                                                  "ICListen streaming config is not fresh (requested from device)");
                 }
 
@@ -293,7 +303,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 );
                 if (!optICListenRecordingStatsModule.has_value())
                 {
-                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket*,
                                                  "ICListen recording stats is not fresh (requested from device)");
                 }
 
@@ -309,7 +319,7 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
                 );
                 if (!optICListenModule.has_value())
                 {
-                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket,
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket*,
                                                  "ICListen HF is not fresh (requested from device)");
                 }
 
@@ -321,18 +331,15 @@ Result<acousea_CommunicationPacket> GetUpdatedNodeConfigurationRoutine::execute(
             break;
         }
     }
-    // IMPORTANT: Assign the setConfiguration payload to the response packet
-    responsePacket.body.response.which_response = acousea_ResponseBody_updatedConfiguration_tag;
-    responsePacket.body.response.response.updatedConfiguration = updatedConfiguration;
 
-    return RESULT_SUCCESS(acousea_CommunicationPacket, responsePacket);
+    return RESULT_SUCCESS(acousea_CommunicationPacket*, &responsePacket);
 }
 
 
 std::optional<acousea_UpdatedNodeConfigurationPayload_ModulesEntry>
 GetUpdatedNodeConfigurationRoutine::fetchModuleEntry(
     acousea_ModuleCode code,
-    pb_size_t whichTag,
+    uint16_t whichTag,
     ModuleProxy::DeviceAlias alias) const
 {
     auto optWrapper = moduleProxy.getIfFreshOrRequestFromDevice(code, alias);

@@ -7,7 +7,6 @@ MockGPS::MockGPS(float startLat, float startLon, float moveRate)
 }
 
 bool MockGPS::init(){
-    LOG_CLASS_INFO("MockGPS: GPS initialized");
     return true;
 }
 

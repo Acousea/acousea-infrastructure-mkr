@@ -12,11 +12,11 @@ namespace watchdog = WatchdogUtils;
 
 #ifdef PLATFORM_ARDUINO
 
+
 void test_solar_x_battery_controller()
 {
-    // Actualiza cálculos internos
-    // solarXBatteryController.sync();
     auto solarXBatteryController = hardware::solarXBatteryController();
+    solarXBatteryController.sync(); // Actualiza cálculos internos
 
     const auto voltageSOCAcc = solarXBatteryController.voltageSOC_accurate();
     const auto voltageSOCRnd = solarXBatteryController.voltageSOC_rounded();
@@ -87,7 +87,7 @@ void test_gsm_initialization()
         0x20, 0x70, 0x61, 0x63, 0x6B, 0x65, 0x74
     };
 
-    comm::gsm().send(payload);
+    comm::gsm().send(payload.data(), payload.size());
 
     // GsmPort::testConnection("example.com", 80, "/", false);
 
@@ -107,24 +107,26 @@ void test_gsm_initialization()
 void test_gsm_sending_packets()
 {
     // Try to send a packet
-    const auto packets = comm::gsm().read();
-    if (packets.empty())
+    uint8_t* sharedBuf = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    size_t sharedBufSize = SharedMemory::tmpBufferSize();
+
+    const auto readBytes = comm::gsm().readInto(sharedBuf, sharedBufSize);
+    if (readBytes <= 0)
     {
         ConsoleSerial.println("No packets received.");
     }
     else
     {
-        ConsoleSerial.println("Received packets:");
-        for (const auto& packet : packets)
-        {
-            const auto hexString = Logger::vectorToHexString(packet.data(), packet.size());
-            ConsoleSerial.println(hexString.c_str());
-        }
+        const auto hexString = Logger::vectorToHexString(
+            sharedBuf,
+            static_cast<size_t>(readBytes)
+        );
+        ConsoleSerial.println(hexString.c_str());
     }
 
     ConsoleSerial.println("Sending packet...");
     const std::vector<uint8_t> data = {0x01, 0x02, 0x03, 0x04, 0x05};
-    comm::gsm().send(data);
+    comm::gsm().send(data.data(), data.size());
 
     ConsoleSerial.println("Looping...");
 }
@@ -169,13 +171,13 @@ void test_setup()
 #ifdef PLATFORM_ARDUINO
     ConsoleSerial.begin(9600);
     delay(1000);
-    while (!ConsoleSerial)
-    {
-        digitalWrite(LED_BUILTIN, HIGH);
-        delay(100);
-        digitalWrite(LED_BUILTIN, LOW);
-        delay(100);
-    }
+    // while (!ConsoleSerial)
+    // {
+    //     digitalWrite(LED_BUILTIN, HIGH);
+    //     delay(100);
+    //     digitalWrite(LED_BUILTIN, LOW);
+    //     delay(100);
+    // }
     ConsoleSerial.println("[arduino] Setup: starting...");
 #endif
 
@@ -208,12 +210,23 @@ void test_setup()
 
 #endif
 
+    // Set a custom error handler
+    ErrorHandler::setHandler([]()
+    {
+        ConsoleSerial.println("Custom handler invoked!");
+    });
+
+    // Handle an error should trigger the watchdog
+    // ErrorHandler::handleError("Failed to initialize module.");
+
     // Inicializa el administrador de la tarjeta SD
     hardware::sd().begin();
 
+    // Initialize the RTC
     hardware::rtc().init();
 
-    hardware::rtc().setEpoch(1760441400);
+    // Initialize the gps
+    hardware::_gpsMock().init();
 
     // Logger initialization and configuration
     Logger::initialize(
@@ -225,53 +238,103 @@ void test_setup()
     );
     Logger::logInfo("================ Setting up Node =================");
 
-    // Initialize the gps
-    hardware::gps().init();
 
+    hardware::rtc().setEpoch(1762778934); // Here you would call synctime with gpsmock.getTimeStamp()
+
+
+    // ------------ Initialize communication ports ------------
+    // Initialize the packet queue
+    comm::packetQueue().begin();
+
+    // Initialize the serial communicator
+    comm::serial().init();
+
+    // Initialize the LoRa communicator
+#ifdef PLATFORM_HAS_LORA
+    comm::lora().init();
+#endif
+
+    // Initialize the GSM communicator
+#ifdef PLATFORM_HAS_GSM
+    comm::gsm().init();
+#endif
+
+    // Initialize the Iridium communicator
+#ifdef PLATFORM_ARDUINO
+    // comm::iridium().init();
+#endif
+
+    // --------------------------------------------------------
+
+    // Initialize the node configuration repository
+    logic::nodeConfigurationRepository().init();
+
+    // Initialize the Node Operation Runner
+    logic::nodeOperationRunner().init();
 
 #ifdef PLATFORM_ARDUINO
-    // batteryController->init();
+    // Initialize the battery controller
+    // hardware::battery().init();
     hardware::solarXBatteryController().init();
 
 
+    // *** SolarX Battery Sync Task ***
     static LambdaTask solarXBatterySyncTask(15000,
                                             [&]() { hardware::solarXBatteryController().sync(); }
     );
+    // sys::scheduler().addTask(&solarXBatterySyncTask);
 
 
+    // *** Battery Protection Policy Task ***
     static MethodTask<BatteryProtectionPolicy> batteryProtectionPolicyTask(10000,
                                                                            &logic::batteryProtectionPolicy(),
                                                                            &BatteryProtectionPolicy::enforce
     );
+    // sys::scheduler().addTask(&batteryProtectionPolicyTask);
 
-    static MethodTask<GsmMQTTPort> mqttPollTask(10000,
-                                                &comm::gsm(),
-                                                &GsmMQTTPort::mqttLoop
+    // *** GSM MQTT Polling Task ***
+    // static MethodTask<GsmMQTTPort> mqttPollTask(10000,
+                                                // &comm::gsm(),
+                                                // &GsmMQTTPort::sync
+    // );
+
+    // *** SolarX Battery Sync Task ***
+    static LambdaTask mqttPollTask(10000,
+                                            [&]() {  comm::gsm().sync(); }
     );
+    // sys::scheduler().addTask(&mqttPollTask);
 
+    // *** Battery Test Task ***
     static FunctionTask batteryTestTask(30000,
-                                        [] { SharedUtils::withLedIndicator(test_solar_x_battery_controller); }
+                                        [] { test_solar_x_battery_controller(); }
     );
-    sys::scheduler().addTask(&solarXBatterySyncTask);
-    sys::scheduler().addTask(&mqttPollTask);
-    // scheduler.addTask(&batteryProtectionPolicyTask);
-    // scheduler.addTask(&batteryTestTask);
+    // sys::scheduler().addTask(&batteryTestTask);
+
+    // *** Node Operation Runner Task ***
+    static MethodTask<NodeOperationRunner> nodeOperationTask(
+        15000, // 15 seconds
+        &logic::nodeOperationRunner(),
+        &NodeOperationRunner::run
+    );
+    sys::scheduler().addTask(&nodeOperationTask);
 
 #endif
 
-#ifdef PLATFORM_HAS_GSM
-    test_gsm_initialization();
-#endif
+    // #ifdef PLATFORM_HAS_GSM
+    // test_gsm_initialization();
+    // #endif
 
-
-    watchdog::enable(15000); // 15 seconds
+    watchdog::enable(watchdog::DEFAULT_WATCHDOG_TIMEOUT_MS); // 15 seconds
 }
 
 
 void test_loop()
 {
-    shared::executeEvery(5000, []
+    constexpr unsigned int LOOP_INTERVAL_MS = watchdog::DEFAULT_WATCHDOG_TIMEOUT_MS / 3;
+
+    shared::executeEvery(LOOP_INTERVAL_MS, []()
     {
+        // watchdog::reset();
         shared::withLedIndicator([]
         {
             LOG_FREE_MEMORY("[🧪 TEST LOOP START]");

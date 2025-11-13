@@ -10,41 +10,68 @@
 
 extern "C" char* sbrk(int incr);
 
-int freeMemoryStackVsHeap()
+int heapEnd()
 {
-    char top;
-    return &top - reinterpret_cast<char*>(sbrk(0));
+    // The sbrk(0) function returns the current end of the heap (grows upwards)
+    return reinterpret_cast<int>(sbrk(0));
 }
+
+int stackTop()
+{
+    // The address of a local variable gives an approximation of the current top of the stack (grows downwards)
+    char top;
+    return reinterpret_cast<int>(&top);
+}
+
 
 void Logger::logfFreeMemory(const char* fmt, ...)
 {
-    struct mallinfo mi = mallinfo();
-    const int freeMem = freeMemoryStackVsHeap();
+    // --- Recolectar información de memoria ---
+    const struct mallinfo mi = mallinfo();
+    const int topOfStack = stackTop();
+    const int endOfHeap = heapEnd();
+    const int freeMem = topOfStack - endOfHeap;
 
-    char prefix[128];
+    // --- Prefijo opcional usando sharedBuffer ---
+    // Reutilizamos el buffer global para evitar stack local
+    memset(sharedBuffer, 0, sizeof(sharedBuffer));
+
     if (fmt && *fmt)
     {
         va_list args;
         va_start(args, fmt);
-        vsnprintf(prefix, sizeof(prefix), fmt, args);
+        vsnprintf(sharedBuffer, sizeof(sharedBuffer), fmt, args);
         va_end(args);
     }
     else
     {
-        prefix[0] = '\0';
+        sharedBuffer[0] = '\0';
     }
 
-    logfInfo("%s Free stack/heap gap: %d bytes, Heap total: %d bytes, Used: %d, Free reusable: %d",
-             prefix, freeMem, mi.arena, mi.uordblks, mi.fordblks);
+    // --- Segunda parte: usar logfInfo, que ya formatea correctamente ---
+    logfInfo(
+        "%s Free stack/heap gap: %d bytes [STACK_TOP = 0x%X, HEAP_END = 0x%X], "
+        "Heap total: %d bytes, Used: %d, Free reusable: %d",
+        sharedBuffer,
+        freeMem,
+        topOfStack,
+        endOfHeap,
+        mi.arena,
+        mi.uordblks,
+        mi.fordblks
+    );
 }
+
 #endif
 
-void Logger::initialize(IDisplay* display_, StorageManager* sdManager_, RTCController* rtc_, const char* logFilePath_,
-                        Mode mode_)
+void Logger::initialize(IDisplay* display_,
+                        StorageManager* sdManager_,
+                        RTCController* rtc_,
+                        const char* logFilePath_,
+                        const Mode mode_)
 {
     // Limpieza del buffer global (evita residuos entre logs o tests)
-    memset(sharedBuffer, 0, sizeof(sharedBuffer)); // <-- 🔧 Añadido
-
+    memset(sharedBuffer, 0, sizeof(sharedBuffer));
 
     Logger::display = display_;
     Logger::storageManager = sdManager_;
@@ -52,24 +79,24 @@ void Logger::initialize(IDisplay* display_, StorageManager* sdManager_, RTCContr
     Logger::logFilePath = logFilePath_;
     Logger::mode = mode_;
 
-
     const bool validPath = (logFilePath_ && strlen(logFilePath_) <= 8);
 
-    char msg[64];
-    snprintf(msg, sizeof(msg),
-             validPath ? "[Logger] Log file path: %s" : "[Logger] Invalid path (must follow 8.3 format).",
+    // Usamos el buffer compartido global para evitar stack local
+    snprintf(sharedBuffer, sizeof(sharedBuffer),
+             validPath ? "[Logger] Log file path: %s"
+                        : "[Logger] Invalid path (must follow 8.3 format).",
              validPath ? logFilePath_ : "");
 
 #if defined(ARDUINO)
     if (display)
-        display->print(msg);
+        display->print(sharedBuffer);
     else
-        Serial.println(msg);
+        Serial.println(sharedBuffer);
 #else
     if (display)
-        display->print(msg);
+        display->print(sharedBuffer);
     else
-        printf("%s\n", msg);
+        printf("%s\n", sharedBuffer);
 #endif
 }
 
@@ -149,23 +176,23 @@ void Logger::do_log()
     }
 }
 
-void Logger::vlog(const char* logType, const char* message)
+void Logger::vlog(const char* loggingClass, const char* message)
 {
     char timestamp[20];
     getTimestamp(timestamp, sizeof(timestamp));
 
-    snprintf(sharedBuffer, sizeof(sharedBuffer), "[%s] %s: %s", timestamp, logType, message);
+    snprintf(sharedBuffer, sizeof(sharedBuffer), "[%s] %s: %s", timestamp, loggingClass, message);
 
     do_log();
 }
 
 
-void Logger::vlog(const char* logType, const char* fmt, va_list &args)
+void Logger::vlog(const char* loggingClass, const char* fmt, va_list& args)
 {
     char timestamp[20];
     getTimestamp(timestamp, sizeof(timestamp));
 
-    const int headerLen = snprintf(sharedBuffer, sizeof(sharedBuffer), "[%s] %s: ", timestamp, logType);
+    const int headerLen = snprintf(sharedBuffer, sizeof(sharedBuffer), "[%s] %s: ", timestamp, loggingClass);
     if (headerLen < 0 || static_cast<size_t>(headerLen) >= sizeof(sharedBuffer))
     {
         // Error al formatear el encabezado o se ha excedido el tamaño del buffer
@@ -193,6 +220,7 @@ void Logger::vectorToHexString(const unsigned char* data, const size_t length, c
     outBuffer[length * 2] = '\0';
 }
 
+// FIXME: Too much memory usage with large buffers?
 Logger::HexString Logger::vectorToHexString(const unsigned char* data, const size_t length)
 {
 #ifdef LOGGER_HEXSTRING_DYNAMIC
@@ -207,7 +235,7 @@ Logger::HexString Logger::vectorToHexString(const unsigned char* data, const siz
     return hex;
 #else
     HexString hex{};
-    constexpr size_t max = HexString::MAX_SIZE;
+    constexpr size_t max = HexString::MAX_LOGGER_BUF_SIZE;
     for (size_t i = 0; i < length && (i * 2 + 2) < max; ++i)
         sprintf(hex.buffer + i * 2, "%02X", data[i]);
     hex.buffer[(length * 2) < max ? (length * 2) : (max - 1)] = '\0';

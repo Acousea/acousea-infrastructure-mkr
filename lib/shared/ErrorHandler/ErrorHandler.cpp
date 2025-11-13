@@ -2,9 +2,12 @@
 
 #include "Logger/Logger.h"
 #include <cstdarg>
+#include <cstring>
+
+#include "wait/WaitFor.hpp"
+#include "WatchDog/WatchDogUtils.hpp"
 
 #ifdef PLATFORM_ARDUINO
-#define RESET_PIN 7
 #include <Arduino.h>
 #else
 #include <cstdio>
@@ -35,14 +38,10 @@ void ErrorHandler::setHandler(const ErrorHandlerCallback handler)
 
 void ErrorHandler::handleError(const char* msg)
 {
-    LOG_CLASS_ERROR("HANDLING ERROR: %s", msg);
+    Logger::vlog("ERROR_HANDLER", msg);
 
-    if (customHandler)
-        customHandler(msg);
-    else
-        defaultHandler(msg);
-
-    // exit(1);
+    if (customHandler) customHandler();
+    performReset();
 }
 
 // ------------------------------------------------------------------
@@ -50,36 +49,40 @@ void ErrorHandler::handleError(const char* msg)
 // ------------------------------------------------------------------
 void ErrorHandler::handleErrorf(const char* fmt, ...)
 {
-    char buffer[256];
     va_list args;
     va_start(args, fmt);
-    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    Logger::vlog("ERROR_HANDLER", fmt, args);
     va_end(args);
-    handleError(buffer);
+
+    if (customHandler) customHandler();
+    performReset();
+
 }
 
 
-void ErrorHandler::defaultHandler(const char* msg)
-{
-    LOG_CLASS_ERROR("-> Default handler triggered.");
-    performHardwareReset();
-}
+#define RESET_MODE_WATCHDOG
+#if defined(PLATFORM_ARDUINO) && defined(RESET_MODE_HARDWARE)
 
-#ifdef PLATFORM_ARDUINO
-
-void ErrorHandler::performHardwareReset()
+void ErrorHandler::performReset()
 {
-    LOG_CLASS_ERROR("-> Performing hardware reset (Arduino).");
+    rawPrintLine("-> Forcing HARDWARE reset (Arduino).");
     pinMode(RESET_PIN, OUTPUT);
     digitalWrite(RESET_PIN, LOW); // Bring the RST pin LOW
-    delay(100); // Ensure sufficient time for reset
-    // El microcontrolador se reinicia aquí; no hace falta más.
+}
+
+#elif defined(PLATFORM_ARDUINO) && defined(RESET_MODE_WATCHDOG)
+void ErrorHandler::performReset()
+{
+    WatchdogUtils::disable();
+    WatchdogUtils::enable(2000); // Set a short timeout to trigger the reset quickly
+    rawPrintLine("-> Forcing WATCHDOG reset (Arduino).");
+    waitFor(WatchdogUtils::getTimeout() + 1000); // Wait longer than the watchdog timeout
 }
 
 #else // Implementación nativa (Linux/Windows/macOS)
-void ErrorHandler::performHardwareReset()
+void ErrorHandler::performReset()
 {
-    LOG_CLASS_ERROR("-> Performing hardware reset (native).");
+    LOG_CLASS_ERROR("-> Forcing abort (native).");
     rawPrintLine("ERROR_HANDLER -> Simulating hardware reset (native). Terminating process.");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     std::abort();

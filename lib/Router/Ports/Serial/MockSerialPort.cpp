@@ -1,7 +1,7 @@
 #include "MockSerialPort.h"
 
-MockSerialPort::MockSerialPort()
-    : IPort(PortType::SerialPort)
+MockSerialPort::MockSerialPort(PacketQueue& packetQueue)
+    : IPort(PortType::SerialPort, packetQueue)
 {
 }
 
@@ -16,13 +16,18 @@ bool MockSerialPort::available()
     return false;
 }
 
-bool MockSerialPort::send(const std::vector<uint8_t>& data)
+bool MockSerialPort::send(const uint8_t* data, const size_t length)
 {
-    LOG_CLASS_INFO("MOCKSerialPort::send() -> %s", Logger::vectorToHexString(data.data(), data.size()).c_str());
+    LOG_CLASS_INFO("MOCKSerialPort::send() -> %s", Logger::vectorToHexString(data, length).c_str());
     return true;
 }
 
-std::vector<std::vector<uint8_t>> MockSerialPort::read()
+uint16_t MockSerialPort::readInto(uint8_t* buffer, uint16_t maxSize)
 {
-    return std::vector<std::vector<uint8_t>>();
+    return 0;
+}
+
+bool MockSerialPort::sync()
+{
+    return true;
 }

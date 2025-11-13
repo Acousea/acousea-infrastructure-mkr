@@ -3,6 +3,7 @@
 #include "UBloxGPS.h"
 #include <Logger/Logger.h>
 #include "SparkFun_u-blox_GNSS_Arduino_Library.h"
+#include "ErrorHandler/ErrorHandler.h"
 
 
 static SFE_UBLOX_GNSS myGNSS;
@@ -92,23 +93,23 @@ bool UBloxGNSS::config()
     return saved;
 }
 
-bool UBloxGNSS::init()
+bool UBloxGNSS::init() // NO LOGGER CALLS HERE (INIT PHASE)
 {
-    LOG_CLASS_INFO("Initializing GNSS ...");
+    Serial.println(String(getClassNameCString()) + "Initializing GNSS ...");
+
 
     if (myGNSS.begin() == false)
     {
-        LOG_CLASS_ERROR("GNSS Failed! => u-blox GNSS not detected at default I2C address. Please check wiring");
+        ERROR_HANDLE_CLASS("GNSS Failed! => u-blox GNSS not detected at default I2C address. Please check wiring");
         return false;
     }
 
     if (!config())
     {
-        LOG_CLASS_ERROR("GNSS configuration failed");
+        ERROR_HANDLE_CLASS("GNSS configuration failed");
         return false;
     }
-    LOG_CLASS_INFO("GNSS initialized");
-    LOG_CLASS_INFO("Awaiting first GNSS fix ...");
+    Serial.println(String(getClassNameCString()) + "GNSS initialized! Awaiting first GNSS fix ...");
 
     bool fixed = false;
     const uint32_t beginFix_ms = millis();
@@ -129,12 +130,14 @@ bool UBloxGNSS::init()
 
     if (!fixed)
     {
-        LOG_CLASS_ERROR("ERROR: NO GNSS fix after %lu sec\n",
-                        static_cast<unsigned long>((millis() - beginFix_ms) / 1000));
+        ERROR_HANDLE_CLASS("ERROR: NO GNSS fix after %lu sec\n",
+                           static_cast<unsigned long>((millis() - beginFix_ms) / 1000));
         return false;
     }
-    LOG_CLASS_INFO("Fix type: %s", fixTypeToString(fixType));
-    LOG_CLASS_INFO("GNSS fix took %lu sec\n", (millis() - beginFix_ms) / 1000);
+    SerialUSB.println(
+        String("Fix type: ") + fixTypeToString(fixType) +
+        " GNSS fix took " + String((millis() - beginFix_ms) / 1000) + " sec"
+    );
     return true;
 }
 

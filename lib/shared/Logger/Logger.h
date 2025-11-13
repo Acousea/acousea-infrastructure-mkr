@@ -32,8 +32,8 @@ public:
 #else
     struct HexString
     {
-        static constexpr size_t MAX_SIZE = 1024;
-        char buffer[MAX_SIZE]{};
+        static constexpr size_t MAX_LOGGER_BUF_SIZE = 1024;
+        char buffer[MAX_LOGGER_BUF_SIZE]{};
         [[nodiscard]] const char* c_str() const { return buffer; }
     };
 
@@ -63,6 +63,9 @@ public:
     static HexString vectorToHexString(const unsigned char* data, size_t length);
 
 private:
+
+    friend class ErrorHandler; // To have access to logging internal methods and shared Buffer
+
     static inline IDisplay* display = nullptr;
     static inline StorageManager* storageManager = nullptr;
     static inline const char* logFilePath = nullptr;
@@ -82,8 +85,8 @@ private:
 
     static void getTimestamp(char* buffer, size_t len);
 
-    static void vlog(const char* logType, const char* fmt, va_list &args);
-    static void vlog(const char* logType, const char* message);
+    static void vlog(const char* loggingClass, const char* fmt, va_list &args);
+    static void vlog(const char* loggingClass, const char* message);
 
     static bool clearLog();
 

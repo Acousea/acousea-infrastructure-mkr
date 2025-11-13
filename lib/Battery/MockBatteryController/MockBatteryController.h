@@ -24,7 +24,6 @@ public:
 
     acousea_BatteryStatus status() override;
 
-    // Setters for mock data
     void setMockPercentage(const uint8_t percentage);
 
     void setMockStatus(const acousea_BatteryStatus status);

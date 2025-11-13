@@ -12,7 +12,6 @@
 #include "PendingRoutines/PendingRoutines.hpp"
 
 #include <deque>
-#include <optional>
 
 /**
  * @brief Class that runs the operation modes of the node
@@ -23,27 +22,23 @@ public:
     CLASS_NAME(NodeOperationRunner)
 
     NodeOperationRunner(Router& router,
-                        const NodeConfigurationRepository& nodeConfigurationRepository,
+                        StorageManager& storageManager,
+                        NodeConfigurationRepository& nodeConfigurationRepository,
                         const std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>>& routines);
 
     void init() override;
 
     void run() override;
-    [[nodiscard]] std::optional<IRoutine<acousea_CommunicationPacket>*> findRoutine(
-        uint8_t bodyTag, uint8_t payloadTag) const;
 
 private:
-
     Router& router;
     std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>> routines;
-
-    // -------------------------
-    // Lista de rutinas incompletas (tamaño fijo)
-    // -------------------------
-    PendingRoutines<3> pendingRoutines;
-
+    PendingRoutines<5> pendingRoutines;
     NodeConfigurationRepository nodeConfigurationRepository;
-    std::optional<acousea_NodeConfiguration> currentNodeConfiguration = std::nullopt;
+
+    [[nodiscard]] IRoutine<acousea_CommunicationPacket>* findRoutine(
+        uint8_t bodyTag, uint8_t payloadTag) const;
+
 
     // Struct to store the current currentOperationMode and cycle count
     struct Cache
@@ -65,18 +60,18 @@ private:
 
 
     void processReportingRoutines();
-    void processIncomingPackets(const uint8_t& localAddress);
+    void processNextIncomingPacket(const uint8_t& localAddress);
     void runPendingRoutines();
     void sendResponsePacket(IPort::PortType portType, const uint8_t& localAddress,
-                            const std::optional<acousea_CommunicationPacket>& optInputPacket,
-                            acousea_CommunicationPacket& outputPacket) const;
+                            const acousea_CommunicationPacket* inputPacketPtr,
+                            acousea_CommunicationPacket* outputPacketPtr) const;
 
+    acousea_CommunicationPacket* processPacket(IPort::PortType portType,
+                                               acousea_CommunicationPacket* inPacketPtr);
 
-    std::optional<acousea_CommunicationPacket> processPacket(IPort::PortType portType,
-                                                             const acousea_CommunicationPacket& packet);
-    std::optional<acousea_CommunicationPacket> executeRoutine(
-        IRoutine<acousea_CommunicationPacket>*& routine,
-        const std::optional<acousea_CommunicationPacket>& optInputPacket,
+    static acousea_CommunicationPacket* executeRoutine(
+        IRoutine<acousea_CommunicationPacket>* routine,
+        acousea_CommunicationPacket* optInputPacket,
         IPort::PortType portType,
         uint8_t remainingAttempts,
         bool requeueAllowed
@@ -101,7 +96,6 @@ private:
     friend class NodeOperationRunnerTest_RunPendingRoutinesProcessesAll_Test;
     friend class NodeOperationRunnerTest_ProcessIncomingPacketsSendsResponsesThroughRouter_Test;
 #endif
-
 };
 
 #endif // OPERATION_MODE_RUNNER_H

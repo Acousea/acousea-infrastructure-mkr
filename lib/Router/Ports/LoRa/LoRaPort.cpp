@@ -1,4 +1,4 @@
-#if defined(ARDUINO) && defined(PLATFORM_HAS_LORA)
+#if defined(PLATFORM_ARDUINO) && defined(PLATFORM_HAS_LORA)
 #include "LoRaPort.h"
 
 #include <ErrorHandler/ErrorHandler.h>
@@ -18,8 +18,9 @@ double bandwidth_kHz[10] = {
     7.8E3, 10.4E3, 15.6E3, 20.8E3, 31.25E3, 41.7E3, 62.5E3, 125E3, 250E3, 500E3
 };
 
-LoraPort::LoraPort(const LoRaConfig& config) : IPort(PortType::LoraPort),
-                                               config(config)
+LoraPort::LoraPort(FlashPacketQueue& flashQueue, const LoRaConfig& config) :
+    IPort(PortType::LoraPort, flashQueue),
+    config(config)
 {
 }
 
@@ -39,43 +40,39 @@ void LoraPort::init()
     LoRa.receive(); // Start listening for incoming packets
 }
 
-void LoraPort::send(const std::vector<uint8_t>& data)
+bool LoraPort::send(const uint8_t* data, size_t length)
 {
     LOG_CLASS_INFO("LoraPort::send() -> Sending packet... %s",
-                   Logger::vectorToHexString(data.data(), data.size()).c_str());
+                   Logger::vectorToHexString(data, length).c_str());
 
     while (!LoRa.beginPacket())
     {
         LOG_CLASS_INFO("LORA_PORT::send() -> LoRa.beginPacket() Waiting for transmission to end...");
         delay(10);
     }
-    LoRa.write(data.data(), data.size());
+    LoRa.write(data, length);
     LoRa.endPacket();
     // Transmit the packet synchrously (blocking) -> Avoids setting onTxDone callback (has bugs in the library)
     // Start listening for incoming packets again
     LoRa.receive();
+    return true;
 }
 
 bool LoraPort::available()
 {
-    return !receivedRawPackets.empty();
+    return !flashPacketQueue_.isEmptyForPort(getTypeU8());
 }
 
-std::vector<std::vector<uint8_t>> LoraPort::read()
+uint16_t LoraPort::readInto(uint8_t* buffer, const uint16_t maxSize)
 {
-    if (!available())
-    {
-        return {};
-    }
-    // Return all packets and clear the queue
-    std::vector<std::vector<uint8_t>> packets;
-    for (const auto& packet : receivedRawPackets)
-    {
-        packets.push_back(packet);
-    }
-    receivedRawPackets.clear();
-    return packets;
+    return flashPacketQueue_.popForPort(getTypeU8(), buffer, maxSize);
 }
+
+bool LoraPort::sync()
+{
+    return true;
+}
+
 
 void LoraPort::onReceive(int packetSize)
 {

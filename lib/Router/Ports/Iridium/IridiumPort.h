@@ -23,26 +23,28 @@
 extern Uart mySerial3;
 extern IridiumSBD sbd_modem;
 
-class IridiumPort : public IPort {
+class IridiumPort : public IPort
+{
     CLASS_NAME(IridiumPort)
 
 public:
-    IridiumPort();
+    explicit IridiumPort(PacketQueue& packetQueue);
 
 public:
     void init() override;
 
-    bool send(const std::vector<uint8_t>& data) override;
+    bool send(const uint8_t* data, size_t length) override;
 
     bool available() override;
 
-    std::vector<std::vector<uint8_t>> read() override;
+    uint16_t readInto(uint8_t* buffer, uint16_t maxSize) override;
+
+    bool sync() override;
 
 private:
-
     static void handleError(int err);
 
-    void storeReceivedPacket(const uint8_t *data, size_t length);
+    void storeReceivedPacket(const uint8_t* data, size_t length);
 
     void receiveIncomingMessages();
 

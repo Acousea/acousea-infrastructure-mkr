@@ -9,31 +9,34 @@
 #include "Ports/IPort.h"
 #include "Logger/Logger.h"
 
-class SerialPort : public IPort
+class SerialPort final : public IPort
 {
     CLASS_NAME(SerialPort)
 
 private:
-    Uart* serialPort;
+    Uart& serialPort;
     int baudRate;
-    std::vector<uint8_t> rxBuffer;
     static constexpr uint8_t kSOF = 0x2A; // Start Of Frame
     static constexpr size_t kMaxBuf = 4096; // cota de seguridad del RX buffer
 
 public:
-    SerialPort(Uart* serialPort, int baudRate);
+    virtual ~SerialPort() = default;
+
+    // Constructor
+    SerialPort(Uart& serialPort, int baudRate, PacketQueue& packetQueue);
 
     // Inicialización del puerto serial
     void init() override;
 
     // Envía un paquete serializado
-    bool send(const std::vector<uint8_t>& data) override;
+    bool send(const uint8_t* data, size_t length) override;
 
     // Comprueba si hay suficientes datos disponibles para un paquete
     bool available() override;
 
     // Lee datos y construye un paquete
-    std::vector<std::vector<uint8_t>> read() override;
+    uint16_t readInto(uint8_t* buffer, uint16_t maxSize) override;
+    bool sync() override;
 };
 
 #endif // ARDUINO

@@ -50,7 +50,8 @@ Result<T> Result<T>::fromOptional(std::optional<T> value, const char* errorMessa
 }
 
 template <typename T>
-Result<T> Result<T>::failuref(const char* fmt, ...) {
+Result<T> Result<T>::failuref(const char* fmt, ...)
+{
     char msg[ERROR_MESSAGE_SIZE];
     va_list args;
     va_start(args, fmt);
@@ -60,7 +61,8 @@ Result<T> Result<T>::failuref(const char* fmt, ...) {
 }
 
 template <typename T>
-Result<T> Result<T>::pendingf(const char* fmt, ...) {
+Result<T> Result<T>::pendingf(const char* fmt, ...)
+{
     char msg[ERROR_MESSAGE_SIZE];
     va_list args;
     va_start(args, fmt);
@@ -106,7 +108,8 @@ Result<void> Result<void>::failure(const char* errorMessage)
 
 
 // 🔥 printf-style versions
-Result<void> Result<void>::failuref(const char* fmt, ...) {
+Result<void> Result<void>::failuref(const char* fmt, ...)
+{
     char msg[ERROR_MESSAGE_SIZE];
     va_list args;
     va_start(args, fmt);
@@ -115,7 +118,8 @@ Result<void> Result<void>::failuref(const char* fmt, ...) {
     return failure(msg);
 }
 
-Result<void> Result<void>::pendingf(const char* fmt, ...) {
+Result<void> Result<void>::pendingf(const char* fmt, ...)
+{
     char msg[ERROR_MESSAGE_SIZE];
     va_list args;
     va_start(args, fmt);
@@ -129,7 +133,9 @@ Result<void> Result<void>::pendingf(const char* fmt, ...) {
 template class Result<int>;
 template class Result<float>;
 template class Result<double>;
+template class Result<size_t>;
 template class Result<acousea_CommunicationPacket>;
+template class Result<acousea_CommunicationPacket*>;
 template class Result<acousea_NodeConfiguration>;
 template class Result<acousea_OperationMode>;
 template class Result<acousea_ReportingPeriodEntry>;

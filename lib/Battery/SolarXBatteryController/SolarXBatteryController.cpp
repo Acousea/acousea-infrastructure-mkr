@@ -60,15 +60,14 @@ void SolarXBatteryController::initialBatteryCalibration()
     {
         coulombCountedAh = (voltageSOC / 100.0f) * NOMINAL_CAPACITY_AH;
         cachedCombinedSOC = voltageSOC;
-        LOG_CLASS_INFO("%sInitial SOC set from voltage: %.1f%%",
-                       getClassNameCString(), voltageSOC);
+        LOG_CLASS_INFO("Initial SOC set from voltage: %.1f%%",
+                        voltageSOC);
     }
     else
     {
         coulombCountedAh = 0.5f * NOMINAL_CAPACITY_AH;
         cachedCombinedSOC = 50.0f;
-        LOG_CLASS_WARNING("%sInitial SOC set to 50%% (battery not idle)",
-                          getClassNameCString());
+        LOG_CLASS_WARNING("Initial SOC set to 50%% (battery not idle)");
     }
 
     lastSyncTime = getMillis();

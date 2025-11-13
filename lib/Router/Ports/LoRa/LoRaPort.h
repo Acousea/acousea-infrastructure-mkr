@@ -1,7 +1,7 @@
 #ifndef LORA_PORT_H
 #define LORA_PORT_H
 
-#if defined(ARDUINO)&& defined(PLATFORM_HAS_LORA)
+#if defined(PLATFORM_ARDUINO)&& defined(PLATFORM_HAS_LORA)
 
 #include <deque>
 
@@ -44,15 +44,17 @@ class LoraPort : public IPort
     CLASS_NAME(LoraPort)
 
 public:
-    LoraPort(const LoRaConfig& config = defaultLoraConfig);
+    LoraPort(FlashPacketQueue& flashQueue, const LoRaConfig& config = defaultLoraConfig);
 
     void init() override;
 
-    void send(const std::vector<uint8_t>& data) override;
+    bool send(const uint8_t* data, size_t length) override;
 
     bool available() override;
 
-    std::vector<std::vector<uint8_t>> read() override;
+    uint16_t readInto(uint8_t* buffer, uint16_t maxSize) override;
+
+    bool sync() override;
 
     void onReceive(int packetSize);
 

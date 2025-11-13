@@ -5,7 +5,7 @@
 #include "ClassName.h"
 
 // Define a callback type for handling errors
-using ErrorHandlerCallback = void (*)(const char*);
+using ErrorHandlerCallback = void (*)();
 
 class ErrorHandler
 {
@@ -24,9 +24,7 @@ public:
 private:
     static inline ErrorHandlerCallback customHandler = nullptr;
 
-    // Default error handling
-    static void defaultHandler(const char* msg);
-    static void performHardwareReset();
+    [[noreturn]] static void performReset();
 };
 
 #define ERROR_HANDLE_CLASS(fmt, ...) \

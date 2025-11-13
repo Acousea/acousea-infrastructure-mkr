@@ -3,6 +3,8 @@
 
 #include <Logger/Logger.h>
 
+#include "SharedMemory/SharedMemory.hpp"
+
 Uart mySerial3(&sercom3, SBD_RX_PIN, SBD_TX_PIN, SERCOM_RX_PAD_1, UART_TX_PAD_0);
 
 // Global instance of the IridiumSBD modem
@@ -23,7 +25,7 @@ void ISBDDiagsCallback(IridiumSBD* device, char c)
 
 #endif
 
-IridiumPort::IridiumPort() : IPort(PortType::SBDPort)
+IridiumPort::IridiumPort(PacketQueue& packetQueue) : IPort(PortType::SBDPort, packetQueue)
 {
 }
 
@@ -59,15 +61,16 @@ void IridiumPort::init()
     LOG_CLASS_INFO("IridiumPort::init() -> Iridium modem initialized");
 }
 
-bool IridiumPort::send(const std::vector<uint8_t>& data)
+bool IridiumPort::send(const uint8_t* data, const size_t length)
 {
     LOG_CLASS_INFO("IridiumPort::send() -> Sending packet... Data: %s, Size: %d bytes",
-                   Logger::vectorToHexString(data.data(), data.size()).c_str(), data.size()
+                   Logger::vectorToHexString(data, length).c_str(), length
     );
 
-    uint8_t rxBuffer[MAX_RECEIVED_PACKET_SIZE];
-    size_t rxBufferSize = sizeof(rxBuffer);
-    const int err = sbd_modem.sendReceiveSBDBinary(data.data(), data.size(), rxBuffer, rxBufferSize);
+    auto rxBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    size_t rxBufferSize = SharedMemory::tmpBufferSize();
+
+    const int err = sbd_modem.sendReceiveSBDBinary(data, length, rxBuffer, rxBufferSize);
     if (err != ISBD_SUCCESS)
     {
         handleError(err);
@@ -92,18 +95,17 @@ bool IridiumPort::available()
     // checkSignalQuality();
     checkRingAlertsAndWaitingMsgCount();
     // receiveIncomingMessages();
-    return !receivedRawPackets.empty();
+    return !packetQueue_.isEmpty();
 }
 
-std::vector<std::vector<uint8_t>> IridiumPort::read()
+uint16_t IridiumPort::readInto(uint8_t* buffer, const uint16_t maxSize)
 {
-    std::vector<std::vector<uint8_t>> packets = {};
-    for (const auto& packet : receivedRawPackets)
-    {
-        packets.push_back(packet);
-    }
-    receivedRawPackets.clear();
-    return packets;
+    return packetQueue_.popForPort(getTypeU8(), buffer, maxSize);
+}
+
+bool IridiumPort::sync()
+{
+    return true;
 }
 
 
@@ -115,21 +117,36 @@ void IridiumPort::handleError(const int err)
     const char* desc = nullptr;
     switch (err)
     {
-    case ISBD_SUCCESS:            desc = "Success"; break;
-    case ISBD_ALREADY_AWAKE:      desc = "Already awake"; break;
-    case ISBD_SERIAL_FAILURE:     desc = "Serial failure"; break;
-    case ISBD_PROTOCOL_ERROR:     desc = "Protocol failure"; break;
-    case ISBD_CANCELLED:          desc = "Cancelled"; break;
-    case ISBD_NO_MODEM_DETECTED:  desc = "No modem detected"; break;
-    case ISBD_SBDIX_FATAL_ERROR:  desc = "SBDIX fatal failure"; break;
-    case ISBD_SENDRECEIVE_TIMEOUT:desc = "Send/receive timeout"; break;
-    case ISBD_RX_OVERFLOW:        desc = "RX overflow"; break;
-    case ISBD_REENTRANT:          desc = "Reentrant"; break;
-    case ISBD_IS_ASLEEP:          desc = "Is asleep"; break;
-    case ISBD_NO_SLEEP_PIN:       desc = "No sleep pin"; break;
-    case ISBD_NO_NETWORK:         desc = "No network"; break;
-    case ISBD_MSG_TOO_LONG:       desc = "Message too long"; break;
-    default:                      desc = "Unknown failure"; break;
+    case ISBD_SUCCESS: desc = "Success";
+        break;
+    case ISBD_ALREADY_AWAKE: desc = "Already awake";
+        break;
+    case ISBD_SERIAL_FAILURE: desc = "Serial failure";
+        break;
+    case ISBD_PROTOCOL_ERROR: desc = "Protocol failure";
+        break;
+    case ISBD_CANCELLED: desc = "Cancelled";
+        break;
+    case ISBD_NO_MODEM_DETECTED: desc = "No modem detected";
+        break;
+    case ISBD_SBDIX_FATAL_ERROR: desc = "SBDIX fatal failure";
+        break;
+    case ISBD_SENDRECEIVE_TIMEOUT: desc = "Send/receive timeout";
+        break;
+    case ISBD_RX_OVERFLOW: desc = "RX overflow";
+        break;
+    case ISBD_REENTRANT: desc = "Reentrant";
+        break;
+    case ISBD_IS_ASLEEP: desc = "Is asleep";
+        break;
+    case ISBD_NO_SLEEP_PIN: desc = "No sleep pin";
+        break;
+    case ISBD_NO_NETWORK: desc = "No network";
+        break;
+    case ISBD_MSG_TOO_LONG: desc = "Message too long";
+        break;
+    default: desc = "Unknown failure";
+        break;
     }
 
     // Aseguramos no sobrepasar el buffer
@@ -143,39 +160,37 @@ void IridiumPort::handleError(const int err)
 void IridiumPort::storeReceivedPacket(const uint8_t* data, size_t length)
 {
     // Print the received data
-    const auto packet = std::vector<uint8_t>(data, data + length);
-    LOG_CLASS_INFO("IridiumPort::storeReceivedPacket() -> Received data: %s",
-                   Logger::vectorToHexString(packet.data(), packet.size()).c_str()
+    LOG_CLASS_INFO("::storeReceivedPacket() -> Received data: %s",
+                   Logger::vectorToHexString(data, length).c_str()
     );
-    if (receivedRawPackets.size() >= MAX_QUEUE_SIZE)
+
+    const bool pushOk = packetQueue_.push(getTypeU8(), data, static_cast<uint16_t>(length));
+    if (!pushOk)
     {
-        LOG_CLASS_INFO(
-            "IridiumPort::storeReceivedPacket() -> Received packet queue is full. Dropping the oldest packet.");
-        receivedRawPackets.pop_front();
+        LOG_CLASS_ERROR("::storeReceivedPacket() -> Failed to store received packet in flash queue.");
     }
-    receivedRawPackets.push_back(packet);
+    LOG_CLASS_INFO("::storeReceivedPacket() -> Stored received packet in flash queue.");
 }
 
 void IridiumPort::receiveIncomingMessages()
 {
     LOG_CLASS_INFO("IridiumPort::receiveIncomingMessages() -> Checking for incoming messages...");
-    uint8_t rxBuffer[MAX_RECEIVED_PACKET_SIZE];
+    uint8_t* rxBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    size_t rxBufferSize = SharedMemory::tmpBufferSize();
     do
     {
-        size_t rxBufferSize = sizeof(rxBuffer);
         if (const int err = sbd_modem.sendReceiveSBDBinary(NULL, 0, rxBuffer, rxBufferSize); err != ISBD_SUCCESS)
         {
             handleError(err);
             break;
         }
-        if (rxBufferSize > 0)
-        {
-            storeReceivedPacket(rxBuffer, rxBufferSize);
-        }
-        else
+        if (rxBufferSize <= 0)
         {
             LOG_CLASS_INFO("IridiumPort::receiveIncomingMessages() -> No data read.");
+            continue;
         }
+        storeReceivedPacket(rxBuffer, rxBufferSize);
+        SharedMemory::clearTmpBuffer();
     }
     while (sbd_modem.getWaitingMessageCount() > 0);
 }

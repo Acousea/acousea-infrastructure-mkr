@@ -1,11 +1,17 @@
 #include "NodeConfigurationRepository.h"
 
 #include <cstdio>
-#include <pb_encode.h>
-#include <pb_decode.h>
+
+#include "SharedMemory/SharedMemory.hpp"
 #include "Logger/Logger.h"
 #include "ErrorHandler/ErrorHandler.h"
+#include "ProtoUtils/ProtoUtils.hpp"
 
+namespace pb
+{
+    using ProtoUtils::NodeConfiguration::encode;
+    using ProtoUtils::NodeConfiguration::decodeInto;
+}
 
 NodeConfigurationRepository::NodeConfigurationRepository(StorageManager& sdManager)
     : storageManager(sdManager)
@@ -24,138 +30,143 @@ void NodeConfigurationRepository::init()
         LOG_CLASS_ERROR("::init() -> No configuration file found. Creating default configuration.");
         if (!saveConfiguration(makeDefault()))
         {
-            ERROR_HANDLE_CLASS("NodeConfigurationRepository::begin() -> Error saving default configuration.");
+            ERROR_HANDLE_CLASS("::begin() -> Error saving default configuration.");
         }
     }
 
-    LOG_CLASS_INFO("NodeConfigurationRepository initialized.");
+    LOG_CLASS_INFO("Successfully Initialized.");
 }
 
 void NodeConfigurationRepository::reset()
 {
-    LOG_CLASS_INFO("NodeConfigurationRepository::reset() -> Resetting to default configuration.");
+    LOG_CLASS_INFO("::reset() -> Resetting to default configuration.");
     if (!saveConfiguration(makeDefault()))
     {
-        ERROR_HANDLE_CLASS("NodeConfigurationRepository::reset() -> Error saving default configuration.");
+        ERROR_HANDLE_CLASS("::reset() -> Error saving default configuration.");
     }
 }
 
 
 void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfiguration& cfg)
 {
-    // Buffer grande para evitar reallocs o truncamiento
-    char line[1024];
-    int len = snprintf(line, sizeof(line),
-                       "%s Node Configuration ### LocalAddress=%lu",
-                       getClassNameCString(), cfg.localAddress);
+
+    // Usar el buffer temporal global de SharedMemory
+    char* line = SharedMemory::tmpBuffer();
+    constexpr size_t lineSize = SharedMemory::tmpBufferSize();
+
+    SharedMemory::clearTmpBuffer();
+
+    int len = snprintf(line, lineSize,
+                       "Node Configuration ### LocalAddress=%lu",
+                       cfg.localAddress);
 
     // --- Operation Modes ---
     if (cfg.has_operationModesModule)
     {
-        len += snprintf(line + len, sizeof(line) - len, " ### OperationModes=[");
+        len += snprintf(line + len, lineSize - len, " ### OperationModes=[");
         for (int i = 0; i < cfg.operationModesModule.modes_count; ++i)
         {
             const auto& m = cfg.operationModesModule.modes[i];
-            if (i) len += snprintf(line + len, sizeof(line) - len, ", ");
-            len += snprintf(line + len, sizeof(line) - len,
+            if (i) len += snprintf(line + len, lineSize - len, ", ");
+            len += snprintf(line + len, lineSize - len,
                             "{id=%lu, name=%s, reportTypeId=%lu, transition=",
                             m.id, m.name, m.reportTypeId);
 
             if (m.has_transition)
             {
-                len += snprintf(line + len, sizeof(line) - len,
+                len += snprintf(line + len, lineSize - len,
                                 "{targetModeId=%ld, duration=%ld}",
                                 m.transition.targetModeId,
                                 m.transition.duration);
             }
             else
             {
-                len += snprintf(line + len, sizeof(line) - len, "<none>");
+                len += snprintf(line + len, lineSize - len, "<none>");
             }
-            len += snprintf(line + len, sizeof(line) - len, "}");
+            len += snprintf(line + len, lineSize - len, "}");
         }
-        len += snprintf(line + len, sizeof(line) - len, "] | ActiveIdx=%ld",
+        len += snprintf(line + len, lineSize - len, "] | ActiveIdx=%ld",
                         cfg.operationModesModule.activeModeId);
     }
     else
     {
-        len += snprintf(line + len, sizeof(line) - len, " ### OperationModes=<none>");
+        len += snprintf(line + len, lineSize - len, " ### OperationModes=<none>");
     }
 
     // --- Report Types ---
     if (cfg.has_reportTypesModule)
     {
-        len += snprintf(line + len, sizeof(line) - len, " ### ReportTypes=[");
+        len += snprintf(line + len, lineSize - len, " ### ReportTypes=[");
         for (int i = 0; i < cfg.reportTypesModule.reportTypes_count; ++i)
         {
             const auto& report = cfg.reportTypesModule.reportTypes[i];
-            if (i) len += snprintf(line + len, sizeof(line) - len, ", ");
-            len += snprintf(line + len, sizeof(line) - len,
+            if (i) len += snprintf(line + len, lineSize - len, ", ");
+            len += snprintf(line + len, lineSize - len,
                             "{id=%ld, name=%s, moduleCodes=[",
                             report.id, report.name);
             for (int j = 0; j < report.includedModules_count; ++j)
             {
-                if (j) len += snprintf(line + len, sizeof(line) - len, ", ");
-                len += snprintf(line + len, sizeof(line) - len, "%d", report.includedModules[j]);
+                if (j) len += snprintf(line + len, lineSize - len, ", ");
+                len += snprintf(line + len, lineSize - len, "%d", report.includedModules[j]);
             }
-            len += snprintf(line + len, sizeof(line) - len, "]}");
+            len += snprintf(line + len, lineSize - len, "]}");
         }
-        len += snprintf(line + len, sizeof(line) - len, "]");
+        len += snprintf(line + len, lineSize - len, "]");
     }
     else
     {
-        len += snprintf(line + len, sizeof(line) - len, " ### ReportTypes=<none>");
+        len += snprintf(line + len, lineSize - len, " ### ReportTypes=<none>");
     }
 
     // --- LoRa ---
     if (cfg.has_loraModule)
     {
-        len += snprintf(line + len, sizeof(line) - len, " ### LoRa=[");
+        len += snprintf(line + len, lineSize - len, " ### LoRa=[");
         for (int i = 0; i < cfg.loraModule.entries_count; ++i)
         {
             const auto& e = cfg.loraModule.entries[i];
-            if (i) len += snprintf(line + len, sizeof(line) - len, ", ");
-            len += snprintf(line + len, sizeof(line) - len,
+            if (i) len += snprintf(line + len, lineSize - len, ", ");
+            len += snprintf(line + len, lineSize - len,
                             "{mode=%ld, period=%lu}", e.modeId, e.period);
         }
-        len += snprintf(line + len, sizeof(line) - len, "]");
+        len += snprintf(line + len, lineSize - len, "]");
     }
     else
     {
-        len += snprintf(line + len, sizeof(line) - len, " ### LoRa=<none>");
+        len += snprintf(line + len, lineSize - len, " ### LoRa=<none>");
     }
 
     // --- Iridium ---
     if (cfg.has_iridiumModule)
     {
-        len += snprintf(line + len, sizeof(line) - len, " ### Iridium=[");
+        len += snprintf(line + len, lineSize - len, " ### Iridium=[");
         for (int i = 0; i < cfg.iridiumModule.entries_count; ++i)
         {
             const auto& e = cfg.iridiumModule.entries[i];
-            if (i) len += snprintf(line + len, sizeof(line) - len, ", ");
-            len += snprintf(line + len, sizeof(line) - len,
+            if (i) len += snprintf(line + len, lineSize - len, ", ");
+            len += snprintf(line + len, lineSize - len,
                             "{mode=%ld, period=%lu}", e.modeId, e.period);
         }
-        len += snprintf(line + len, sizeof(line) - len, "]");
+        len += snprintf(line + len, lineSize - len, "]");
     }
     else
     {
-        len += snprintf(line + len, sizeof(line) - len, " ### Iridium=<none>");
+        len += snprintf(line + len, lineSize - len, " ### Iridium=<none>");
     }
 
     // --- GSM-MQTT ---
     if (cfg.has_gsmMqttModule)
     {
-        len += snprintf(line + len, sizeof(line) - len, " ### GsmMqtt=[");
+        len += snprintf(line + len, lineSize - len, " ### GsmMqtt=[");
         for (int i = 0; i < cfg.gsmMqttModule.entries_count; ++i)
         {
             const auto& e = cfg.gsmMqttModule.entries[i];
-            if (i) len += snprintf(line + len, sizeof(line) - len, ", ");
-            len += snprintf(line + len, sizeof(line) - len,
+            if (i) len += snprintf(line + len, lineSize - len, ", ");
+            len += snprintf(line + len, lineSize - len,
                             "{mode=%lu, period=%lu}", e.modeId, e.period);
         }
-        len += snprintf(line + len, sizeof(line) - len, "]");
-        len += snprintf(line + len, sizeof(line) - len,
+        len += snprintf(line + len, lineSize - len, "]");
+        len += snprintf(line + len, lineSize - len,
                         " | Broker=%s:%ld ClientId=%s",
                         cfg.gsmMqttModule.broker,
                         cfg.gsmMqttModule.port,
@@ -163,7 +174,7 @@ void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfi
     }
     else
     {
-        len += snprintf(line + len, sizeof(line) - len, " ### GsmMqtt=<none>");
+        len += snprintf(line + len, lineSize - len, " ### GsmMqtt=<none>");
     }
 
     // --- Log final ---
@@ -171,167 +182,150 @@ void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfi
 }
 
 
-Result<std::vector<uint8_t>> NodeConfigurationRepository::encodeProto(const acousea_NodeConfiguration& m)
-{
-    pb_ostream_t s1 = PB_OSTREAM_SIZING;
-    if (!pb_encode(&s1, acousea_NodeConfiguration_fields, &m))
-    {
-        return RESULT_CLASS_FAILUREF(std::vector<uint8_t>, "encodeProto (size): pb_encode failed: %s",
-                                     PB_GET_ERROR(&s1));
-    }
-
-    std::vector<uint8_t> buf(s1.bytes_written);
-    pb_ostream_t s2 = pb_ostream_from_buffer(buf.data(), buf.size());
-    if (!pb_encode(&s2, acousea_NodeConfiguration_fields, &m))
-    {
-        return RESULT_CLASS_FAILUREF(std::vector<uint8_t>, "encodeProto (write): pb_encode failed: %s",
-                                     PB_GET_ERROR(&s2));
-    }
-
-    return RESULT_SUCCESS(std::vector<uint8_t>, std::move(buf));
-}
-
-// ------------------------------------------------------------------
-// Decodifica desde bytes a struct nanopb
-// ------------------------------------------------------------------
-Result<acousea_NodeConfiguration> NodeConfigurationRepository::decodeProto(const uint8_t* data, const size_t length)
-{
-    acousea_NodeConfiguration m = acousea_NodeConfiguration_init_default;
-
-    if (data == nullptr || length == 0)
-    {
-        return RESULT_CLASS_FAILUREF(acousea_NodeConfiguration, "decodeProto: invalid buffer (null or empty)");
-    }
-
-    pb_istream_t is = pb_istream_from_buffer(data, length);
-
-    if (!pb_decode(&is, acousea_NodeConfiguration_fields, &m))
-    {
-        return RESULT_CLASS_FAILUREF(acousea_NodeConfiguration, "decodeProto: pb_decode failed: %s", PB_GET_ERROR(&is));
-    }
-
-    return RESULT_SUCCESS(acousea_NodeConfiguration, m);
-}
-
-
 // ------------------------------------------------------------------
 // Lee el fichero binario y devuelve la configuración (o default)
 // ------------------------------------------------------------------
-acousea_NodeConfiguration NodeConfigurationRepository::getNodeConfiguration() const
+acousea_NodeConfiguration& NodeConfigurationRepository::getNodeConfiguration() const
 {
-    constexpr size_t MAX_CONFIG_SIZE = 1024; // ajusta según el tamaño esperado del proto
-    uint8_t buffer[MAX_CONFIG_SIZE] = {0};
+    if (SharedMemory::isNodeConfigurationValid())
+    {
+        return SharedMemory::nodeConfigurationRef(); // Is already loaded and valid
+    }
 
-    const size_t bytesRead = storageManager.readFileBytes(configFilePath, buffer, sizeof(buffer));
+    SharedMemory::resetNodeConfiguration();
 
+    // Usamos el buffer temporal global para evitar uso de stack
+    auto* tmpBuf = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    constexpr size_t tmpBufSize = SharedMemory::tmpBufferSize();
+
+    const size_t bytesRead = storageManager.readFileBytes(configFilePath, tmpBuf, tmpBufSize);
     if (bytesRead == 0)
     {
-        // Archivo vacío o inexistente → usar configuración por defecto
-        return makeDefault();
+        const auto& defaultConfig = makeDefault();
+        SharedMemory::setNodeConfiguration(defaultConfig);
+        return SharedMemory::nodeConfigurationRef();
     }
 
-    const auto dec = decodeProto(buffer, bytesRead);
-    if (!dec.isSuccess())
+    const Result<void> decodedResult = pb::decodeInto(tmpBuf, bytesRead, &SharedMemory::nodeConfigurationRef());
+    if (!decodedResult.isSuccess())
     {
-        // (Opcional) loguear el error: dec.getError()
-        return makeDefault();
+        LOG_CLASS_ERROR("::getNodeConfiguration() -> Error decoding configuration: %s",
+                        decodedResult.getError());
+        const auto& defaultConfig = makeDefault();
+        SharedMemory::setNodeConfiguration(defaultConfig);
+        return SharedMemory::nodeConfigurationRef();
     }
-
-    return dec.getValueConst();
+    return SharedMemory::nodeConfigurationRef();
 }
 
 bool NodeConfigurationRepository::saveConfiguration(const acousea_NodeConfiguration& cfg)
 {
-    auto enc = encodeProto(cfg);
+    auto enc = pb::encode(cfg);
     if (!enc.isSuccess())
     {
-        LOG_CLASS_ERROR("NodeConfigurationRepository::saveConfiguration() -> Error encoding configuration: %s",
+        LOG_CLASS_ERROR("::saveConfiguration() -> Error encoding configuration: %s",
                         enc.getError());
         return false;
     }
-    return storageManager.writeFileBytes(configFilePath, enc.getValue().data(), enc.getValue().size());
+    const bool writeOk = storageManager.writeFileBytes(configFilePath, enc.getValue().data(), enc.getValue().size());
+    if (!writeOk)
+    {
+        LOG_CLASS_ERROR("::saveConfiguration() -> Error writing configuration to file %s",
+                        configFilePath);
+        return false;
+    }
+    SharedMemory::setNodeConfiguration(cfg);
+    return true;
 }
 
 
-acousea_NodeConfiguration NodeConfigurationRepository::makeDefault()
+acousea_NodeConfiguration& NodeConfigurationRepository::makeDefault()
 {
-    acousea_NodeConfiguration defaultNodeConfiguration = acousea_NodeConfiguration_init_default;
-    defaultNodeConfiguration.localAddress = 255;
+    // 1️⃣ Inicialización base directa (una sola vez)
+    acousea_NodeConfiguration& cfg = SharedMemory::nodeConfigurationRef();
 
-    acousea_ReportTypesModule reportTypesModule = acousea_ReportTypesModule_init_default;
-    // Definimos un ReportType "BasicReport"
-    acousea_ReportType basic = acousea_ReportType_init_default;
+    // 2️⃣ Ajustes generales
+    cfg.localAddress = 255;
+
+    // ------------------------------------------------------------
+    // REPORT TYPES MODULE
+    // ------------------------------------------------------------
+    cfg.has_reportTypesModule = true;
+    acousea_ReportTypesModule& reportTypesModule = cfg.reportTypesModule;
+
+    reportTypesModule.reportTypes_count = 1;
+    acousea_ReportType& basic = reportTypesModule.reportTypes[0];
+    basic = acousea_ReportType_init_default;
     basic.id = 1;
-    strncpy(basic.name, "BasicRep", sizeof(basic.name));
+    strncpy(basic.name, "BasicRep", sizeof(basic.name) - 1);
     basic.includedModules_count = 3;
     basic.includedModules[0] = acousea_ModuleCode_BATTERY_MODULE;
     basic.includedModules[1] = acousea_ModuleCode_AMBIENT_MODULE;
     basic.includedModules[2] = acousea_ModuleCode_LOCATION_MODULE;
 
-    // Meterlos en el módulo
-    reportTypesModule.reportTypes_count = 1;
-    reportTypesModule.reportTypes[0] = basic;
+    // ------------------------------------------------------------
+    // OPERATION MODES MODULE
+    // ------------------------------------------------------------
+    cfg.has_operationModesModule = true;
+    acousea_OperationModesModule& opModesModule = cfg.operationModesModule;
+    opModesModule = acousea_OperationModesModule_init_default;
 
-    defaultNodeConfiguration.has_reportTypesModule = true;
-    defaultNodeConfiguration.reportTypesModule = reportTypesModule;
-
-
-    // --- OperationModesModule ---
-    acousea_OperationModesModule opModesModule = acousea_OperationModesModule_init_default;
     opModesModule.activeModeId = 1;
-
-    // Ejemplo: modo "Normal"
-    acousea_OperationMode defaultMode = acousea_OperationMode_init_default;
-    defaultMode.id = 1;
-    strncpy(defaultMode.name, "DEFAULT", sizeof(defaultMode.name));
-    defaultMode.reportTypeId = 1; // Usa el ReportType "BasicReport"
-
-    // Transición en bucle hacia sí mismo
-    defaultMode.has_transition = true;
-    defaultMode.transition = acousea_OperationModeTransition_init_default;
-    defaultMode.transition.targetModeId = defaultMode.id;
-    defaultMode.transition.duration = 0; // o un valor por defecto
-
-
     opModesModule.modes_count = 1;
-    opModesModule.modes[0] = defaultMode;
 
-    defaultNodeConfiguration.has_operationModesModule = true;
-    defaultNodeConfiguration.operationModesModule = opModesModule;
+    acousea_OperationMode& defaultMode = opModesModule.modes[0];
+    defaultMode = acousea_OperationMode_init_default;
+    defaultMode.id = 1;
+    strncpy(defaultMode.name, "DEFAULT", sizeof(defaultMode.name) - 1);
+    defaultMode.reportTypeId = 1;
+    defaultMode.has_transition = true;
 
+    acousea_OperationModeTransition& trans = defaultMode.transition;
+    trans = acousea_OperationModeTransition_init_default;
+    trans.targetModeId = defaultMode.id;
+    trans.duration = 0;
 
-    // ---------------- LoRa con 15s en modo 0 ----------------
+    // ------------------------------------------------------------
+    // LORA MODULE
+    // ------------------------------------------------------------
 #ifdef PLATFORM_HAS_LORA
-    acousea_LoRaReportingModule loraModule = acousea_LoRaReportingModule_init_default;
-    loraModule.entries_count = 1;
-    loraModule.entries[0] = acousea_ReportingPeriodEntry_init_default;
-    loraModule.entries[0].modeId = 0;
-    loraModule.entries[0].period = 15;
+    cfg.has_loraModule = true;
+    acousea_LoRaReportingModule& lora = cfg.loraModule;
+    lora = acousea_LoRaReportingModule_init_default;
 
-    defaultNodeConfiguration.has_loraModule = true;
-    defaultNodeConfiguration.loraModule = loraModule;
+    lora.entries_count = 1;
+    acousea_ReportingPeriodEntry& loraEntry = lora.entries[0];
+    loraEntry = acousea_ReportingPeriodEntry_init_default;
+    loraEntry.modeId = 0;
+    loraEntry.period = 15;
 #endif
 
-    // ---------------- Gsm MQTT sin entradas ----------------
+    // ------------------------------------------------------------
+    // GSM MQTT MODULE
+    // ------------------------------------------------------------
 #ifdef PLATFORM_HAS_GSM
-    acousea_GsmMqttReportingModule gsmMqttModule = acousea_GsmMqttReportingModule_init_default;
-    gsmMqttModule.entries_count = 0; // sin entradas
-    // broker y clientId vacíos
-    gsmMqttModule.port = 0;
-
-    defaultNodeConfiguration.has_gsmMqttModule = false; // explícitamente no configurado
+    cfg.has_gsmMqttModule = false; // deshabilitado por defecto
+    acousea_GsmMqttReportingModule& gsm = cfg.gsmMqttModule;
+    gsm = acousea_GsmMqttReportingModule_init_default;
+    gsm.entries_count = 0;
+    gsm.port = 0;
 #endif
 
+    // ------------------------------------------------------------
+    // IRIDIUM MODULE
+    // ------------------------------------------------------------
+    cfg.has_iridiumModule = true;
+    acousea_IridiumReportingModule& iridium = cfg.iridiumModule;
+    iridium = acousea_IridiumReportingModule_init_default;
 
-    // ---------------- Iridium con 15s en modo 0 ----------------
-    acousea_IridiumReportingModule iridiumModule = acousea_IridiumReportingModule_init_default;
-    iridiumModule.entries_count = 1;
-    iridiumModule.entries[0] = acousea_ReportingPeriodEntry_init_default;
-    iridiumModule.entries[0].modeId = 0;
-    iridiumModule.entries[0].period = 15;
+    iridium.entries_count = 1;
+    acousea_ReportingPeriodEntry& iridiumEntry = iridium.entries[0];
+    iridiumEntry = acousea_ReportingPeriodEntry_init_default;
+    iridiumEntry.modeId = 0;
+    iridiumEntry.period = 15;
 
-    defaultNodeConfiguration.has_iridiumModule = true;
-    defaultNodeConfiguration.iridiumModule = iridiumModule;
-
-    return defaultNodeConfiguration;
+    // ------------------------------------------------------------
+    // RETURN
+    // ------------------------------------------------------------
+    return cfg;
 }

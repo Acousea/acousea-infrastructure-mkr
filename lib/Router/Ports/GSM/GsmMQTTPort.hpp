@@ -49,18 +49,19 @@ class GsmMQTTPort final : public IPort
     CLASS_NAME(GsmPort)
 
 public:
-    explicit GsmMQTTPort(const GsmConfig& cfg);
+    explicit GsmMQTTPort(const GsmConfig& cfg, PacketQueue& packetQueue);
 
     static void printCertificates(const std::vector<StoredCert>& currentCerts);
     bool tryConnect();
 
     void init() override;
-    bool send(const std::vector<uint8_t>& data) override;
+    bool send(const uint8_t* data, size_t length) override;
     bool available() override;
-    std::vector<std::vector<uint8_t>> read() override;
+    uint16_t readInto(uint8_t* buffer, uint16_t maxSize) override;
 
     // Métodos MQTT
-    void mqttLoop();
+    bool sync() override;
+
     void mqttStop();
 
 private:

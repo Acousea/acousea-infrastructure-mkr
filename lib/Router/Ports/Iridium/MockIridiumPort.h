@@ -10,16 +10,17 @@ class MockIridiumPort : public IPort
     CLASS_NAME(MockIridiumPort)
 
 public:
-    MockIridiumPort();
+    explicit MockIridiumPort(PacketQueue& packetQueue);
 
-public:
     void init() override;
 
-    bool send(const std::vector<uint8_t>& data) override;
+    bool send(const uint8_t* data, size_t length) override;
 
     bool available() override;
 
-    std::vector<std::vector<uint8_t>> read() override;
+    uint16_t readInto(uint8_t* buffer, uint16_t maxSize) override;
+
+    bool sync() override;
 };
 
 #endif // MOCK_IRIDIUM_PORT_H

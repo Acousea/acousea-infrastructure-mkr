@@ -20,24 +20,21 @@ public:
         ModuleProxy& moduleProxy
     );
 
-    Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& inPacket) override;
+    Result<acousea_CommunicationPacket*> execute(acousea_CommunicationPacket* inPacket) override;
 
 private:
     static Result<void> setOperationModes(acousea_NodeConfiguration& nodeConfig,
                                           const acousea_SetNodeConfigurationPayload_ModulesEntry& moduleEntry
     );
     [[nodiscard]] static Result<void> setReportTypesModule(acousea_NodeConfiguration& nodeConfig,
-                                                             const acousea_SetNodeConfigurationPayload_ModulesEntry&
-                                                             moduleEntry
+                                                           const acousea_SetNodeConfigurationPayload_ModulesEntry&
+                                                           moduleEntry
     );
 
     [[nodiscard]] static Result<void> setReportingPeriods(acousea_NodeConfiguration& nodeConfig,
                                                           const acousea_SetNodeConfigurationPayload_ModulesEntry&
                                                           moduleEntry
     );
-
-    [[nodiscard]] Result<void> setICListenConfiguration(
-        const acousea_SetNodeConfigurationPayload_ModulesEntry& entry) const;
 };
 
 

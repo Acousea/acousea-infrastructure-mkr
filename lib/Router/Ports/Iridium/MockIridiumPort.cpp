@@ -2,7 +2,7 @@
 
 #include <Logger/Logger.h>
 
-MockIridiumPort::MockIridiumPort() : IPort(PortType::SBDPort)
+MockIridiumPort::MockIridiumPort(PacketQueue& packetQueue) : IPort(PortType::SBDPort, packetQueue)
 {
 }
 
@@ -11,10 +11,10 @@ void MockIridiumPort::init()
     LOG_CLASS_INFO("MockIridiumPort: Iridium modem initialized");
 }
 
-bool MockIridiumPort::send(const std::vector<uint8_t>& data)
+bool MockIridiumPort::send(const uint8_t* data, const size_t length)
 {
     LOG_CLASS_INFO("MockIridiumPort: Sending packet... %s",
-                   Logger::vectorToHexString(data.data(), data.size()).c_str());
+                   Logger::vectorToHexString(data, length).c_str());
     return true;
 }
 
@@ -23,7 +23,12 @@ bool MockIridiumPort::available()
     return false;
 }
 
-std::vector<std::vector<uint8_t>> MockIridiumPort::read()
+uint16_t MockIridiumPort::readInto(uint8_t* buffer, const uint16_t maxSize)
 {
-    return std::vector<std::vector<uint8_t>>();
+    return 0;
+}
+
+bool MockIridiumPort::sync()
+{
+    return true;
 }

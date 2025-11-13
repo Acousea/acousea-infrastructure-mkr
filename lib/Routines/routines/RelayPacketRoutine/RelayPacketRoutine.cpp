@@ -9,21 +9,20 @@ RelayPacketRoutine::RelayPacketRoutine(Router& router,
 {
 }
 
-Result<acousea_CommunicationPacket> RelayPacketRoutine::execute(
-    const std::optional<acousea_CommunicationPacket>& optPacket)
+Result<acousea_CommunicationPacket*> RelayPacketRoutine::execute(acousea_CommunicationPacket* const optPacket)
 {
-    if (!optPacket.has_value())
+    if (!optPacket) // Check for null pointer
     {
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket,
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*,
                                      "RelayPacketRoutine: No packet provided");
     }
 
-    const auto& pkt = optPacket.value();
+    auto& inPacket = *optPacket;
 
-    if (!pkt.has_routing)
+    if (!inPacket.has_routing)
     {
         LOG_CLASS_WARNING("RelayPacketRoutine: Packet has no routing info, skipping relay");
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket,
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*,
                                      "Packet has no routing info");
     }
 
@@ -31,15 +30,15 @@ Result<acousea_CommunicationPacket> RelayPacketRoutine::execute(
     for (const auto& portType : relayPorts)
     {
         const bool sent = router
-                          .from(static_cast<uint8_t>(pkt.routing.sender))
+                          .from(static_cast<uint8_t>(inPacket.routing.sender))
                           .through(portType)
-                          .send(pkt);
+                          .send(inPacket);
 
         if (sent)
         {
             LOG_CLASS_INFO("RelayPacketRoutine: Relayed packet sender=%ld receiver=%ld through %s",
-                           pkt.routing.sender,
-                           pkt.routing.receiver,
+                           inPacket.routing.sender,
+                           inPacket.routing.receiver,
                            IPort::portTypeToCString(portType));
             anySent = true;
         }
@@ -52,9 +51,9 @@ Result<acousea_CommunicationPacket> RelayPacketRoutine::execute(
 
     if (!anySent)
     {
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket,
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*,
                                      "RelayPacketRoutine: Packet not relayed through any port");
     }
 
-    return RESULT_SUCCESS(acousea_CommunicationPacket, pkt);
+    return RESULT_SUCCESS(acousea_CommunicationPacket*, &inPacket);
 }

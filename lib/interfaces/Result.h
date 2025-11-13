@@ -31,7 +31,7 @@ private:
     enum class Type { Success, Incomplete, Failure };
 
     std::optional<T> value;
-    constexpr static size_t ERROR_MESSAGE_SIZE = 1024;
+    constexpr static size_t ERROR_MESSAGE_SIZE = 512;
     char errorMessage_[ERROR_MESSAGE_SIZE]{}; // fixed-size buffer
     Type type;
 
@@ -60,7 +60,7 @@ public:
 private:
     enum class Type { Success, Incomplete, Failure };
 
-    constexpr static size_t ERROR_MESSAGE_SIZE = 1024;
+    constexpr static size_t ERROR_MESSAGE_SIZE = 512;
     char errorMessage_[ERROR_MESSAGE_SIZE]{}; // fixed-size buffer
 
     Type type;

@@ -4,6 +4,8 @@
 
 #include "GsmMQTTPort.hpp"
 #include <ErrorHandler/ErrorHandler.h>
+#include "SharedMemory/SharedMemory.hpp"
+
 // #include "../../private_keys/cert.h"
 // #include "../../private_keys/key.h"
 
@@ -18,29 +20,47 @@ unsigned long GsmMQTTPort::getTime()
 void GsmMQTTPort::mqttMessageHandler(int messageSize)
 {
     LOG_CLASS_INFO(" -> MQTT Message Handler invoked. Message size: %d bytes", messageSize);
-    std::vector<uint8_t> packet;
-    packet.reserve(messageSize);
+    auto packetBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    constexpr size_t maxBufferSize = SharedMemory::tmpBufferSize();
+    size_t readCount = 0;
+
 
     while (instance->mqttClient.available())
     {
         const char c = static_cast<char>(instance->mqttClient.read());
-        packet.push_back(static_cast<uint8_t>(c));
+        if (readCount >= maxBufferSize)
+        {
+            LOG_CLASS_WARNING(" -> MQTT Message Handler: Buffer overflow, message too large.");
+            break;
+        }
+        packetBuffer[readCount++] = static_cast<uint8_t>(c);
     }
 
-    LOG_CLASS_INFO(" -> MQTT Message Handler: Received %d bytes", packet.size());
-    if (!packet.empty())
+    LOG_CLASS_INFO(" -> MQTT Message Handler: Received %d bytes", readCount);
+    if (readCount != static_cast<size_t>(messageSize))
     {
-        if (instance->receivedRawPackets.size() >= GsmMQTTPort::MAX_QUEUE_SIZE)
+        LOG_CLASS_WARNING(" -> MQTT Message Handler: Warning - expected size %d but read %d bytes", messageSize,
+                          readCount);
+    }
+    if (readCount > 0)
+    {
+        const bool pushOK = instance->packetQueue_.push(
+            static_cast<uint8_t>(IPort::PortType::GsmMqttPort),
+            packetBuffer,
+            static_cast<uint16_t>(readCount)
+        );
+        if (!pushOK)
         {
-            instance->receivedRawPackets.pop_front();
+            LOG_CLASS_ERROR(" -> MQTT Message Handler: Error storing packet in flash queue.");
+            return;
         }
-        instance->receivedRawPackets.push_back(packet);
+        LOG_CLASS_INFO(" -> MQTT Message Handler: Packet stored in flash queue.");
     }
 }
 
-GsmMQTTPort::GsmMQTTPort(const GsmConfig& cfg)
+GsmMQTTPort::GsmMQTTPort(const GsmConfig& cfg, PacketQueue& packetQueue)
 // : IPort(PortType::GsmPort), config(cfg), sslClient(gsmClient), mqttClient(sslClient){
-    : IPort(PortType::GsmMqttPort),
+    : IPort(PortType::GsmMqttPort, packetQueue),
       config(cfg),
       mqttClient(ublox_gsmSslClient)
 {
@@ -69,6 +89,11 @@ void GsmMQTTPort::printCertificates(const std::vector<StoredCert>& currentCerts)
 
 bool GsmMQTTPort::tryConnect()
 {
+    if (instance == nullptr)
+    {
+        LOG_CLASS_ERROR(" -> GsmMQTTPort::tryConnect() called before initialization.");
+        return false;
+    }
     if (mqttClient.connected())
     {
         LOG_CLASS_INFO(" -> Already connected to MQTT broker");
@@ -215,22 +240,19 @@ void GsmMQTTPort::init()
 }
 
 
-bool GsmMQTTPort::send(const std::vector<uint8_t>& data)
+bool GsmMQTTPort::send(const uint8_t* data, const size_t length)
 {
-    return mqttPublishToTopic(data.data(), data.size(), config.outputTopic, false, 1);
+    return mqttPublishToTopic(data, length, config.outputTopic, false, 1);
 }
 
 bool GsmMQTTPort::available()
 {
-    return !receivedRawPackets.empty();
+    return !packetQueue_.isEmptyForPort(getTypeU8());
 }
 
-std::vector<std::vector<uint8_t>> GsmMQTTPort::read()
+uint16_t GsmMQTTPort::readInto(uint8_t* buffer, uint16_t maxSize)
 {
-    mqttLoop();
-    std::vector<std::vector<uint8_t>> packets(receivedRawPackets.begin(), receivedRawPackets.end());
-    receivedRawPackets.clear();
-    return packets;
+    return packetQueue_.popForPort(getTypeU8(), buffer, maxSize);
 }
 
 
@@ -238,7 +260,12 @@ bool GsmMQTTPort::mqttPublishToTopic(const uint8_t* data, size_t size, const cha
                                      const uint8_t qos)
 {
     // Try to connect to the MQTT broker
-    tryConnect();
+    const bool connOk = tryConnect();
+    if (!connOk)
+    {
+        LOG_CLASS_ERROR(" -> Cannot publish to MQTT topic %s: not connected to broker", topic);
+        return false;
+    }
     LOG_CLASS_INFO(" -> Publishing %d bytes to topic: %s (retain=%s, QoS=%d)",
                    size, topic, retained ? "true" : "false", qos);
     if (!mqttClient.beginMessage(topic, false, 1)) // QoS 1, retain =false
@@ -333,16 +360,26 @@ void GsmMQTTPort::mqttSubscribeToTopic(const char* topic)
 }
 
 
-void GsmMQTTPort::mqttLoop()
+bool GsmMQTTPort::sync()
 {
-    mqttClient.poll();
+    if (instance == nullptr) {
+        LOG_CLASS_WARNING(" -> GsmMQTTPort::sync() called before init(). Ignoring.");
+        return false;
+    }
+    if (!instance->mqttClient.connected()) {
+        LOG_CLASS_WARNING(" -> MQTT client not connected, skipping sync()");
+        return false;
+    }
+    instance->mqttClient.poll();
+    return true;
 }
+
 
 void GsmMQTTPort::setupLastWill()
 {
     LOG_CLASS_INFO(" -> Configuring Last Will and Testament (LWT)...");
 
-    if (!config.statusTopic || strlen(config.statusTopic) == 0)
+    if (strlen(config.statusTopic) == 0) // statusTopic will never be null, no need to check for it
     {
         LOG_CLASS_WARNING(" -> Skipping LWT setup: status topic not defined");
         return;

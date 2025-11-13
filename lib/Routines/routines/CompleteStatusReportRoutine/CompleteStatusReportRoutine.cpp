@@ -4,6 +4,7 @@
 #include <cstdio>
 
 #include "Logger/Logger.h"
+#include "SharedMemory/SharedMemory.hpp"
 
 CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationRepository& nodeConfigurationRepository,
                                                          ModuleProxy& moduleProxy,
@@ -21,28 +22,30 @@ CompleteStatusReportRoutine::CompleteStatusReportRoutine(NodeConfigurationReposi
 }
 
 
-Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
-    const std::optional<acousea_CommunicationPacket>& /*input*/) // input unused, always std::nullopt
+Result<acousea_CommunicationPacket*> CompleteStatusReportRoutine::execute(
+    acousea_CommunicationPacket* const /*optPacket*/) // input unused, always nullptr
 {
+    LOG_CLASS_WARNING("Executing CompleteStatusReportRoutine...");
+
+    LOG_FREE_MEMORY("PRENODECONFIG");
     // --- Obtener configuración actual ---
-    const acousea_NodeConfiguration nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
+    const acousea_NodeConfiguration& nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
+    LOG_FREE_MEMORY("POSTNODECONFIG");
+
     const auto reportTypeResult = getCurrentReportingConfiguration(nodeConfig);
     if (reportTypeResult.isError())
     {
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket, "Cannot get current reporting configuration: %s",
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*, "Cannot get current reporting configuration: %s",
                                      reportTypeResult.getError());
     }
+    LOG_FREE_MEMORY("POSTREPORTTYPE");
     const acousea_ReportType& reportType = reportTypeResult.getValueConst();
-
-    // -------- Módulos --------
-    acousea_StatusReportPayload status = acousea_StatusReportPayload_init_default;
-    status.modules_count = 0;
 
     // --- Log included modules ---
     char moduleIds[128];
     size_t pos = 0;
     pos += snprintf(moduleIds + pos, sizeof(moduleIds) - pos, "[");
-    for (pb_size_t i = 0; i < reportType.includedModules_count && pos < sizeof(moduleIds) - 4; i++)
+    for (uint16_t i = 0; i < reportType.includedModules_count && pos < sizeof(moduleIds) - 4; i++)
     {
         pos += snprintf(moduleIds + pos, sizeof(moduleIds) - pos, "%d", reportType.includedModules[i]);
         if (i < reportType.includedModules_count - 1) pos += snprintf(moduleIds + pos, sizeof(moduleIds) - pos, ", ");
@@ -50,9 +53,26 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
     snprintf(moduleIds + pos, sizeof(moduleIds) - pos, "]");
     LOG_CLASS_INFO("Building report packet with %d modules: %s", reportType.includedModules_count, moduleIds);
 
+    LOG_FREE_MEMORY("POSTMODULEIDS");
 
-    // --- Fill modules ---
-    for (pb_size_t i = 0; i < reportType.includedModules_count; i++)
+    // --- CommunicationPacket ---
+    SharedMemory::resetCommunicationPacket();
+    acousea_CommunicationPacket& pkt = SharedMemory::communicationPacketRef();
+    pkt.has_routing = true;
+    pkt.routing = acousea_RoutingChunk_init_default;
+    pkt.routing.sender = 1;
+    pkt.routing.receiver = 0;
+    pkt.routing.ttl = 5;
+
+    pkt.which_body = acousea_CommunicationPacket_report_tag;
+    // Inicializar directamente la rama elegida
+    pkt.body.report = acousea_ReportBody_init_default;
+    pkt.body.report.which_report = acousea_ReportBody_statusPayload_tag;
+    acousea_StatusReportPayload& status = pkt.body.report.report.statusPayload;
+    status.modules_count = 0;
+
+    LOG_FREE_MEMORY("POSTSTATUSINIT");
+    for (uint16_t i = 0; i < reportType.includedModules_count; i++)
     {
         const auto code = reportType.includedModules[i];
         auto& entry = status.modules[status.modules_count++];
@@ -84,7 +104,7 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
                 // Si no está fresco → la rutina queda en estado pending
                 if (!optHF)
                 {
-                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket, ": ICListenHF module data not fresh");
+                    return RESULT_CLASS_PENDINGF(acousea_CommunicationPacket*, ": ICListenHF module data not fresh");
                 }
 
                 entry.value.which_module = acousea_ModuleWrapper_icListenHF_tag;
@@ -98,24 +118,13 @@ Result<acousea_CommunicationPacket> CompleteStatusReportRoutine::execute(
         }
     }
 
-    // --- ReportBody ---
-    acousea_ReportBody reportBody = acousea_ReportBody_init_default;
-    reportBody.which_report = acousea_ReportBody_statusPayload_tag;
-    reportBody.report.statusPayload = status;
+
+    LOG_CLASS_WARNING("Report built with %d modules.", status.modules_count);
 
 
-    // --- CommunicationPacket ---
-    acousea_CommunicationPacket pkt = acousea_CommunicationPacket_init_default;
-    pkt.has_routing = true;
-    pkt.routing = acousea_RoutingChunk_init_default;
-    pkt.routing.sender = 1;
-    pkt.routing.receiver = 0;
-    pkt.routing.ttl = 5;
+    LOG_CLASS_INFO("Returning report packet with %d modules", status.modules_count);
 
-    pkt.which_body = acousea_CommunicationPacket_report_tag;
-    pkt.body.report = reportBody;
-
-    return RESULT_SUCCESS(acousea_CommunicationPacket, pkt);
+    return RESULT_SUCCESS(acousea_CommunicationPacket*, &pkt);
 }
 
 

@@ -32,7 +32,7 @@ public:
                                 IBatteryController& battery,
                                 RTCController& rtc);
 
-    Result<acousea_CommunicationPacket> execute(const std::optional<acousea_CommunicationPacket>& input) override;
+    Result<acousea_CommunicationPacket*> execute(acousea_CommunicationPacket* const /*optPacket*/) override;
 
 private:
     static Result<acousea_ReportType> getCurrentReportingConfiguration(const acousea_NodeConfiguration& nodeConfig);

@@ -5,11 +5,14 @@
 
 namespace WatchdogUtils
 {
+    constexpr unsigned int DEFAULT_WATCHDOG_TIMEOUT_MS = 15000; // 15 seconds
+
     void enable(int timeoutMs);
     void reset();
     void disable();
     void sleepFor(uint32_t ms);
     void logResetCause();
+    [[nodiscard]] int getTimeout();
 }
 
 

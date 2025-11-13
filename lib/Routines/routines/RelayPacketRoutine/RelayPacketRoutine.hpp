@@ -26,8 +26,7 @@ public:
     explicit RelayPacketRoutine(Router& router,
                                 const std::vector<IPort::PortType>& relayPorts);
 
-    Result<acousea_CommunicationPacket> execute(
-        const std::optional<acousea_CommunicationPacket>& optPacket) override;
+    Result<acousea_CommunicationPacket*> execute(acousea_CommunicationPacket* optPacket) override;
 };
 
 

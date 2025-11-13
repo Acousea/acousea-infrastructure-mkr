@@ -30,13 +30,15 @@ public:
     [[nodiscard]] Router::RouterSender from(uint8_t sender) const;
 
     [[nodiscard]] Router::RouterSender broadcast();
-
     /**
-        * @brief Reads packets from the ports and returns them grouped by port type.
+        * @brief Reads packets from the ports and returns the next available packet.
         * @param localAddress The local address of the router.
-        * @return A map where keys are port types and values are lists of packets received from those ports.
+        * @return An optional pair containing the port type and the communication packet, or std::nullopt if no packet is available.
         */
-    std::map<IPort::PortType, std::deque<acousea_CommunicationPacket>> readPorts(const uint8_t& localAddress);
+
+    [[nodiscard]] bool syncAllPorts() const;
+
+    [[nodiscard]] std::optional<std::pair<IPort::PortType, acousea_CommunicationPacket*>> nextPacket(uint8_t localAddress) const;
 
 
     // ======================================================
@@ -59,7 +61,8 @@ public:
         RouterSender& through(IPort::PortType type);
 
         // Etapa 2: enviar paquete
-        [[nodiscard]] bool send(const acousea_CommunicationPacket& pkt) const;
+        // bool send(const acousea_CommunicationPacket* pkt) const;
+        [[nodiscard]] bool send(acousea_CommunicationPacket& pkt) const;
 
     private:
         uint8_t senderAddress{broadcastAddress};
@@ -72,11 +75,7 @@ private:
     friend class TestableRouter;
 #endif
 
-    std::vector<IPort*> relayedPorts;
-
-    // ---------------------- Packet encoding/decoding ----------------------
-    static Result<acousea_CommunicationPacket> decodePacket(const std::vector<uint8_t>& raw);
-    static Result<std::vector<uint8_t>> encodePacket(const acousea_CommunicationPacket& pkt);
+    std::vector<IPort*> ports_;
 
     [[nodiscard]] bool sendToPort(IPort::PortType port, const acousea_CommunicationPacket& packet) const;
 };

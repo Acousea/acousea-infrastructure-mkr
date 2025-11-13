@@ -19,7 +19,7 @@ namespace WatchdogUtils
     CLASS_NAME(WatchdogUtils)
 
 #if HAS_WATCHDOG
-    static inline int lastTimeoutMs = 8000; // valor por defecto razonable
+    static inline int lastTimeoutMs = -1; // valor por defecto razonable
 
     void enable(int timeoutMs)
     {
@@ -95,6 +95,11 @@ namespace WatchdogUtils
             break;
         }
         LOG_CLASS_WARNING("Last Reset cause: %s (0x%02X)", desc, cause);
+    }
+
+    int getTimeout()
+    {
+        return lastTimeoutMs;
     }
 
 #else

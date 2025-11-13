@@ -6,6 +6,8 @@
 #include <vector>
 #include <string>
 
+#include "SharedMemory/SharedMemory.hpp"
+
 inline CertType certTypeFromInt(int type)
 {
     switch (type)
@@ -193,10 +195,15 @@ std::vector<StoredCert> UBlox201_GSMSSLClient::listCertificates(CertType type)
 
     LOG_CLASS_INFO("listCertificates() -> Modem output length: %d", outLen);
 
-    // Copiar a buffer C-style
-    char modemResponseBuf[2048];
-    strncpy(modemResponseBuf, modemOutput.c_str(), sizeof(modemResponseBuf) - 1);
-    modemResponseBuf[sizeof(modemResponseBuf) - 1] = '\0';
+
+    // --- Reemplazo del buffer local por el buffer temporal global ---
+    char* modemResponseBuf = SharedMemory::tmpBuffer();
+    constexpr size_t bufSize = SharedMemory::tmpBufferSize();
+    SharedMemory::clearTmpBuffer();
+
+    // Copiar de String a buffer C-style
+    strncpy(modemResponseBuf, modemOutput.c_str(), bufSize - 1);
+    modemResponseBuf[bufSize - 1] = '\0';
 
 
     LOG_CLASS_INFO("listCertificates() -> Modem output copied to string-buf, length: %d", strlen(modemResponseBuf));
@@ -645,20 +652,26 @@ bool UBlox201_GSMSSLClient::testTLSConnection(const char* host, const uint16_t p
     LOG_CLASS_INFO(" -> TLS connection SUCCESS");
 
     // ----------- Construir y enviar petición HTTPs ----------- //
-    char request[256];
-    std::snprintf(request, sizeof(request),
+    char* buffer = SharedMemory::tmpBuffer();
+    constexpr size_t bufSize = SharedMemory::tmpBufferSize();
+    SharedMemory::clearTmpBuffer();
+
+    std::snprintf(buffer,bufSize,
                   "GET %s HTTP/1.1\r\n"
                   "Host: %s\r\n"
                   "Connection: close\r\n\r\n",
                   path, host);
 
-    print(request);
-    LOG_CLASS_INFO(" -> HTTPS request sent: %s", request);
+    GSMClient::print(buffer);
+
+    LOG_CLASS_INFO(" -> HTTPS request sent: %s", buffer);
 
     // ----------- Leer respuesta limitada ----------- //
-    constexpr size_t MAX_RESPONSE_SIZE = 1024;
-    char response[MAX_RESPONSE_SIZE + 1];
+
+    SharedMemory::clearTmpBuffer();
+    char* response = buffer;
     size_t totalRead = 0;
+    constexpr size_t MAX_RESPONSE_SIZE = 1024;
 
     LOG_CLASS_INFO(" -> Reading up to %d bytes of HTTPS response...", MAX_RESPONSE_SIZE);
 

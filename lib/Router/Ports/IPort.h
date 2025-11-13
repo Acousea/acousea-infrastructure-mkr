@@ -6,31 +6,42 @@
 #include <deque>
 #include <cstdint>
 
+#include "PacketQueue/PacketQueue.hpp"
+
 // Definición de la interfaz de comunicador
 class IPort
 {
 public:
-    enum class PortType
+    enum class PortType: uint8_t
     {
-        None,
+        None = 0,
 #ifdef PLATFORM_HAS_GSM
-        GsmMqttPort,
+        GsmMqttPort = 1,
 #endif
 #ifdef PLATFORM_HAS_LORA
-        LoraPort,
+        LoraPort=2,
 #endif
-        SBDPort,
-        SerialPort,
+        SBDPort = 3,
+        SerialPort = 4,
     };
 
-    explicit IPort(PortType type) : type(type)
+    explicit IPort(
+        const PortType type,
+        PacketQueue& flashPacketQueue)
+        : type(type), packetQueue_(flashPacketQueue)
     {
     }
 
-    [[nodiscard]] PortType getType() const
+    [[nodiscard]] PortType getTypeEnum() const
     {
         return type;
     }
+
+    [[nodiscard]] uint8_t getTypeU8() const
+    {
+        return static_cast<uint8_t>(type);
+    }
+
 
     [[nodiscard]] static constexpr const char* portTypeToCString(const PortType type)
     {
@@ -52,18 +63,22 @@ public:
 public:
     virtual void init() = 0;
 
-    virtual bool send(const std::vector<uint8_t>& data) = 0; // Cambiado para aceptar datos crudos
+    virtual bool send(const uint8_t* data, size_t length) = 0;
+
     virtual bool available() = 0;
 
-    virtual std::vector<std::vector<uint8_t>> read() = 0; // Devuelve lista de vectores de bytes
+    virtual uint16_t readInto(uint8_t* buffer, uint16_t maxSize) = 0; // Devuelve lista de vectores de bytes
+
+    virtual bool sync();
 
 
 protected:
     ~IPort() = default;
     PortType type;
-    std::deque<std::vector<uint8_t>> receivedRawPackets;
-    static constexpr size_t MAX_QUEUE_SIZE = 10;
-    static constexpr size_t MAX_RECEIVED_PACKET_SIZE = 340;
+    PacketQueue& packetQueue_;
+    // std::deque<std::vector<uint8_t>> receivedRawPackets;
+    // static constexpr size_t MAX_QUEUE_SIZE = 10;
+    // static constexpr size_t MAX_RECEIVED_PACKET_SIZE = 340;
 };
 
 #endif // IPORT_H

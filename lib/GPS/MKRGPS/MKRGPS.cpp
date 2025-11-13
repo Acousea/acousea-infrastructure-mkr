@@ -5,19 +5,22 @@
 #include <Arduino.h>
 #include <ctime> // Or <time.h> depending on the environment
 #include <Arduino_MKRGPS.h>
+
+#include "ErrorHandler/ErrorHandler.h"
 #include "Logger/Logger.h"
 
-bool MKRGPS::init()
+bool MKRGPS::init() // NO LOGGER CALLS HERE (INIT PHASE)
 {
-    LOG_CLASS_INFO("Initializing GNSS ...");
+    SerialUSB.println(String(getClassNameCString()) + "Initializing GNSS ...");
+
 
     if (!GPS.begin())
     {
-        LOG_CLASS_INFO("GNSS initialization failed!");
+        ERROR_HANDLE_CLASS("GNSS initialization failed!");
         return false;
     }
 
-    LOG_CLASS_INFO("Awaiting first GNSS fix ...");
+    SerialUSB.println(String(getClassNameCString()) + "Awaiting first GNSS fix ...");
 
     unsigned long startMillis = millis();
     while (!GPS.available() && ((millis() - startMillis) < GNSS_MAX_FIX_TIME_MS))
@@ -29,10 +32,14 @@ bool MKRGPS::init()
     char buffer[50];
     if (endMillis - startMillis >= GNSS_MAX_FIX_TIME_MS)
     {
-        LOG_CLASS_ERROR("ERROR: NO GNSS fix after %lu sec\n", (endMillis - startMillis) / 1000);
+        ERROR_HANDLE_CLASS("ERROR: NO GNSS fix after %lu sec\n", (endMillis - startMillis) / 1000);
         return false;
     }
-    LOG_CLASS_INFO("Fix: %lu sec\n", (endMillis - startMillis) / 1000);
+
+    SerialUSB.println(
+        String(getClassNameCString()) + " GNSS fix took " + String((endMillis - startMillis) / 1000) + " sec"
+    );
+
     return true;
 }
 

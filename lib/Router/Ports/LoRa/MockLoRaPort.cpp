@@ -4,7 +4,7 @@
 
 #include <Logger/Logger.h>
 
-MockLoRaPort::MockLoRaPort() : IPort(PortType::LoraPort)
+MockLoRaPort::MockLoRaPort(FlashPacketQueue& packetQueue) : IPort(PortType::LoraPort, packetQueue)
 {
 }
 
@@ -14,10 +14,10 @@ void MockLoRaPort::init()
     LOG_CLASS_INFO("MockLoRaPort: Initializing LoRa port...");
 }
 
-bool MockLoRaPort::send(const std::vector<uint8_t>& data)
+bool MockLoRaPort::send(const uint8_t* data, size_t length)
 {
     // Print packet through serial monitor for debugging
-    LOG_CLASS_INFO("MockLoRaPort: Sending packet... %s", Logger::vectorToHexString(data.data(), data.size()).c_str());
+    LOG_CLASS_INFO("MockLoRaPort: Sending packet... %s", Logger::vectorToHexString(data, length).c_str());
     return true;
 }
 
@@ -26,9 +26,16 @@ bool MockLoRaPort::available()
     return false;
 }
 
-std::vector<std::vector<uint8_t>> MockLoRaPort::read()
+
+uint16_t MockLoRaPort::readInto(uint8_t* buffer, uint16_t maxSize)
 {
-    return std::vector<std::vector<uint8_t>>();
+    return 0;
 }
+
+bool MockLoRaPort::sync()
+{
+    return true;
+}
+
 
 #endif // PLATFORM_HAS_LORA || UNIT_TESTING
