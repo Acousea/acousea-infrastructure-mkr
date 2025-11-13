@@ -110,13 +110,13 @@ bool PacketQueue::isPortEmpty(uint8_t port) const
         return true; // Si el archivo no existe, está vacío
     }
 
-    LOG_CLASS_INFO("PacketQueue::isPortEmpty() -> Port %u: w=%lu:%lu r=%lu:%lu size=%lu",
-                   port,
-                   static_cast<unsigned long>(writeOffset_[port] >> 32),
-                   static_cast<unsigned long>(writeOffset_[port] & 0xFFFFFFFF),
-                   static_cast<unsigned long>(readOffset_[port] >> 32),
-                   static_cast<unsigned long>(readOffset_[port] & 0xFFFFFFFF),
-                   static_cast<unsigned long>(storage_.fileSize(path)));
+    // LOG_CLASS_INFO("PacketQueue::isPortEmpty() -> Port %u: w=%lu:%lu r=%lu:%lu size=%lu",
+    //                port,
+    //                static_cast<unsigned long>(writeOffset_[port] >> 32),
+    //                static_cast<unsigned long>(writeOffset_[port] & 0xFFFFFFFF),
+    //                static_cast<unsigned long>(readOffset_[port] >> 32),
+    //                static_cast<unsigned long>(readOffset_[port] & 0xFFFFFFFF),
+    //                static_cast<unsigned long>(storage_.fileSize(path)));
 
     // If the read offset is equal to the write offset, the port is empty (could also check if filesize == readOffset_)
     return writeOffset_[port] == readOffset_[port];
@@ -213,8 +213,21 @@ uint16_t PacketQueue::popNext(const uint8_t port, uint8_t *outBuffer, const uint
     const uint16_t readLen = static_cast<uint16_t>(readBuffer[pos]) | (static_cast<uint16_t>(readBuffer[pos + 1]) << 8);
     pos += 2;
 
+    // LOG_CLASS_INFO("PacketQueue::popNext() -> Port %u: ts=%lu len=%u (w=%lu:%lu r=%lu:%lu size=%lu)",
+    //            port,
+    //            static_cast<unsigned long>(timestamp),
+    //            static_cast<unsigned int>(readLen),
+    //            static_cast<unsigned long>(writeOffset_[port] >> 32),
+    //            static_cast<unsigned long>(writeOffset_[port] & 0xFFFFFFFF),
+    //            static_cast<unsigned long>(readOffset_[port] >> 32),
+    //            static_cast<unsigned long>(readOffset_[port] & 0xFFFFFFFF),
+    //            static_cast<unsigned long>(storage_.fileSize(path)));
+
+
     if (readLen > maxOutSize)
     {
+        LOG_CLASS_ERROR("PacketQueue::popNext() -> Port %u: Output buffer too small (need %u, have %u)", port,
+                        static_cast<unsigned int>(readLen), static_cast<unsigned int>(maxOutSize));
         return 0;
     }
 
@@ -224,12 +237,13 @@ uint16_t PacketQueue::popNext(const uint8_t port, uint8_t *outBuffer, const uint
 
     if (readBuffer[pos] != END_BYTE)
     {
+        LOG_CLASS_ERROR("PacketQueue::popNext() -> Port %u: Invalid end byte", port);
         return 0;
     }
 
     // Actualiza el índice para el siguiente paquete
     readOffset_[port] += HEADER_SIZE + readLen + FOOTER_SIZE;
-
+    // LOG_CLASS_INFO("PacketQueue::popNext() -> Port %u, Read %u bytes", port, static_cast<unsigned int>(readLen));
     return readLen;
 }
 

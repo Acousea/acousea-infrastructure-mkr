@@ -59,7 +59,7 @@ std::optional<std::pair<IPort::PortType, acousea_CommunicationPacket*>> Router::
         }
 
         const auto readBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
-        const auto readSize = port->readInto(readBuffer, SharedMemory::tmpBufferSize());
+        constexpr auto readSize = SharedMemory::tmpBufferSize();
 
         const auto numReadBytes = port->readInto(readBuffer, readSize);
         if (numReadBytes == 0)
