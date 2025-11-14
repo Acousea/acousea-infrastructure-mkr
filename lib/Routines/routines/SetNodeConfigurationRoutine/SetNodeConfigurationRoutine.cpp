@@ -33,20 +33,28 @@ Result<acousea_CommunicationPacket*> SetNodeConfigurationRoutine::execute(
 
     const auto& [modules_count, modules] = inPacket.body.command.command.setConfiguration;
 
-    const Result<void> setResult = moduleManager.setModules(modules_count, modules);
 
-    acousea_CommunicationPacket& outPacket = inPacket; // Reuse input packet for output (NOT COPY)
-    outPacket.which_body = acousea_CommunicationPacket_response_tag;
-    outPacket.body.response.which_response = acousea_ResponseBody_setConfiguration_tag;
-    outPacket.body.response.response.setConfiguration = inPacket.body.command.command.setConfiguration;
-
-    switch (setResult.getStatus())
+    switch (const Result<void> setResult = moduleManager.setModules(modules_count, modules); setResult.getStatus())
     {
     case Result<void>::Type::Success:
-        return RESULT_SUCCESS(acousea_CommunicationPacket*, &outPacket);
+        {
+            acousea_CommunicationPacket& outPacket = inPacket; // Reuse input packet for output (NOT COPY)
+            outPacket.which_body = acousea_CommunicationPacket_response_tag;
+            outPacket.body.response.which_response = acousea_ResponseBody_setConfiguration_tag;
+            outPacket.body.response.response.setConfiguration = inPacket.body.command.command.setConfiguration;
+            return RESULT_SUCCESS(acousea_CommunicationPacket*, &outPacket);
+        }
     case Result<void>::Type::Incomplete:
-        return RESULT_CLASS_INCOMPLETEF(acousea_CommunicationPacket*, "%s", setResult.getError());
+        {
+            return RESULT_CLASS_INCOMPLETEF(acousea_CommunicationPacket*, "%s", setResult.getError());
+        }
     case Result<void>::Type::Failure:
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*, "%s", setResult.getError());
+        {
+            return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*, "%s", setResult.getError());
+        }
+    default:
+        {
+            return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*, "Unknown error while setting modules.");
+        }
     }
 }

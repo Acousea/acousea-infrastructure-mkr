@@ -8,9 +8,7 @@
 #include "Result.h"
 #include "Router.h"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
-#include "PendingRoutines/PendingRoutines.hpp"
 #include "time/getMillis.hpp"
-
 
 
 /**
@@ -29,15 +27,24 @@ public:
     void init() override;
 
     void run() override;
+    void dumpRoutinesMap() const;
 
 private:
     Router& router;
-    std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>> routines;
-    PendingRoutines<5> pendingRoutines;
     NodeConfigurationRepository nodeConfigurationRepository;
+    std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>> routines{};
 
-    [[nodiscard]] IRoutine<acousea_CommunicationPacket>* findRoutine(
-        uint8_t bodyTag, uint8_t payloadTag) const;
+    // WARNING: The retry attempts associate packetId -> attempts left, packet IDS must be unique
+    // If this cannot be guaranteed, then the packetQueue readOffset_ can be used as unique identifier
+    struct RetryEntry
+    {
+        uint32_t packetId = 0;
+        uint8_t attemptsLeft = 0;
+        bool inUse = false;
+    };
+
+    RetryEntry retryAttemptsLeft_[IPort::MAX_PORT_TYPE_U8 + 1] = {};
+    static constexpr uint8_t MAX_RETRIES = 3;
 
 
     // Struct to store the current currentOperationMode and cycle count
@@ -54,28 +61,25 @@ private:
         } lastReportMinute;
     } cache{};
 
-
+private:
+    [[nodiscard]] IRoutine<acousea_CommunicationPacket>* findRoutine(
+        uint8_t bodyTag, uint8_t payloadTag) const;
     void tryTransitionOpMode();
     void tryReport(IPort::PortType port, unsigned long& lastMinute, unsigned long currentMinute);
 
 
     void processReportingRoutines();
-    void processNextIncomingPacket(const uint8_t& localAddress);
-    void runPendingRoutines();
-    void sendResponsePacket(IPort::PortType portType, const uint8_t& localAddress,
-                            const acousea_CommunicationPacket* inputPacketPtr,
+
+    void processNextIncomingPacket();
+    void sendResponsePacket(IPort::PortType portType, uint8_t localAddress, uint8_t recipientAddress,
                             acousea_CommunicationPacket* outputPacketPtr) const;
 
-    acousea_CommunicationPacket* processPacket(IPort::PortType portType,
-                                               acousea_CommunicationPacket* inPacketPtr);
 
-    static acousea_CommunicationPacket* executeRoutine(
-        IRoutine<acousea_CommunicationPacket>* routine,
-        acousea_CommunicationPacket* optInputPacket,
-        IPort::PortType portType,
-        uint8_t remainingAttempts,
-        bool requeueAllowed
-    );
+    acousea_CommunicationPacket* processPacket(IPort::PortType portType, acousea_CommunicationPacket& inPacketRef);
+
+    acousea_CommunicationPacket* executeRoutine(IRoutine<acousea_CommunicationPacket>* routine,
+                                                       acousea_CommunicationPacket* optInputPacket,
+                                                       IPort::PortType portType, uint8_t& attemptsLeft);
 
     [[nodiscard]] Result<acousea_OperationMode> searchForOperationMode(uint8_t modeId) const;
     [[nodiscard]] Result<acousea_ReportingPeriodEntry> getReportingEntryForCurrentOperationMode(

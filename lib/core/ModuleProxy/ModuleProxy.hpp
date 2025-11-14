@@ -22,6 +22,7 @@
  */
 class ModuleProxy
 {
+    CLASS_NAME(ModuleProxy)
 public:
     // ===================== Alias for devices associated with prots =====================
     enum class DeviceAlias
@@ -70,6 +71,7 @@ private:
     std::optional<acousea_ModuleWrapper> entries[MAX_MODULES] = {}; // Initialized to std::nullopt
 #else
     StorageManager& storage;
+    acousea_ModuleWrapper* loadedModule_ = nullptr; // Módulo cargado actualmente en memoria
 #endif
 
     // ===================== Mapeo alias -> puerto =====================

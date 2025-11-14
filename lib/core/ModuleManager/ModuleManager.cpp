@@ -6,19 +6,27 @@
 Result<void> ModuleManager::getModules(
     acousea_NodeDevice_ModulesEntry* outModulesArr,
     pb_size_t& outModulesArrSize,
-    const acousea_ModuleCode* reqModules,
-    const pb_size_t modulesCount)
+    const acousea_ModuleCode* requestedModules,
+    const pb_size_t requestedModulesSize)
 {
+    LOG_CLASS_FREE_MEMORY("::GetModules(start)");
     const acousea_NodeConfiguration& nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
 
-    for (uint16_t i = 0; i < modulesCount; i++)
+    for (uint16_t i = 0; i < requestedModulesSize; i++)
     {
-        const auto& code = reqModules[i];
-        auto& currentEntry = outModulesArr[outModulesArrSize++];
-        currentEntry.has_value = true;
-        currentEntry.key = code;
+        const acousea_ModuleCode& currentModuleCode = requestedModules[i];
+        auto& currentEntry = outModulesArr[outModulesArrSize];
 
-        switch (const acousea_ModuleCode configItem = reqModules[i])
+        LOG_CLASS_INFO("Processing requested module code: %d, index %d of %d",
+                       static_cast<int>(currentModuleCode),
+                       i,
+                       requestedModulesSize - 1
+        );
+
+        currentEntry.has_value = true;
+        currentEntry.key = currentModuleCode;
+
+        switch (currentModuleCode)
         {
         case acousea_ModuleCode_AMBIENT_MODULE:
             {
@@ -42,6 +50,7 @@ Result<void> ModuleManager::getModules(
         case acousea_ModuleCode_NETWORK_MODULE:
             {
                 LOG_CLASS_ERROR("FIXME: REQUESTED NETWORK MODULE (NOT IMPLEMENTED YET)");
+
                 break;
             }
         case acousea_ModuleCode_STORAGE_MODULE:
@@ -55,7 +64,8 @@ Result<void> ModuleManager::getModules(
 
                 if (!fetchOk)
                 {
-                    RESULT_CLASS_VOID_INCOMPLETEF("%s", "Storage module data is not fresh yet (requested from device)");
+                    return RESULT_CLASS_VOID_INCOMPLETEF(
+                        "%s", "Storage module data is not fresh yet (requested from device)");
                 }
 
                 outModulesArr[outModulesArrSize++] = currentEntry;
@@ -251,13 +261,13 @@ Result<void> ModuleManager::getModules(
                 break;
             }
         default:
-            LOG_CLASS_ERROR("Unknown or unsupported module code requested: %d", configItem);
+            LOG_CLASS_ERROR("Unknown or unsupported module code requested: %d", currentModuleCode);
             currentEntry.has_value = false;
             currentEntry.key = acousea_ModuleCode_MODULE_UNKNOWN;
-            outModulesArrSize--; // remove unused slot
             break;
         }
     }
+    LOG_CLASS_FREE_MEMORY("::GetModules(end)");
     return RESULT_VOID_SUCCESS();
 }
 
@@ -265,6 +275,7 @@ Result<void> ModuleManager::getModules(
 Result<void> ModuleManager::setModules(const pb_size_t modules_count,
                                        const acousea_SetNodeConfigurationPayload_ModulesEntry* modules)
 {
+    LOG_CLASS_FREE_MEMORY("::SetModules(start)");
     acousea_NodeConfiguration& nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
     for (size_t i = 0; i < modules_count; ++i)
     {
@@ -336,10 +347,12 @@ Result<void> ModuleManager::setModules(const pb_size_t modules_count,
     return RESULT_VOID_SUCCESS();
 }
 
-bool ModuleManager::_fetchModuleEntry(acousea_NodeDevice_ModulesEntry& outModuleEntry, acousea_ModuleCode code,
-                                      uint16_t whichTag, ModuleProxy::DeviceAlias alias) const
+bool ModuleManager::_fetchModuleEntry(acousea_NodeDevice_ModulesEntry& outModuleEntry,
+                                      acousea_ModuleCode code,
+                                      const uint16_t whichTag,
+                                      const ModuleProxy::DeviceAlias alias) const
 {
-    auto optWrapper = moduleProxy.getIfFreshOrRequestFromDevice(code, alias);
+    const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFreshOrRequestFromDevice(code, alias);
     if (!optWrapper)
     {
         return false;
@@ -416,5 +429,6 @@ Result<void> ModuleManager::_setReportingPeriods(
                                               moduleEntry.key);
         }
     }
+    LOG_CLASS_FREE_MEMORY("::SetModules(end)");
     return RESULT_VOID_SUCCESS();
 }

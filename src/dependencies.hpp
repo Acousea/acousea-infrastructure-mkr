@@ -345,7 +345,16 @@ namespace Dependencies
         //   router_({ &gsmPort_, &mockSerialPort_, &mockIridiumPort_ })
         inline Router& router()
         {
-            static Router instance({
+            static const std::vector<IPort::PortType> relayingPortsVector = {
+#ifdef PLATFORM_HAS_GSM
+                IPort::PortType::GsmMqttPort,
+#endif
+#ifdef PLATFORM_HAS_LORA
+                IPort::PortType::LoraPort,
+#endif
+                IPort::PortType::SBDPort
+            };
+            static const std::vector<IPort*> ports = {
                 &serial(),
                 &iridium(),
 #ifdef PLATFORM_HAS_LORA
@@ -354,7 +363,9 @@ namespace Dependencies
 #ifdef PLATFORM_HAS_GSM
                 &gsm()
 #endif
-            });
+
+            };
+            static Router instance(ports, relayingPortsVector, Comm::packetQueue());
             return instance;
         }
     } // namespace Comm
@@ -431,19 +442,9 @@ namespace Dependencies
             return instance;
         }
 
-        inline RelayPacketRoutine& relayPacketRoutine()
+        inline LogAndRelayErrorPacketRoutine& relayPacketRoutine()
         {
-            static const std::vector<IPort::PortType> relayingPortsVector = {
-#ifdef PLATFORM_HAS_GSM
-                IPort::PortType::GsmMqttPort,
-#endif
-#ifdef PLATFORM_HAS_LORA
-                IPort::PortType::LoraPort,
-#endif
-                IPort::PortType::SBDPort
-            };
-            static RelayPacketRoutine instance(
-                Comm::router(), relayingPortsVector);
+            static LogAndRelayErrorPacketRoutine instance(Comm::router());
             return instance;
         }
 

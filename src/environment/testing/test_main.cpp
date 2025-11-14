@@ -103,33 +103,6 @@ void test_gsm_initialization()
     // ---------------------------------------------------------------------
 }
 
-
-void test_gsm_sending_packets()
-{
-    // Try to send a packet
-    uint8_t* sharedBuf = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
-    size_t sharedBufSize = SharedMemory::tmpBufferSize();
-
-    const auto readBytes = comm::gsm().readInto(sharedBuf, sharedBufSize);
-    if (readBytes <= 0)
-    {
-        ConsoleSerial.println("No packets received.");
-    }
-    else
-    {
-        const auto hexString = Logger::vectorToHexString(
-            sharedBuf,
-            static_cast<size_t>(readBytes)
-        );
-        ConsoleSerial.println(hexString.c_str());
-    }
-
-    ConsoleSerial.println("Sending packet...");
-    const std::vector<uint8_t> data = {0x01, 0x02, 0x03, 0x04, 0x05};
-    comm::gsm().send(data.data(), data.size());
-
-    ConsoleSerial.println("Looping...");
-}
 #endif
 
 
@@ -262,7 +235,7 @@ void test_setup()
 
     // Initialize the Iridium communicator
 #ifdef PLATFORM_ARDUINO
-    // comm::iridium().init();
+    comm::iridium().init();
 #endif
 
     // --------------------------------------------------------
@@ -305,11 +278,45 @@ void test_setup()
     );
     // sys::scheduler().addTask(&mqttPollTask);
 
+#endif
+
     // *** Battery Test Task ***
     static FunctionTask batteryTestTask(30000,
                                         [] { test_solar_x_battery_controller(); }
     );
     // sys::scheduler().addTask(&batteryTestTask);
+
+    static FunctionTask printNodeRoutinesMap(10000,
+                                             [] {
+                                                 LOG_CLASS_INFO("=== BEGIN ROUTINES MAP DUMP ===");
+                                                 const auto routines = logic::routinesMap();
+                                                 for (const auto& bodyEntry : routines)
+                                                 {
+                                                     const auto bodyTag = bodyEntry.first;
+                                                     const auto& packetBodyRoutinesMap = bodyEntry.second;
+
+                                                     LOG_CLASS_INFO(" BodyTag %d -> has %d payload entries",
+                                                                    bodyTag, static_cast<int>(packetBodyRoutinesMap.size()));
+
+                                                     for (const auto& payloadEntry : packetBodyRoutinesMap)
+                                                     {
+                                                         const auto payloadTag = payloadEntry.first;
+                                                         auto* routinePtr = payloadEntry.second;
+                                                         LOG_CLASS_INFO("    PayloadTag %d -> Routine ptr %p",
+                                                                        payloadTag, routinePtr);
+                                                     }
+                                                 }
+                                                 LOG_CLASS_INFO("=== END ROUTINES MAP DUMP ===");
+                                             }
+    );
+    // sys::scheduler().addTask(&printNodeRoutinesMap);
+
+    static MethodTask<NodeOperationRunner> tryDumpRoutinesMapTask(
+        10000, // 20 seconds
+        &logic::nodeOperationRunner(),
+        &NodeOperationRunner::dumpRoutinesMap
+   );
+    // sys::scheduler().addTask(&tryDumpRoutinesMapTask);
 
     // *** Node Operation Runner Task ***
     static MethodTask<NodeOperationRunner> nodeOperationTask(
@@ -319,7 +326,6 @@ void test_setup()
     );
     sys::scheduler().addTask(&nodeOperationTask);
 
-#endif
 
     // #ifdef PLATFORM_HAS_GSM
     // test_gsm_initialization();

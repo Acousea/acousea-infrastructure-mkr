@@ -4,21 +4,12 @@
 #include <climits> // for  ULONG_MAX
 #include <cinttypes> // for PRId32
 
+#include "Ports/IPort.h"
+#include "SharedMemory/SharedMemory.hpp"
+
 
 namespace
 {
-    bool isRequeueAllowed(const uint8_t packetBodyTag, const uint8_t packetPayloadTag) noexcept
-    {
-        // Currently, only Command packets with SetConfiguration payloads are allowed to be requeued
-        return ((packetBodyTag == acousea_CommunicationPacket_command_tag)
-                && (packetPayloadTag == acousea_CommandBody_setConfiguration_tag ||
-                    packetPayloadTag == acousea_CommandBody_requestedConfiguration_tag))
-            || ((packetBodyTag == acousea_CommunicationPacket_response_tag)
-                && (packetPayloadTag == acousea_ResponseBody_setConfiguration_tag ||
-                    packetPayloadTag == acousea_ResponseBody_updatedConfiguration_tag)
-            );
-    }
-
     uint8_t getPayloadTag(const acousea_CommunicationPacket& p) noexcept
     {
         switch (p.which_body)
@@ -43,6 +34,7 @@ namespace
         return ((currentMinute - lastReportMinute) >= reportingPeriod);
     }
 
+
     acousea_CommunicationPacket& buildErrorPacket(const char* errorMessage)
     {
         SharedMemory::resetCommunicationPacket();
@@ -61,6 +53,21 @@ namespace
         packet.body.error.errorMessage[sizeof(packet.body.error.errorMessage) - 1] = '\0';
 
         return packet;
+    }
+
+    acousea_CommunicationPacket& buildErrorPacketF(const char* fmt, ...)
+    {
+        // Usamos el scratch buffer de SharedMemory
+        char* tmp = SharedMemory::tmpBuffer();
+        SharedMemory::clearTmpBuffer();
+
+        va_list args;
+        va_start(args, fmt);
+        vsnprintf(tmp, SharedMemory::tmpBufferSize(), fmt, args);
+        va_end(args);
+
+        // La versión simple se encarga de copiarlo al CommunicationPacket
+        return buildErrorPacket(tmp);
     }
 
     // -----------------------------------------------------------------------------
@@ -104,9 +111,8 @@ NodeOperationRunner::NodeOperationRunner(
     const std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>>& routines)
     : IRunnable(),
       router(router),
-      routines(routines),
-      pendingRoutines(storageManager),
-      nodeConfigurationRepository(nodeConfigurationRepository)
+      nodeConfigurationRepository(nodeConfigurationRepository),
+      routines(routines)
 {
     cache = {
         acousea_OperationMode_init_default,
@@ -142,8 +148,7 @@ void NodeOperationRunner::run()
                    cache.currentOperationMode.name
     );
     tryTransitionOpMode();
-    processNextIncomingPacket(nodeConfigurationRepository.getNodeConfiguration().localAddress);
-    runPendingRoutines();
+    processNextIncomingPacket();
     processReportingRoutines();
     cache.cycleCount++;
     LOG_CLASS_INFO("<Finish> Operation Cycle for Operation mode %" PRId32 "=(%s)",
@@ -152,40 +157,6 @@ void NodeOperationRunner::run()
     );
 }
 
-
-IRoutine<acousea_CommunicationPacket>* NodeOperationRunner::findRoutine(
-    const uint8_t bodyTag, const uint8_t payloadTag) const
-{
-    LOG_CLASS_INFO("Searching routine for Body %d and Payload %d...",
-                   bodyTag, payloadTag
-    );
-    LOG_CLASS_INFO("The current amount of routines is %d.", static_cast<int>(routines.size()));
-
-    const auto bodyIt = routines.find(bodyTag);
-    if (bodyIt == routines.end())
-    {
-        return nullptr;
-    }
-    LOG_CLASS_INFO("Finding routine for Body %d and Payload %d...",
-                   bodyTag, payloadTag
-    );
-    const auto& packetBodyRoutinesMap = bodyIt->second;
-
-    LOG_CLASS_INFO("Searching routine for Payload Tag %d...", payloadTag);
-    LOG_CLASS_INFO("The current amount of payload routines is %d.",
-                   static_cast<int>(packetBodyRoutinesMap.size())
-    );
-
-    const auto routineIt = packetBodyRoutinesMap.find(payloadTag);
-    if (routineIt == packetBodyRoutinesMap.end() || routineIt->second == nullptr)
-    {
-        return nullptr;
-    }
-    LOG_CLASS_INFO("Routine found for Body %d and Payload %d.",
-                   bodyTag, payloadTag
-    );
-    return routineIt->second;
-}
 
 void NodeOperationRunner::tryTransitionOpMode()
 {
@@ -211,83 +182,6 @@ void NodeOperationRunner::tryTransitionOpMode()
     }
 }
 
-void NodeOperationRunner::tryReport(const IPort::PortType portType,
-                                    unsigned long& lastMinute,
-                                    const unsigned long currentMinute)
-{
-    const auto resultCfg = getReportingEntryForCurrentOperationMode(cache.currentOperationMode.id, portType);
-
-    if (resultCfg.isError())
-    {
-        LOG_CLASS_ERROR("%s", resultCfg.getError());
-        return;
-    }
-
-    auto [modeId, period] = resultCfg.getValueConst();
-
-    LOG_CLASS_INFO("%s Config: { Period=%lu, Current minute=%lu, Last report minute=%lu }",
-                   IPort::portTypeToCString(portType),
-                   period,
-                   currentMinute,
-                   lastMinute
-    );
-
-    if (!mustReport(currentMinute, period, lastMinute))
-    {
-        LOG_CLASS_INFO("%s Not time to report yet. Skipping report...", IPort::portTypeToCString(portType));
-        return;
-    }
-
-    IRoutine<acousea_CommunicationPacket>* routinePtr = findRoutine(
-        acousea_CommunicationPacket_report_tag,acousea_ReportBody_statusPayload_tag
-    );
-
-    LOG_CLASS_INFO("%s Found report routine for reportTag = %d and payloadTag = %d.",
-                   IPort::portTypeToCString(portType),
-                   acousea_CommunicationPacket_report_tag,
-                   acousea_ReportBody_statusPayload_tag
-    );
-
-    if (!routinePtr) // Check for null pointer
-    {
-        LOG_CLASS_ERROR("Report routine for reportTag = %d and payloadTag = %d not found. Cannot send report.",
-                        acousea_CommunicationPacket_report_tag, acousea_ReportBody_statusPayload_tag
-        );
-
-        return;
-    }
-    LOG_CLASS_INFO("%s Executing routine...", IPort::portTypeToCString(portType));
-
-    LOG_CLASS_INFO("Routine pointer address: %p", routinePtr);
-
-    LOG_FREE_MEMORY("PRE_ROUTINE_EXECUTION");
-    auto outPacketPtr = executeRoutine(
-        routinePtr, // Routine pointer
-        nullptr, // No input packet for reporting
-        portType, // Port type
-        0, // Remaining attempts (not used for reporting)
-        false // Requeue not allowed for reporting
-    );
-    LOG_CLASS_INFO("%s Report routine executed.", IPort::portTypeToCString(portType));
-    LOG_FREE_MEMORY("POST_ROUTINE_EXECUTION");
-
-    if (!outPacketPtr) // Check for valid result (ptr)
-    {
-        LOG_CLASS_ERROR("%s Report routine failed to generate report packet. Skipping report...",
-                        IPort::portTypeToCString(portType));
-        lastMinute = currentMinute;
-        return;
-    }
-
-    sendResponsePacket(portType, // Port type
-                       nodeConfigurationRepository.getNodeConfiguration().localAddress, // Local address
-                       nullptr, // Input packet (No input packet for reporting)
-                       outPacketPtr // Output packet
-    );
-    lastMinute = currentMinute;
-}
-
-
 void NodeOperationRunner::processReportingRoutines()
 {
     const auto currentMinute = getMillis() / 60000;
@@ -309,18 +203,91 @@ void NodeOperationRunner::processReportingRoutines()
 #endif
 }
 
-void NodeOperationRunner::processNextIncomingPacket(const uint8_t& localAddress)
+void NodeOperationRunner::tryReport(const IPort::PortType port,
+                                    unsigned long& lastMinute,
+                                    const unsigned long currentMinute)
 {
-    LOG_CLASS_INFO("processNextIncomingPacket for local address %d ...", localAddress);
-    const bool routerSyncOk = router.syncAllPorts();
+    const auto cfgResult = getReportingEntryForCurrentOperationMode(cache.currentOperationMode.id, port);
 
-    if (!routerSyncOk)
+    if (cfgResult.isError())
+    {
+        LOG_CLASS_ERROR("%s", cfgResult.getError());
+        return;
+    }
+
+    auto [modeId, period] = cfgResult.getValueConst();
+
+    LOG_CLASS_INFO("Trying to report on %s. Config: { Period=%lu, Current minute=%lu, Last report minute=%lu }",
+                   IPort::portTypeToCString(port),
+                   period,
+                   currentMinute,
+                   lastMinute
+    );
+
+    if (!mustReport(currentMinute, period, lastMinute))
+    {
+        LOG_CLASS_INFO("%s Not time to report yet. Skipping report...", IPort::portTypeToCString(port));
+        return;
+    }
+
+    IRoutine<acousea_CommunicationPacket>* routinePtr = findRoutine(
+        acousea_CommunicationPacket_report_tag,acousea_ReportBody_statusPayload_tag
+    );
+
+    LOG_CLASS_INFO("%s Found report routine for reportTag = %d and payloadTag = %d.",
+                   IPort::portTypeToCString(port),
+                   acousea_CommunicationPacket_report_tag,
+                   acousea_ReportBody_statusPayload_tag
+    );
+
+    if (!routinePtr) // Check for null pointer
+    {
+        LOG_CLASS_ERROR("Report routine for reportTag = %d and payloadTag = %d not found. Cannot send report.",
+                        acousea_CommunicationPacket_report_tag, acousea_ReportBody_statusPayload_tag
+        );
+        return;
+    }
+    LOG_CLASS_INFO("%s Executing routine...", IPort::portTypeToCString(port));
+    LOG_CLASS_INFO("Routine pointer address: %p", routinePtr);
+
+    uint8_t dummyAttemptsLeft = 1;
+    acousea_CommunicationPacket* outPacketPtr = executeRoutine(
+        routinePtr, // Routine to execute
+        nullptr, // No input packet for report routines
+        port, // Port type
+        dummyAttemptsLeft // Attempts left (not used for reports)
+    );
+
+    if (!outPacketPtr) // Check for null pointer
+    {
+        LOG_CLASS_ERROR("%s Report routine for port %s failed to produce an output packet. Aborting report.",
+                        routinePtr->routineName, IPort::portTypeToCString(port));
+        return;
+    }
+
+    LOG_CLASS_INFO("%s Report routine successfully executed.", IPort::portTypeToCString(port));
+
+    sendResponsePacket(port, // Port type
+                       nodeConfigurationRepository.getNodeConfiguration().localAddress, // Local address
+                       Router::originAddress, // Recipient address
+                       outPacketPtr // Output packet
+    );
+    lastMinute = currentMinute;
+}
+
+
+void NodeOperationRunner::processNextIncomingPacket()
+{
+    const auto& localAddress = nodeConfigurationRepository.getNodeConfiguration().localAddress;
+    LOG_CLASS_INFO("processNextIncomingPacket for local address %lu ...", localAddress);
+
+    if (const bool routerSyncOk = router.syncAllPorts(); !routerSyncOk)
     {
         LOG_CLASS_ERROR("Failed to sync all router ports. Aborting packet processing.");
     }
     LOG_CLASS_INFO("Router ports synced successfully.");
 
-    auto optNextPacketPair = router.nextPacket(localAddress);
+    auto optNextPacketPair = router.peekNextPacket(localAddress);
     if (!optNextPacketPair.has_value())
     {
         LOG_CLASS_INFO("No incoming packets to process.");
@@ -328,39 +295,96 @@ void NodeOperationRunner::processNextIncomingPacket(const uint8_t& localAddress)
     }
 
     auto& [portType, nextInPacketPtr] = *optNextPacketPair;
-    acousea_CommunicationPacket* outPacketPtr = processPacket(portType, nextInPacketPtr);
-    sendResponsePacket(portType, localAddress, nextInPacketPtr, outPacketPtr);
-}
 
-
-void NodeOperationRunner::runPendingRoutines()
-{
-    // First run incomplete routines
-    auto entryPtr = pendingRoutines.next();
-    while (entryPtr)
+    if (!nextInPacketPtr) // Check for null pointer
     {
-        const auto& entry = *entryPtr;
-        LOG_CLASS_INFO("Re-attempting pending routine %s with %d attempts left.", entry.routine->routineName,
-                       entry.remainingAttempts);
-
-        executeRoutine(entry.routine,
-                       entry.packet,
-                       entry.portResponseTo,
-                       entry.remainingAttempts,
-                       entry.packet
-                           ? isRequeueAllowed(entry.packet->which_body, getPayloadTag(*entry.packet))
-                           : false
-        );
-        // Move to next pending routine
-        entryPtr = pendingRoutines.next();
+        LOG_CLASS_ERROR("No incoming packet retrieved. Aborting packet processing.");
+        return;
     }
-    LOG_CLASS_INFO("Finished processing pending routines.");
+
+    if (!nextInPacketPtr->has_routing)
+    {
+        LOG_CLASS_ERROR("Packet without routing. Dropping packet...");
+        // Puedes devolver un error, o bien construir una respuesta de error.
+        const auto errorPkt = &buildErrorPacket("Packet has no routing information.");
+        sendResponsePacket(portType, localAddress, Router::broadcastAddress, errorPkt);
+        return;
+    }
+
+    const auto packetId = nextInPacketPtr->packetId;
+    const auto nextInPacketSender = static_cast<uint8_t>(nextInPacketPtr->routing.sender);
+    const auto bodyTag = nextInPacketPtr->which_body;
+    const auto payloadTag = getPayloadTag(*nextInPacketPtr);
+
+    LOG_CLASS_INFO("Processing incoming packet with id % " PRId32 " from sender %d  with type %s through port %s ...",
+                   packetId,
+                   nextInPacketSender,
+                   bodyAndPayloadTagToCString(bodyTag, payloadTag),
+                   IPort::portTypeToCString(portType));
+
+
+    const auto routinePtr = findRoutine(bodyTag, payloadTag);
+    if (!routinePtr)
+    {
+        LOG_CLASS_ERROR("Routine not found for Body %d and Payload %d. Building error packet...",
+                        bodyTag, payloadTag);
+        const auto errorPkt = &buildErrorPacketF("Routine not found for %d and Payload %d.", bodyTag, payloadTag);
+        return sendResponsePacket(portType, localAddress, nextInPacketSender, errorPkt);
+    }
+
+    // Check if requeue is allowed for this packet type
+    auto& retryEntry = retryAttemptsLeft_[static_cast<uint8_t>(portType)];
+    if (retryEntry.packetId != packetId)
+    {
+        LOG_CLASS_WARNING("Another packet is being retried on port %s. "
+                          "New packet id % " PRId32 " will not be processed until retries are done for packet id % "
+                          PRId32 ".",
+                          IPort::portTypeToCString(portType),
+                          packetId,
+                          retryEntry.packetId
+        );
+        retryEntry.packetId = packetId;
+        retryEntry.attemptsLeft = MAX_RETRIES;
+        return;
+    }
+
+    if (retryEntry.attemptsLeft == 0)
+    {
+        LOG_CLASS_ERROR("No retry attempts left for packet id % " PRId32 " on port %s. Discarding packet.",
+                        packetId,
+                        IPort::portTypeToCString(portType)
+        );
+        // Reset retry entry
+        retryEntry.packetId = 0;
+        retryEntry.attemptsLeft = 0;
+
+        // Discard the packet
+        if (const bool discardOk = router.skipToNextPacket(portType); !discardOk)
+        {
+            LOG_CLASS_ERROR("Failed to discard packet id % " PRId32 " from port %s after exhausting retries.",
+                            packetId,
+                            IPort::portTypeToCString(portType)
+            );
+        }
+        return;
+    }
+
+    acousea_CommunicationPacket* outPacketPtr = executeRoutine(
+        routinePtr, // Routine to execute
+        nextInPacketPtr, // Input packet for the routine
+        portType, // Port type
+        retryEntry.attemptsLeft // Attempts left for retries
+    );
+
+    sendResponsePacket(portType, localAddress, nextInPacketSender, outPacketPtr);
 }
 
 
+// -------------------------------------- Packet Sending --------------------------------------
+// There is no input packet in this method, since there is only one packet in memory at a time.
 void NodeOperationRunner::sendResponsePacket(const IPort::PortType portType,
-                                             const uint8_t& localAddress,
-                                             const acousea_CommunicationPacket* inputPacketPtr,
+                                             const uint8_t localAddress,
+                                             const uint8_t recipientAddress,
                                              acousea_CommunicationPacket* outputPacketPtr) const
 {
     if (!outputPacketPtr) // Check for null pointer
@@ -377,64 +401,13 @@ void NodeOperationRunner::sendResponsePacket(const IPort::PortType portType,
                    localAddress
     );
 
-    if (inputPacketPtr) // Invert routing info if input packet is provided
-    {
-        LOG_CLASS_INFO("Setting routing info in response packet...");
-        const auto inputPacket = *inputPacketPtr;
-        const uint8_t destination = inputPacket.has_routing ? inputPacket.routing.sender : Router::originAddress;
-        outputPacketRef.packetId = inputPacket.packetId;
-        outputPacketRef.has_routing = true;
-        outputPacketRef.routing = acousea_RoutingChunk_init_default;
-        outputPacketRef.routing.sender = localAddress;
-        outputPacketRef.routing.receiver = destination;
-    }
-
-    if (const auto sendOk = router.from(localAddress).through(portType).send(outputPacketRef); !sendOk)
+    if (const auto sendOk = router.from(localAddress)
+                                  .to(recipientAddress)
+                                  .through(portType)
+                                  .send(outputPacketRef); !sendOk)
     {
         LOG_CLASS_ERROR(": Failed to send response packet through %s", IPort::portTypeToCString(portType));
     }
-}
-
-
-acousea_CommunicationPacket* NodeOperationRunner::processPacket(
-    const IPort::PortType portType, acousea_CommunicationPacket* inPacketPtr)
-{
-    if (!inPacketPtr) // Check for null pointer
-    {
-        LOG_CLASS_ERROR("No input packet provided to processPacket. Dropping packet...");
-        return nullptr;
-    }
-
-    if (!inPacketPtr->has_routing)
-    {
-        LOG_CLASS_ERROR("Packet without routing. Dropping packet...");
-        // Puedes devolver un error, o bien construir una respuesta de error.
-        return &buildErrorPacket("Packet has no routing information.");
-    }
-
-    LOG_CLASS_INFO("Received Packet from %" PRId32 " of type %s",
-                   inPacketPtr->routing.sender,
-                   bodyAndPayloadTagToCString(inPacketPtr->which_body, getPayloadTag(*inPacketPtr))
-
-    );
-
-    const auto bodyTag = inPacketPtr->which_body;
-    const auto payloadTag = getPayloadTag(*inPacketPtr);
-
-    const auto routinePtr = findRoutine(bodyTag, payloadTag);
-    if (!routinePtr)
-    {
-        LOG_CLASS_ERROR("Routine not found for Body %d and Payload %d. Building error packet...",
-                        bodyTag, payloadTag);
-        return &buildErrorPacket("Routine not found.");
-    }
-    return executeRoutine(
-        routinePtr, // Routine pointer
-        inPacketPtr, // Input packet
-        portType, // Port type
-        PendingRoutines<0>::MAX_ATTEMPTS, // Remaining attempts
-        isRequeueAllowed(bodyTag, payloadTag) // Requeue allowed
-    );
 }
 
 
@@ -442,32 +415,26 @@ acousea_CommunicationPacket* NodeOperationRunner::executeRoutine(
     IRoutine<acousea_CommunicationPacket>* routine,
     acousea_CommunicationPacket* const optInputPacket, // Const pointer, not const data!
     const IPort::PortType portType,
-    const uint8_t remainingAttempts,
-    const bool requeueAllowed
+    uint8_t& attemptsLeft
 )
 {
     // Execute the routine (NO NEED TO CHECK FOR NULLPTR, SOME ROUTINES USE NULLPTR)
-    Result<acousea_CommunicationPacket*> result = routine->execute(optInputPacket);
+    LOG_FREE_MEMORY("PRE_ROUTINE_EXECUTION");
+    const Result<acousea_CommunicationPacket*> result = routine->execute(optInputPacket);
+    LOG_FREE_MEMORY("POST_ROUTINE_EXECUTION");
 
-    if (result.isIncomplete() && (remainingAttempts <= 0 || !requeueAllowed))
+    if (result.isIncomplete())
     {
-        LOG_CLASS_WARNING("%s[NO REQUEUE ALLOWED] => incomplete with message: %s", routine->routineName,
-                          result.getError());
-
+        attemptsLeft -= 1;
+        LOG_CLASS_WARNING("%s => incomplete (left attempts = %d) with message: %s",
+                          routine->routineName, attemptsLeft, result.getError());
         return &buildErrorPacket(result.getError());
-    }
-
-    if (result.isIncomplete() && remainingAttempts > 0 && requeueAllowed)
-    {
-        // pendingRoutines.add({routine, optInputPacket, static_cast<uint8_t>(remainingAttempts - 1), portType});
-        LOG_CLASS_WARNING("%s [REQUEUED] => incomplete with message: %s", routine->routineName,
-                          result.getError());
-        return nullptr;
     }
 
     if (result.isError())
     {
         LOG_CLASS_ERROR("%s => failed with message: %s", routine->routineName, result.getError());
+        attemptsLeft = 0; // No more attempts left on error
         if (!optInputPacket) // Check for null pointer
         {
             LOG_CLASS_INFO("%s: Cannot send error packet, there was no original packet.", routine->routineName);
@@ -476,9 +443,18 @@ acousea_CommunicationPacket* NodeOperationRunner::executeRoutine(
 
         return &buildErrorPacket(result.getError());
     }
-    LOG_CLASS_INFO("%s => succeeded.", routine->routineName);
+    LOG_CLASS_INFO("%s => succeeded. Skipping to next packet", routine->routineName);
+    if (const bool discardOk = router.skipToNextPacket(portType); !discardOk)
+    {
+        LOG_CLASS_ERROR("%s: Failed to discard processed packet from port %s.",
+                        routine->routineName, IPort::portTypeToCString(portType)
+        );
+    }
+
+
     return result.getValueConst();
 }
+
 
 //---------------------------------------------- Helpers ------------------------------------------------//
 
@@ -560,4 +536,65 @@ Result<acousea_ReportingPeriodEntry> NodeOperationRunner::getReportingEntryForCu
                                  "::getReportingEntryForCurrentOperationMode() Reporting entry for mode %d not found.",
                                  modeId
     );
+}
+
+
+IRoutine<acousea_CommunicationPacket>* NodeOperationRunner::findRoutine(
+    const uint8_t bodyTag, const uint8_t payloadTag) const
+{
+    dumpRoutinesMap();
+    LOG_CLASS_INFO("Searching routine for Body %d and Payload %d...",
+                   bodyTag, payloadTag
+    );
+    LOG_CLASS_INFO("The current amount of routines is %d.", static_cast<int>(routines.size()));
+
+    const auto bodyIt = routines.find(bodyTag);
+    if (bodyIt == routines.end())
+    {
+        return nullptr;
+    }
+    LOG_CLASS_INFO("Finding routine for Body %d and Payload %d...",
+                   bodyTag, payloadTag
+    );
+    const auto& packetBodyRoutinesMap = bodyIt->second;
+
+    LOG_CLASS_INFO("Searching routine for Payload Tag %d...", payloadTag);
+    LOG_CLASS_INFO("The current amount of payload routines is %d.",
+                   static_cast<int>(packetBodyRoutinesMap.size())
+    );
+
+    const auto routineIt = packetBodyRoutinesMap.find(payloadTag);
+    if (routineIt == packetBodyRoutinesMap.end())
+    {
+        return nullptr;
+    }
+    LOG_CLASS_INFO("Routine found for Body %d and Payload %d on address %p.",
+                   bodyTag, payloadTag, routineIt->second
+    );
+    return routineIt->second;
+}
+
+void NodeOperationRunner::dumpRoutinesMap() const
+{
+    LOG_CLASS_INFO("=== BEGIN ROUTINES MAP DUMP ===");
+    LOG_CLASS_INFO("Total body tags in routines map: %d",
+                   static_cast<int>(routines.size()));
+
+    for (const auto& bodyEntry : routines)
+    {
+        const auto bodyTag = bodyEntry.first;
+        const auto& packetBodyRoutinesMap = bodyEntry.second;
+
+        LOG_CLASS_INFO(" BodyTag %d -> has %d payload entries",
+                       bodyTag, static_cast<int>(packetBodyRoutinesMap.size()));
+
+        for (const auto& payloadEntry : packetBodyRoutinesMap)
+        {
+            const auto payloadTag = payloadEntry.first;
+            auto* routinePtr = payloadEntry.second;
+            LOG_CLASS_INFO("    PayloadTag %d -> Routine ptr %p",
+                           payloadTag, routinePtr);
+        }
+    }
+    LOG_CLASS_INFO("=== END ROUTINES MAP DUMP ===");
 }

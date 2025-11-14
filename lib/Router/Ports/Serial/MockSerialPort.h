@@ -22,8 +22,6 @@ public:
     bool available() override;
 
     // Lee datos y construye un paquete
-    uint16_t readInto(uint8_t* buffer, uint16_t maxSize) override;
-
     bool sync() override;
 };
 

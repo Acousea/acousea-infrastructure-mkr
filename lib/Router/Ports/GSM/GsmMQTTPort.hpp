@@ -58,7 +58,6 @@ public:
     void init() override;
     bool send(const uint8_t* data, size_t length) override;
     bool available() override;
-    uint16_t readInto(uint8_t* buffer, uint16_t maxSize) override;
 
     // Métodos MQTT
     bool sync() override;

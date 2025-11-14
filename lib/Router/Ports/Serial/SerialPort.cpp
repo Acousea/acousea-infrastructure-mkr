@@ -22,12 +22,6 @@ void SerialPort::init()
 bool SerialPort::available()
 {
     return !packetQueue_.isPortEmpty(getTypeU8());
-
-}
-
-uint16_t SerialPort::readInto(uint8_t* buffer, const uint16_t maxSize)
-{
-    return packetQueue_.popNext(getTypeU8(), buffer, maxSize);
 }
 
 bool SerialPort::send(const uint8_t* data, const size_t length)
@@ -38,7 +32,8 @@ bool SerialPort::send(const uint8_t* data, const size_t length)
         return false;
     }
     const auto len = static_cast<uint8_t>(length);
-    LOG_CLASS_INFO("SerialPort::send() -> %s", Logger::vectorToHexString(data, length).c_str());
+    LOG_CLASS_INFO("::send() -> %s", Logger::vectorToHexString(data, length).c_str());
+    LOG_CLASS_FREE_MEMORY("::send() -> Sending packet of %d bytes", length);
     serialPort.write(&kSOF, 1);
     serialPort.write(&len, 1);
     serialPort.write(data, length);

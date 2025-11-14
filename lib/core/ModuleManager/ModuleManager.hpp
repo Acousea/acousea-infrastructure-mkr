@@ -35,8 +35,8 @@ public:
 
     [[nodiscard]] Result<void> getModules(acousea_NodeDevice_ModulesEntry* outModulesArr,
                                           pb_size_t& outModulesArrSize,
-                                          const acousea_ModuleCode* reqModules,
-                                          pb_size_t modulesCount);
+                                          const acousea_ModuleCode* requestedModules,
+                                          pb_size_t requestedModulesSize);
     Result<void> setModules(pb_size_t modules_count, const acousea_SetNodeConfigurationPayload_ModulesEntry* modules);
 
 private:

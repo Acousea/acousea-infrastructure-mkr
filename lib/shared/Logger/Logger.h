@@ -63,7 +63,6 @@ public:
     static HexString vectorToHexString(const unsigned char* data, size_t length);
 
 private:
-
     friend class ErrorHandler; // To have access to logging internal methods and shared Buffer
 
     static inline IDisplay* display = nullptr;
@@ -85,7 +84,7 @@ private:
 
     static void getTimestamp(char* buffer, size_t len);
 
-    static void vlog(const char* loggingClass, const char* fmt, va_list &args);
+    static void vlog(const char* loggingClass, const char* fmt, va_list& args);
     static void vlog(const char* loggingClass, const char* message);
 
     static bool clearLog();
@@ -127,8 +126,12 @@ Logger::logfError(fmt, ##__VA_ARGS__)
 #ifdef PLATFORM_ARDUINO
 #define LOG_FREE_MEMORY(fmt, ...) \
 Logger::logfFreeMemory(fmt, ##__VA_ARGS__)
+#define LOG_CLASS_FREE_MEMORY(fmt, ...) \
+Logger::logfFreeMemory("%s " fmt, getClassNameCString(), ##__VA_ARGS__)
 #else
 #define LOG_FREE_MEMORY(fmt, ...) \
+((void)0)
+#define LOG_CLASS_FREE_MEMORY(fmt, ...) \
 ((void)0)
 #endif
 

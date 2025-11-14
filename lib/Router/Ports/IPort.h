@@ -66,8 +66,6 @@ public:
 
     virtual bool available() = 0;
 
-    virtual uint16_t readInto(uint8_t* buffer, uint16_t maxSize) = 0; // Devuelve lista de vectores de bytes
-
     virtual bool sync() = 0;
 
 

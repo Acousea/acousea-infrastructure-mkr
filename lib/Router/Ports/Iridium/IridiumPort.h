@@ -38,8 +38,6 @@ public:
 
     bool available() override;
 
-    uint16_t readInto(uint8_t* buffer, uint16_t maxSize) override;
-
     bool sync() override;
 
 private:

@@ -14,6 +14,7 @@
 #include "time/getMillis.hpp"
 #include "WatchDog/WatchDogUtils.hpp"
 #include "PacketQueue/PacketQueue.hpp"
+#include "SharedMemory/SharedMemory.hpp"
 
 // ------------------ BATTERY ------------------
 #include <IBatteryController.h>
@@ -41,7 +42,7 @@
 #include <routines/StatusReportingRoutine/StatusReportingRoutine.h>
 #include <routines/GetUpdatedNodeConfigurationRoutine/GetUpdatedNodeConfigurationRoutine.hpp>
 #include "routines/StoreNodeConfigurationRoutine/StoreNodeConfigurationRoutine.h"
-#include "routines/RelayPacketRoutine/RelayPacketRoutine.hpp"
+#include "routines/LogAndRelayErrorPacketRoutine/LogAndRelayErrorPacketRoutine.hpp"
 
 // ------------------------- REPOSITORIES -------------------------
 #include <NodeConfigurationRepository/NodeConfigurationRepository.h>
@@ -100,7 +101,6 @@
 
 // ------------------ POLICIES  ------------------
 #include "BatteryProtectionPolicy/BatteryProtectionPolicy.hpp"
-
 
 
 #elif defined(PLATFORM_NATIVE)

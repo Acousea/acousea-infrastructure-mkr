@@ -18,7 +18,7 @@ class StatusReportingRoutine final : public IRoutine<acousea_CommunicationPacket
     ModuleManager& moduleManager;
 
 public:
-    CLASS_NAME(CompleteSummaryReportRoutine)
+    CLASS_NAME(StatusReportingRoutine)
 
     StatusReportingRoutine(NodeConfigurationRepository& nodeConfigurationRepository,
                                 ModuleManager& moduleManager);

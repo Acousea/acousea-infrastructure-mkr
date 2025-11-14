@@ -104,6 +104,7 @@ IPort::PortType ModuleProxy::resolvePort(const DeviceAlias alias) const noexcept
 
 acousea_CommunicationPacket ModuleProxy::buildRequestPacket(acousea_ModuleCode code)
 {
+    LOG_CLASS_FREE_MEMORY("::buildRequestPacket(start)");
     acousea_CommunicationPacket pkt = acousea_CommunicationPacket_init_default;
     pkt.has_routing = true;
     pkt.routing.sender = Router::broadcastAddress;
@@ -116,6 +117,7 @@ acousea_CommunicationPacket ModuleProxy::buildRequestPacket(acousea_ModuleCode c
     pkt.body.command.command.requestedConfiguration = acousea_GetUpdatedNodeConfigurationPayload_init_default;
     pkt.body.command.command.requestedConfiguration.requestedModules_count = 1;
     pkt.body.command.command.requestedConfiguration.requestedModules[0] = code;
+    LOG_CLASS_FREE_MEMORY("::buildRequestPacket(end)");
     return pkt;
 }
 
@@ -149,11 +151,17 @@ acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode code,
 // =============== ModuleCache impl ==================
 // ===================================================
 
-bool ModuleProxy::storeModule(acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper)
+bool ModuleProxy::storeModule(const acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper)
 {
-    uint16_t idx = static_cast<uint16_t>(code) - 1;
+    const uint16_t idx = static_cast<uint16_t>(code) - 1;
+    if (idx < 0 || idx > ModuleProxy::MAX_MODULES - 1)
+    {
+        LOG_CLASS_WARNING("::storeModule() -> Module idx %d out of bounds [0, %d)",
+                          static_cast<int>(idx), ModuleProxy::MAX_MODULES - 1);
+        return false; // Código inválido
+    }
     entries[idx].emplace(wrapper);
-    return false; // No hay espacio
+    return true; // No hay espacio
 }
 
 const acousea_ModuleWrapper* ModuleProxy::getIfFresh(acousea_ModuleCode code) const
@@ -221,7 +229,14 @@ const acousea_ModuleWrapper* ModuleProxy::getIfFreshOrSetOnDevice(
 
 void ModuleProxy::invalidateModule(const acousea_ModuleCode code)
 {
-    entries[static_cast<uint16_t>(code) - 1] = (std::nullopt);
+    const uint16_t idx = static_cast<uint16_t>(code) - 1;
+    if (idx < 0 || idx > ModuleProxy::MAX_MODULES - 1)
+    {
+        LOG_CLASS_WARNING("::invalidateModule() -> Module idx %d out of bounds [0, %d)",
+                          static_cast<int>(idx), ModuleProxy::MAX_MODULES - 1);
+        return; // Código inválido
+    }
+    entries[idx] = (std::nullopt);
 }
 
 void ModuleProxy::invalidateAll()

@@ -95,11 +95,6 @@ bool IridiumPort::available()
     return !packetQueue_.isEmpty();
 }
 
-uint16_t IridiumPort::readInto(uint8_t* buffer, const uint16_t maxSize)
-{
-    return packetQueue_.popNext(getTypeU8(), buffer, maxSize);
-}
-
 /// Synchronize the port: check for ring alerts and incoming messages
 bool IridiumPort::sync()
 {

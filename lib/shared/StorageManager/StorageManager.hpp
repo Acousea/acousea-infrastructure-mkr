@@ -27,6 +27,8 @@ public:
 
     [[nodiscard]] virtual bool truncateFileFromOffset(const char* path, size_t offset) = 0;
 
+    [[nodiscard]] virtual bool clearFile(const char* path) = 0;
+
     [[nodiscard]] virtual bool deleteFile(const char* path) = 0;
 
     [[nodiscard]] virtual bool fileExists(const char* path) = 0;

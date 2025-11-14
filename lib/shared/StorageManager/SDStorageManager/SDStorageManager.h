@@ -27,6 +27,8 @@ public:
 
     [[nodiscard]] bool overwriteBytesToFile(const char* path, const uint8_t* data, size_t length) override;
 
+    [[nodiscard]] bool clearFile(const char* path) override;
+
     [[nodiscard]] bool writeFileBytes(const char* path, const uint8_t* data, size_t length) override;
 
     [[nodiscard]] size_t readFileBytes(const char* path, uint8_t* outBuffer, size_t maxLen) override;

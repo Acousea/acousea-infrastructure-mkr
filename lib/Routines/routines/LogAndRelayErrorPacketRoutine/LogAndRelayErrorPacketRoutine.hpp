@@ -11,20 +11,16 @@
 #include <optional>
 
 /**
- * @brief Rutina responsable de reenviar paquetes no destinados a este nodo
- *        hacia otros puertos especificados (relay).
+ * @brief Routine that logs an error when an error packet is received
  */
-class RelayPacketRoutine final : public IRoutine<acousea_CommunicationPacket>
+class LogAndRelayErrorPacketRoutine final : public IRoutine<acousea_CommunicationPacket>
 {
-private:
     Router& router;
-    std::vector<IPort::PortType> relayPorts;
 
 public:
-    CLASS_NAME(RelayPacketRoutine)
+    CLASS_NAME(LogErrorRoutine)
 
-    explicit RelayPacketRoutine(Router& router,
-                                const std::vector<IPort::PortType>& relayPorts);
+    explicit LogAndRelayErrorPacketRoutine(Router& router);
 
     Result<acousea_CommunicationPacket*> execute(acousea_CommunicationPacket* optPacket) override;
 };

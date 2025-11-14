@@ -35,8 +35,7 @@ public:
     // Comprueba si hay suficientes datos disponibles para un paquete
     bool available() override;
 
-    // Lee datos y construye un paquete
-    uint16_t readInto(uint8_t* buffer, uint16_t maxSize) override;
+    // Lee datos del puerto serial al buffer proporcionado
     bool sync() override;
 };
 

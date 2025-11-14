@@ -96,6 +96,21 @@ bool SDStorageManager::overwriteBytesToFile(const char* path, const uint8_t* dat
 }
 
 
+bool SDStorageManager::clearFile(const char* path)
+{
+    File_t file;
+    if (!file.open(path, O_WRONLY | O_TRUNC))
+    {
+        LOG_CLASS_ERROR("clearFile() -> Cannot open file: %s", path);
+        return false;
+    }
+    waitFor(STABILIZATION_DELAY_MS);
+    file.close();
+    return true;
+}
+
+
+
 // -----------------------------------------------------
 
 bool SDStorageManager::deleteFile(const char* path)

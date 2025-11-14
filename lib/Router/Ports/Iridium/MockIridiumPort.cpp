@@ -23,11 +23,6 @@ bool MockIridiumPort::available()
     return false;
 }
 
-uint16_t MockIridiumPort::readInto(uint8_t* buffer, const uint16_t maxSize)
-{
-    return 0;
-}
-
 bool MockIridiumPort::sync()
 {
     return true;

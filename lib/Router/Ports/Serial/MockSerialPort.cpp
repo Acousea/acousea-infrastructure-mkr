@@ -23,10 +23,6 @@ bool MockSerialPort::send(const uint8_t* data, const size_t length)
     return true;
 }
 
-uint16_t MockSerialPort::readInto(uint8_t* buffer, uint16_t maxSize)
-{
-    return 0;
-}
 
 bool MockSerialPort::sync()
 {

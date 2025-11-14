@@ -6,7 +6,7 @@
 #include "Logger/Logger.h"
 #include <ConsoleDisplay/ConsoleDisplay.hpp>
 
-#include "routines/RelayPacketRoutine/RelayPacketRoutine.hpp"
+#include "routines/LogAndRelayErrorPacketRoutine/LogAndRelayErrorPacketRoutine.hpp"
 #include "../common_test_resources/DummyPort.hpp"
 #include "ErrorHandler/ErrorHandler.h"
 

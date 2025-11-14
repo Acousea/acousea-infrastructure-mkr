@@ -31,6 +31,7 @@ public:
 
     static void clearTmpBuffer() noexcept;
 
+
 private:
     // ---- Datos compartidos ----
     static inline acousea_NodeConfiguration nodeConfiguration_ = acousea_NodeConfiguration_init_default;

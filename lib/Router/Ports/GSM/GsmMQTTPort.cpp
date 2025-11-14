@@ -119,7 +119,7 @@ void GsmMQTTPort::init()
     instance = this;
 
     // ========= Set debug mode for modem ==========
-    UBlox201_GSMSSLClient::setModemDebug();
+    // UBlox201_GSMSSLClient::setModemDebug();
 
     // ========= Initialize SSL/TLS ==========
     ublox_gsmSslClient.init(config);
@@ -179,11 +179,11 @@ void GsmMQTTPort::init()
 
 
     // --------------------------- DEVICE CERTIFICATE & PRIVATE KEY ---------------------------
-    const std::vector<StoredCert> currentCerts = UBlox201_GSMSSLClient::listCertificates(CertType::All);
-    GsmMQTTPort::printCertificates(currentCerts);
+    // const std::vector<StoredCert> currentCerts = UBlox201_GSMSSLClient::listCertificates(CertType::All);
+    // GsmMQTTPort::printCertificates(currentCerts);
 
-    LOG_CLASS_INFO(" -> Using Amazon Root CA for TLS...");
-    ublox_gsmSslClient.setTrustedRoot(GSM_CUSTOM_ROOT_CERTS[0].name);
+    // LOG_CLASS_INFO(" -> Using Amazon Root CA for TLS...");
+    // ublox_gsmSslClient.setTrustedRoot(GSM_CUSTOM_ROOT_CERTS[0].name);
 
     LOG_CLASS_INFO(" -> Using device private key for TLS...");
     ublox_gsmSslClient.usePrivateKey("my_device_key");
@@ -191,7 +191,7 @@ void GsmMQTTPort::init()
     LOG_CLASS_INFO(" -> Using device certificate for TLS...");
     ublox_gsmSslClient.useSignedCertificate("my_device_cert");
 
-    UBlox201_GSMSSLClient::printTLSProfileStatus();
+    // UBlox201_GSMSSLClient::printTLSProfileStatus();
 
     UBlox201_GSMSSLClient::setModemNoDebug();
 
@@ -229,7 +229,7 @@ void GsmMQTTPort::init()
 
     // Automatically subscribe to input topic
     mqttSubscribeToTopic(config.inputTopic);
-    LOG_CLASS_INFO(" -> Subscribed to input topic: %s", config.inputTopic);
+    // LOG_CLASS_INFO(" -> Subscribed to input topic: %s", config.inputTopic);
 
     // Publish online status: Status topic, retain=true, QoS=1 (retain the last status)
     mqttPublishToTopic(MQTT_CONNECT_MESSAGE,
@@ -249,11 +249,6 @@ bool GsmMQTTPort::send(const uint8_t* data, const size_t length)
 bool GsmMQTTPort::available()
 {
     return !packetQueue_.isPortEmpty(getTypeU8());
-}
-
-uint16_t GsmMQTTPort::readInto(uint8_t* buffer, const uint16_t maxSize)
-{
-    return packetQueue_.popNext(getTypeU8(), buffer, maxSize);
 }
 
 
@@ -370,8 +365,11 @@ bool GsmMQTTPort::sync()
     }
     if (!instance->mqttClient.connected())
     {
-        LOG_CLASS_WARNING(" -> MQTT client not connected, skipping sync()");
-        return false;
+        LOG_CLASS_WARNING(" -> MQTT client not connected. Attempting to reconnect...");
+        if (!instance->tryConnect())
+        {
+            return false;
+        }
     }
     instance->mqttClient.poll();
     return true;

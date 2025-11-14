@@ -5,7 +5,7 @@
 #include "SharedMemory/SharedMemory.hpp"
 #include "Logger/Logger.h"
 
-PacketQueue::PacketQueue(StorageManager &storage, RTCController &rtc) : storage_(storage), rtc_(rtc), writeOffset_{0}
+PacketQueue::PacketQueue(StorageManager& storage, RTCController& rtc) : storage_(storage), rtc_(rtc), writeOffset_{0}
 {
 }
 
@@ -22,6 +22,7 @@ bool PacketQueue::begin()
             // archivo existente -> calcular offset al final (nuevos paquetes)
             writeOffset_[port] = storage_.fileSize(path);
             readOffset_[port] = storage_.fileSize(path);
+            nextReadOffset_[port] = storage_.fileSize(path);
         }
         else
         {
@@ -33,6 +34,7 @@ bool PacketQueue::begin()
             }
             writeOffset_[port] = 0;
             readOffset_[port] = 0;
+            nextReadOffset_[port] = 0;
         }
     }
 
@@ -51,7 +53,7 @@ bool PacketQueue::clear(uint8_t port)
     if (storage_.fileExists(path) && !storage_.deleteFile(path))
     {
         return false;
-    }    
+    }
 
     const bool createOK = storage_.createEmptyFile(path);
     if (!createOK)
@@ -61,6 +63,7 @@ bool PacketQueue::clear(uint8_t port)
     // Reset write offset for the port
     writeOffset_[port] = 0;
     readOffset_[port] = 0;
+    nextReadOffset_[port] = 0;
 
     return true;
 }
@@ -77,7 +80,7 @@ bool PacketQueue::isEmpty() const
     return true;
 }
 
-bool PacketQueue::arePortsEmpty(const uint8_t *ports, const size_t portCount) const
+bool PacketQueue::arePortsEmpty(const uint8_t* ports, const size_t portCount) const
 {
     if (!ports || portCount == 0)
         return true;
@@ -122,7 +125,7 @@ bool PacketQueue::isPortEmpty(uint8_t port) const
     return writeOffset_[port] == readOffset_[port];
 }
 
-bool PacketQueue::push(uint8_t port, const uint8_t *data, uint16_t length)
+bool PacketQueue::push(uint8_t port, const uint8_t* data, uint16_t length)
 {
     if (!data || length == 0)
         return false;
@@ -132,7 +135,7 @@ bool PacketQueue::push(uint8_t port, const uint8_t *data, uint16_t length)
     char path[32];
     snprintf(path, sizeof(path), "%s%u", queueBaseName_, port);
 
-    auto *tmp = reinterpret_cast<uint8_t *>(SharedMemory::tmpBuffer());
+    auto* tmp = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
     const size_t max = SharedMemory::tmpBufferSize();
 
     const size_t needed = HEADER_SIZE + length + FOOTER_SIZE;
@@ -154,12 +157,12 @@ bool PacketQueue::push(uint8_t port, const uint8_t *data, uint16_t length)
     const uint32_t ts = rtc_.getEpoch();
 
     // Copy the header afterwards
-    tmp[0] = START_BYTE;                                 // Start byte
-    tmp[1] = static_cast<uint8_t>(ts & 0xFF);            // Timestamp (4 bytes)
-    tmp[2] = static_cast<uint8_t>((ts >> 8) & 0xFF);     // Timestamp (4 bytes)
-    tmp[3] = static_cast<uint8_t>((ts >> 16) & 0xFF);    // Timestamp (4 bytes)
-    tmp[4] = static_cast<uint8_t>((ts >> 24) & 0xFF);    // Timestamp (4 bytes)
-    tmp[5] = static_cast<uint8_t>(length & 0xFF);        // Length (2 bytes)
+    tmp[0] = START_BYTE; // Start byte
+    tmp[1] = static_cast<uint8_t>(ts & 0xFF); // Timestamp (4 bytes)
+    tmp[2] = static_cast<uint8_t>((ts >> 8) & 0xFF); // Timestamp (4 bytes)
+    tmp[3] = static_cast<uint8_t>((ts >> 16) & 0xFF); // Timestamp (4 bytes)
+    tmp[4] = static_cast<uint8_t>((ts >> 24) & 0xFF); // Timestamp (4 bytes)
+    tmp[5] = static_cast<uint8_t>(length & 0xFF); // Length (2 bytes)
     tmp[6] = static_cast<uint8_t>((length >> 8) & 0xFF); // Length (2 bytes) [HEADER_SIZE - 1]
 
     // Add footer
@@ -177,7 +180,123 @@ bool PacketQueue::push(uint8_t port, const uint8_t *data, uint16_t length)
     return ok;
 }
 
-uint16_t PacketQueue::popNext(const uint8_t port, uint8_t *outBuffer, const uint16_t maxOutSize)
+uint64_t PacketQueue::getReadOffset(const uint8_t port) const
+{
+    return readOffset_[port];
+}
+
+uint64_t PacketQueue::getNextReadOffset(const uint8_t port) const
+{
+    return nextReadOffset_[port];
+}
+
+uint16_t PacketQueue::peekNext(uint8_t port, uint8_t* outBuffer, uint16_t maxOutSize)
+{
+    return _next(port, outBuffer, maxOutSize, false);
+}
+
+uint16_t PacketQueue::peekAny(uint8_t* outBuffer, const uint16_t maxOutSize)
+{
+    uint8_t outPorts[MAX_PORT] = {};
+    for (uint8_t i = 0; i < MAX_PORT; i++) // NAX_PORT = 4 => 0 -> 1, 1 -> 2, 2 -> 3, 3 -> 4 (4 out)
+    {
+        outPorts[i] = i + 1; // Los puertos empiezan de 1 hasta MAX_PORT
+    }
+
+    return peekAnyFromPorts(outPorts, MAX_PORT, outBuffer, maxOutSize);
+}
+
+uint16_t PacketQueue::peekAnyFromPorts(const uint8_t* ports, const size_t portCount, uint8_t* outBuffer,
+                                       const uint16_t maxOutSize)
+{
+    if (!ports || portCount == 0)
+        return 0;
+    if (!outBuffer || maxOutSize == 0)
+        return 0;
+
+    // Iterate over the provided ports
+    for (size_t i = 0; i < portCount; i++)
+    {
+        // Check if this port is empty
+        if (isPortEmpty(ports[i]))
+        {
+            continue;
+        }
+        // If not empty, peek from this port
+        return _next(ports[i], outBuffer, maxOutSize, false);
+    }
+
+    return 0;
+}
+
+
+uint16_t PacketQueue::popNext(uint8_t port, uint8_t* outBuffer, uint16_t maxOutSize)
+{
+    return _next(port, outBuffer, maxOutSize, true);
+}
+
+
+uint16_t PacketQueue::popAny(uint8_t* outBuffer, uint16_t maxOutSize)
+{
+    uint8_t outPorts[MAX_PORT] = {};
+    for (uint8_t i = 0; i < MAX_PORT; i++) // NAX_PORT = 4 => 0 -> 1, 1 -> 2, 2 -> 3, 3 -> 4 (4 out)
+    {
+        outPorts[i] = i + 1; // Los puertos empiezan de 1 hasta MAX_PORT
+    }
+
+    return popAnyFromPorts(outPorts, MAX_PORT, outBuffer, maxOutSize);
+}
+
+uint16_t PacketQueue::popAnyFromPorts(const uint8_t* ports, const size_t portCount, uint8_t* outBuffer,
+                                      const uint16_t maxOutSize)
+{
+    if (!ports || portCount == 0)
+        return 0;
+    if (!outBuffer || maxOutSize == 0)
+        return 0;
+
+    // Iterate over the provided ports
+    for (size_t i = 0; i < portCount; i++)
+    {
+        // Check if this port is empty
+        if (isPortEmpty(ports[i]))
+        {
+            continue;
+        }
+        // If not empty, pop from this port
+        return _next(ports[i], outBuffer, maxOutSize, true);
+    }
+
+    return 0;
+}
+
+bool PacketQueue::skipToNextPacket(uint8_t port)
+{
+    if (port == 0 || port > MAX_PORT)
+        return false;
+
+    // Nowhere to skip to if the port is already empty
+    if (readOffset_[port] == writeOffset_[port])
+        return false;
+
+    // Nowhere to skip to if the next read offset is the same as the current read offset
+    // (must have been peeked before)
+    if (nextReadOffset_[port] == readOffset_[port])
+        return false;
+
+    // Update the current read offset to the next read offset
+    readOffset_[port] = nextReadOffset_[port];
+
+    // Ensure we do not exceed the write offset
+    if (readOffset_[port] > writeOffset_[port])
+    {
+        readOffset_[port] = writeOffset_[port];
+    }
+
+    return true;
+}
+
+uint16_t PacketQueue::_next(const uint8_t port, uint8_t* outBuffer, const uint16_t maxOutSize, bool pop)
 {
     if (!outBuffer || maxOutSize == 0)
         return 0;
@@ -187,9 +306,10 @@ uint16_t PacketQueue::popNext(const uint8_t port, uint8_t *outBuffer, const uint
     char path[32];
     snprintf(path, sizeof(path), "%s%u", queueBaseName_, port);
 
-    auto *readBuffer = reinterpret_cast<uint8_t *>(SharedMemory::tmpBuffer());
+    auto* readBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
 
-    const size_t readBytes = storage_.readFileRegionBytes(path, readOffset_[port], readBuffer, SharedMemory::tmpBufferSize());
+    const size_t readBytes = storage_.readFileRegionBytes(path, readOffset_[port], readBuffer,
+                                                          SharedMemory::tmpBufferSize());
 
     if (readBytes < HEADER_SIZE + FOOTER_SIZE)
     {
@@ -205,10 +325,10 @@ uint16_t PacketQueue::popNext(const uint8_t port, uint8_t *outBuffer, const uint
 
     pos++; // Skip start byte
     uint32_t timestamp =
-        (static_cast<uint32_t>(readBuffer[pos++]) |
-         (static_cast<uint32_t>(readBuffer[pos++]) << 8) |
-         (static_cast<uint32_t>(readBuffer[pos++]) << 16) |
-         (static_cast<uint32_t>(readBuffer[pos++]) << 24));
+    (static_cast<uint32_t>(readBuffer[pos++]) |
+        (static_cast<uint32_t>(readBuffer[pos++]) << 8) |
+        (static_cast<uint32_t>(readBuffer[pos++]) << 16) |
+        (static_cast<uint32_t>(readBuffer[pos++]) << 24));
 
     const uint16_t readLen = static_cast<uint16_t>(readBuffer[pos]) | (static_cast<uint16_t>(readBuffer[pos + 1]) << 8);
     pos += 2;
@@ -235,48 +355,31 @@ uint16_t PacketQueue::popNext(const uint8_t port, uint8_t *outBuffer, const uint
 
     pos += readLen; // Skip to the end byte
 
+    // The required position to read is greater than the available bytes
+    if (pos >= readBytes)
+    {
+        LOG_CLASS_ERROR("PacketQueue::popNext() -> Port %u: Incomplete packet data", port);
+        return 0;
+    }
+
     if (readBuffer[pos] != END_BYTE)
     {
         LOG_CLASS_ERROR("PacketQueue::popNext() -> Port %u: Invalid end byte", port);
         return 0;
     }
 
-    // Actualiza el índice para el siguiente paquete
-    readOffset_[port] += HEADER_SIZE + readLen + FOOTER_SIZE;
+    const auto totalEntrySize = HEADER_SIZE + readLen + FOOTER_SIZE;
+
+    // Always update the next read offset
+    nextReadOffset_[port] = readOffset_[port] + totalEntrySize;
+
+    // Actualiza el índice para el siguiente paquete si es necesario
+    if (pop)
+    {
+        readOffset_[port] = nextReadOffset_[port];
+    }
+
+
     // LOG_CLASS_INFO("PacketQueue::popNext() -> Port %u, Read %u bytes", port, static_cast<unsigned int>(readLen));
     return readLen;
-}
-
-uint16_t PacketQueue::popAny(uint8_t *outBuffer, uint16_t maxOutSize)
-{
-    uint8_t outPorts[MAX_PORT] = {};
-    for (uint8_t i = 0; i < MAX_PORT; i++) // NAX_PORT = 4 => 0 -> 1, 1 -> 2, 2 -> 3, 3 -> 4 (4 out)
-    {
-        outPorts[i] = i + 1; // Los puertos empiezan de 1 hasta MAX_PORT
-    }
-
-    return popAnyFromPorts(outPorts, MAX_PORT, outBuffer, maxOutSize);
-}
-
-uint16_t PacketQueue::popAnyFromPorts(const uint8_t *ports, const size_t portCount, uint8_t *outBuffer,
-                                      const uint16_t maxOutSize)
-{
-    if (!ports || portCount == 0)
-        return 0;
-    if (!outBuffer || maxOutSize == 0)
-        return 0;
-
-    // Iterate over the provided ports
-    for (size_t i = 0; i < portCount; i++)
-    {
-        // Check if this port is empty
-        if (isPortEmpty(ports[i]))
-        {
-            continue;
-        }
-        // If not empty, pop from this port
-        return popNext(ports[i], outBuffer, maxOutSize);
-    }
-
-    return 0;
 }
