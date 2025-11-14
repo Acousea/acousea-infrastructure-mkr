@@ -1,6 +1,7 @@
 #include "ModuleProxy.hpp"
 #include "Logger/Logger.h"
 
+
 // ===================================================
 // ================ Constructor ======================
 // ===================================================
@@ -15,16 +16,23 @@ constexpr const char* ModuleProxy::toString(const ModuleProxy::DeviceAlias alias
     }
 }
 
-
-ModuleProxy::ModuleProxy(Router& router)
-    : router(router)
-{
-}
-
+#ifdef MODULE_PROXY_CACHE_IN_RAM_ENABLED
 ModuleProxy::ModuleProxy(Router& router, const std::unordered_map<DeviceAlias, IPort::PortType>& devicePortMap)
     : router(router), devicePortMap(devicePortMap)
 {
 }
+
+#else
+ModuleProxy::ModuleProxy(Router& router,
+                         StorageManager& storageManager,
+                         const std::unordered_map<DeviceAlias, IPort::PortType>& devicePortMap) :
+    router(router),
+    storage(storageManager),
+    devicePortMap(devicePortMap)
+{
+}
+
+#endif
 
 // ===================================================
 // ============== Envío de comandos ==================
@@ -41,7 +49,7 @@ bool ModuleProxy::requestModule(const acousea_ModuleCode code, const DeviceAlias
     }
 
     // The module will be marked as not fresh when the response is received
-    getCache().invalidateModule(code);
+    invalidateModule(code);
 
     LOG_CLASS_INFO("Requesting module %d through %s for alias %s", static_cast<int>(code),
                    IPort::portTypeToCString(portType), toString(alias)
@@ -66,7 +74,7 @@ bool ModuleProxy::sendModule(const acousea_ModuleCode code,
     }
 
     // The module must be previously invalidated and set not fresh
-    getCache().invalidateModule(code);
+    invalidateModule(code);
 
     LOG_CLASS_INFO("::sendModule() -> Sending module %d through %s for alias %s", static_cast<int>(code),
                    IPort::portTypeToCString(portType), toString(alias)
@@ -138,98 +146,36 @@ acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode code,
 }
 
 // ===================================================
-// =============== CachedValue impl ==================
-// ===================================================
-
-ModuleProxy::CachedValue::CachedValue() = default;
-
-ModuleProxy::CachedValue::CachedValue(const acousea_ModuleWrapper& v, bool hasValue, bool fresh)
-    : value(v), isFresh_(fresh)
-{
-}
-
-void ModuleProxy::CachedValue::store(const acousea_ModuleWrapper& v)
-{
-    value = v;
-    isFresh_ = true;
-}
-
-void ModuleProxy::CachedValue::invalidate()
-{
-    isFresh_ = false;
-}
-
-ModuleProxy::CachedValue ModuleProxy::CachedValue::empty()
-{
-    return {};
-}
-
-bool ModuleProxy::CachedValue::isFresh() const
-{
-    return isFresh_;
-}
-
-const acousea_ModuleWrapper& ModuleProxy::CachedValue::get() const
-{
-    return value;
-}
-
-// ===================================================
 // =============== ModuleCache impl ==================
 // ===================================================
 
-bool ModuleProxy::ModuleCache::store(acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper)
+bool ModuleProxy::storeModule(acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper)
 {
-    // Si ya existe, sobrescribe
-    for (auto& e : entries)
-    {
-        if (e.occupied && static_cast<acousea_ModuleCode>(e.value.get().which_module) == code)
-        {
-            e.value.store(wrapper);
-            return true;
-        }
-    }
-
-    // Busca un slot libre
-    for (auto& e : entries)
-    {
-        if (!e.occupied)
-        {
-            e.value.store(wrapper);
-            e.occupied = true;
-            return true;
-        }
-    }
-
+    uint16_t idx = static_cast<uint16_t>(code) - 1;
+    entries[idx].emplace(wrapper);
     return false; // No hay espacio
 }
 
-ModuleProxy::CachedValue ModuleProxy::ModuleCache::get(acousea_ModuleCode code) const
+const acousea_ModuleWrapper* ModuleProxy::getIfFresh(acousea_ModuleCode code) const
 {
-    for (const auto& e : entries)
-        if (e.occupied && static_cast<acousea_ModuleCode>(e.value.get().which_module) == code)
-            return e.value;
-    return CachedValue::empty();
-}
-
-
-const acousea_ModuleWrapper* ModuleProxy::ModuleCache::getIfFresh(acousea_ModuleCode code) const
-{
-    for (const auto& e : entries)
-        if (e.occupied && static_cast<acousea_ModuleCode>(e.value.get().which_module) == code && e.value.isFresh())
-            return &e.value.get();
+    const auto& entry = entries[static_cast<uint16_t>(code) - 1];
+    if (entry.has_value())
+    {
+        return &entry.value();
+    }
     return nullptr;
 }
+
 
 const acousea_ModuleWrapper* ModuleProxy::getIfFreshOrRequestFromDevice(
     const acousea_ModuleCode code, const DeviceAlias alias
 )
 {
-    const auto optModule = getCache().getIfFresh(code);
+    const auto optModulePtr = getIfFresh(code);
 
-    if (optModule != nullptr)
+    if (optModulePtr != nullptr)
     {
-        return optModule;
+        return optModulePtr;
     }
 
     if (const auto reqOk = requestModule(code, alias); !reqOk)
@@ -251,7 +197,7 @@ const acousea_ModuleWrapper* ModuleProxy::getIfFreshOrSetOnDevice(
     const DeviceAlias alias
 )
 {
-    const auto optModulePtr = getCache().getIfFresh(code);
+    const auto optModulePtr = getIfFresh(code);
 
     if (optModulePtr != nullptr)
     {
@@ -273,43 +219,15 @@ const acousea_ModuleWrapper* ModuleProxy::getIfFreshOrSetOnDevice(
 }
 
 
-void ModuleProxy::ModuleCache::invalidateModule(const acousea_ModuleCode code)
+void ModuleProxy::invalidateModule(const acousea_ModuleCode code)
+{
+    entries[static_cast<uint16_t>(code) - 1] = (std::nullopt);
+}
+
+void ModuleProxy::invalidateAll()
 {
     for (auto& e : entries)
-        if (e.occupied && static_cast<acousea_ModuleCode>(e.value.get().which_module) == code)
-            e.value.invalidate();
-}
-
-void ModuleProxy::ModuleCache::invalidateAll()
-{
-    for (auto& e : entries)
-        if (e.occupied)
-            e.value.invalidate();
-}
-
-bool ModuleProxy::ModuleCache::isFresh(acousea_ModuleCode code) const
-{
-    for (const auto& e : entries)
-        if (e.occupied && static_cast<acousea_ModuleCode>(e.value.get().which_module) == code)
-            return e.value.isFresh();
-    return false;
-}
-
-ModuleProxy::ModuleCache ModuleProxy::ModuleCache::clone() const
-{
-    ModuleCache copy;
-    for (size_t i = 0; i < MAX_MODULES; ++i)
-        copy.entries[i] = entries[i];
-    return copy;
-}
-
-void ModuleProxy::ModuleCache::swap(ModuleCache& other) noexcept
-{
-    for (size_t i = 0; i < MAX_MODULES; ++i)
-        std::swap(entries[i], other.entries[i]);
-}
-
-void swap(ModuleProxy::ModuleCache& a, ModuleProxy::ModuleCache& b) noexcept
-{
-    a.swap(b);
+    {
+        e = std::nullopt;
+    }
 }

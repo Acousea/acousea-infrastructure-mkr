@@ -2,9 +2,8 @@
 #define IPORT_H
 
 
-#include <vector>
-#include <deque>
 #include <cstdint>
+#include <cstddef>
 
 
 // Definición de la interfaz de comunicador
@@ -69,15 +68,12 @@ public:
 
     virtual uint16_t readInto(uint8_t* buffer, uint16_t maxSize) = 0; // Devuelve lista de vectores de bytes
 
-    virtual bool sync();
+    virtual bool sync() = 0;
 
 
 protected:
     ~IPort() = default;
     PortType type;
-    // std::deque<std::vector<uint8_t>> receivedRawPackets;
-    // static constexpr size_t MAX_QUEUE_SIZE = 10;
-    // static constexpr size_t MAX_RECEIVED_PACKET_SIZE = 340;
 };
 
 #endif // IPORT_H

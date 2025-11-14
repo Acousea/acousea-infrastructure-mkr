@@ -9,7 +9,7 @@
 
 namespace ProtoUtils
 {
-    constexpr std::size_t ACOUSEA_MAX_MODULE_COUNT  = static_cast<std::size_t>(_acousea_ModuleCode_ARRAYSIZE);
+    constexpr std::size_t ACOUSEA_MAX_MODULE_COUNT  = static_cast<std::size_t>(_acousea_ModuleCode_ARRAYSIZE) - 1; // Exclude UNKNOWN
 
     namespace CommunicationPacket
     {

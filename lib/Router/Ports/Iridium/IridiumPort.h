@@ -24,7 +24,7 @@
 extern Uart mySerial3;
 extern IridiumSBD sbd_modem;
 
-class IridiumPort : public IPort
+class IridiumPort final : public IPort
 {
     CLASS_NAME(IridiumPort)
 

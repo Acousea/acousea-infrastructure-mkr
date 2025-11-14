@@ -1,7 +1,6 @@
 #ifdef PLATFORM_ARDUINO
 #include "SerialPort.h"
-
-#include <algorithm>
+#include <Logger/Logger.h>
 
 #include "SharedMemory/SharedMemory.hpp"
 

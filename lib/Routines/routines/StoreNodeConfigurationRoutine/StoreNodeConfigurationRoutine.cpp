@@ -9,7 +9,7 @@
 // PUNTEROS en vez de referencias -> default-constructible y sin copias
 struct StoreCtx
 {
-    ModuleProxy::ModuleCache* cache{nullptr};
+    ModuleProxy* proxy{nullptr};
     acousea_ModuleCode code{};
     const acousea_ModuleWrapper* wrapper{nullptr};
 };
@@ -18,7 +18,7 @@ struct StoreCtx
 void storeModuleAction(void* ctx)
 {
     const auto* data = static_cast<StoreCtx*>(ctx);
-    const bool storeOk = data->cache->store(data->code, *data->wrapper);
+    const bool storeOk = data->proxy->storeModule(data->code, *data->wrapper);
     if (!storeOk)
     {
         LOG_CLASS_ERROR("storeModuleAction() -> Failed to store module with key %" PRId32 " in cache",
@@ -31,14 +31,11 @@ void storeModuleAction(void* ctx)
 
 // ====================== Procesamiento genérico ======================
 
-template <typename EntryT>
-Result<void> processModules(
+bool StoreNodeConfigurationRoutine::_registerStoreActions(
     RollbackAgent& agent,
-    ModuleProxy::ModuleCache& cache,
-    const EntryT* modules,
+    const acousea_NodeDevice_ModulesEntry* modules,
     const uint16_t modules_count)
 {
-
     static StoreCtx contexts[RollbackAgent::MAX_ACTIONS]; // Max possible modules (static allocation to preserve
     size_t ctxIndex = 0;
 
@@ -47,23 +44,25 @@ Result<void> processModules(
         const auto& entry = modules[i];
         if (!entry.has_value)
         {
-            return RESULT_VOID_FAILUREF("Module with key %" PRId32 " has no value", entry.key);
+            LOG_CLASS_ERROR("Module with key %" PRId32 " has no value", entry.key);
+            return false;
         }
 
         if (ctxIndex >= std::size(contexts))
         {
-            return RESULT_VOID_FAILUREF("Too many modules in payload (%d)", modules_count);
+            LOG_CLASS_ERROR("Too many modules in payload (%d)", modules_count);
+            return false;
         }
 
         StoreCtx& ctx = contexts[ctxIndex++];
-        ctx.cache = &cache;
+        ctx.proxy = &moduleProxy;
         ctx.code = static_cast<acousea_ModuleCode>(entry.key);
         ctx.wrapper = &entry.value;
 
         agent.registerAction(&storeModuleAction, &ctx);
     }
 
-    return RESULT_VOID_SUCCESS();
+    return true;
 }
 
 StoreNodeConfigurationRoutine::StoreNodeConfigurationRoutine(
@@ -91,24 +90,26 @@ Result<acousea_CommunicationPacket*> StoreNodeConfigurationRoutine::execute(
     }
 
     RollbackAgent rollbackAgent;
-    auto& workingCache = moduleProxy.getCache();
-    Result<void> processResult = RESULT_VOID_SUCCESS();
+
+    bool processOk = false;
 
     switch (inPacket.body.response.which_response)
     {
     case acousea_ResponseBody_setConfiguration_tag:
-        processResult = processModules(
+        processOk = _registerStoreActions(
             rollbackAgent,
-            workingCache,
-            inPacket.body.response.response.setConfiguration.modules,
+            reinterpret_cast<const acousea_NodeDevice_ModulesEntry*>(
+                inPacket.body.response.response.setConfiguration.modules
+            ),
             inPacket.body.response.response.setConfiguration.modules_count);
         break;
 
     case acousea_ResponseBody_updatedConfiguration_tag:
-        processResult = processModules(
+        processOk = _registerStoreActions(
             rollbackAgent,
-            workingCache,
-            inPacket.body.response.response.updatedConfiguration.modules,
+            reinterpret_cast<const acousea_NodeDevice_ModulesEntry*>(
+                inPacket.body.response.response.updatedConfiguration.modules
+            ),
             inPacket.body.response.response.updatedConfiguration.modules_count
         );
         break;
@@ -119,13 +120,11 @@ Result<acousea_CommunicationPacket*> StoreNodeConfigurationRoutine::execute(
                                      inPacket.body.response.which_response);
     }
 
-    if (processResult.isError())
+    if (!processOk)
     {
-        LOG_CLASS_ERROR(": Cache changes discarded due to error: %s", processResult.getError());
-        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*, "Error processing modules: %s",
-                                     processResult.getError());
+        return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*,
+                                     "Error processing modules: could not register actions");
     }
-
     // Commit all cache stores
     rollbackAgent.commit();
 

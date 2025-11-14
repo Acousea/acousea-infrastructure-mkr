@@ -23,7 +23,6 @@ int stackTop()
     return reinterpret_cast<int>(&top);
 }
 
-
 void Logger::logfFreeMemory(const char* fmt, ...)
 {
     // --- Recolectar información de memoria ---
@@ -32,35 +31,56 @@ void Logger::logfFreeMemory(const char* fmt, ...)
     const int endOfHeap = heapEnd();
     const int freeMem = topOfStack - endOfHeap;
 
-    // --- Prefijo opcional usando sharedBuffer ---
-    // Reutilizamos el buffer global para evitar stack local
-    memset(sharedBuffer, 0, sizeof(sharedBuffer));
+    // Format everything into sharedBuffer, as in vlog()
+    char timestamp[20];
+    getTimestamp(timestamp, sizeof(timestamp));
 
-    if (fmt && *fmt)
+    // Formateamos el encabezado de DEBUG
+    const int headerLen = snprintf(sharedBuffer, sizeof(sharedBuffer), "[%s] DEBUG ", timestamp);
+    if (headerLen < 0 || static_cast<size_t>(headerLen) >= sizeof(sharedBuffer))
     {
-        va_list args;
-        va_start(args, fmt);
-        vsnprintf(sharedBuffer, sizeof(sharedBuffer), fmt, args);
-        va_end(args);
-    }
-    else
-    {
-        sharedBuffer[0] = '\0';
+        // Error al formatear el encabezado o se ha excedido el tamaño del buffer
+        if (display) display->setColor(IDisplay::Color::RED);
+        strcpy(sharedBuffer, "[LOGGER INTERNAL ERROR] vlog() header formatting failed.");
+        do_log();
+        return;
     }
 
-    // --- Segunda parte: usar logfInfo, que ya formatea correctamente ---
-    logfInfo(
-        "%s Free stack/heap gap: %d bytes [STACK_TOP = 0x%X, HEAP_END = 0x%X], "
+    // Formateamos el resto de la información de memoria
+    va_list args;
+    va_start(args, fmt);
+
+    // Formatear el mensaje con los argumentos variables
+    int messageLen = vsnprintf(sharedBuffer + headerLen, sizeof(sharedBuffer) - static_cast<size_t>(headerLen), fmt, args);
+    if (messageLen < 0 || messageLen >= (sizeof(sharedBuffer) - headerLen))
+    {
+        // Error al formatear el mensaje con los parámetros
+        if (display) display->setColor(IDisplay::Color::RED);
+        strcpy(sharedBuffer, "[LOGGER INTERNAL ERROR] vlog() message formatting failed.");
+        do_log();
+        return;
+    }
+
+    // Ahora agregamos la información sobre la memoria (stack, heap, etc.)
+    snprintf(sharedBuffer + headerLen + messageLen, sizeof(sharedBuffer) - static_cast<size_t>(headerLen + messageLen),
+        " Free memory: Free stack/heap gap: %d bytes [STACK_TOP = 0x%X, HEAP_END = 0x%X], "
         "Heap total: %d bytes, Used: %d, Free reusable: %d",
-        sharedBuffer,
-        freeMem,
-        topOfStack,
-        endOfHeap,
-        mi.arena,
-        mi.uordblks,
-        mi.fordblks
+        freeMem,       // Memoria libre entre heap y stack
+        topOfStack,    // Dirección superior de la pila
+        endOfHeap,     // Dirección final del heap
+        mi.arena,      // Total de memoria de heap utilizada
+        mi.uordblks,   // Memoria usada
+        mi.fordblks    // Memoria libre
     );
+
+    va_end(args);
+
+    if (display) display->setColor(IDisplay::Color::ORANGE);
+
+    // Salida según modo
+    do_log();
 }
+
 
 #endif
 

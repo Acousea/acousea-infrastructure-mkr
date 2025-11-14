@@ -61,7 +61,7 @@ Result<T> Result<T>::failuref(const char* fmt, ...)
 }
 
 template <typename T>
-Result<T> Result<T>::pendingf(const char* fmt, ...)
+Result<T> Result<T>::incompletef(const char* fmt, ...)
 {
     char msg[ERROR_MESSAGE_SIZE];
     va_list args;
@@ -69,6 +69,12 @@ Result<T> Result<T>::pendingf(const char* fmt, ...)
     vsnprintf(msg, sizeof(msg), fmt, args);
     va_end(args);
     return pending(msg);
+}
+
+template <typename T>
+typename Result<T>::Type Result<T>::getStatus() const
+{
+    return type;
 }
 
 
@@ -118,7 +124,7 @@ Result<void> Result<void>::failuref(const char* fmt, ...)
     return failure(msg);
 }
 
-Result<void> Result<void>::pendingf(const char* fmt, ...)
+Result<void> Result<void>::incompletef(const char* fmt, ...)
 {
     char msg[ERROR_MESSAGE_SIZE];
     va_list args;
@@ -126,6 +132,11 @@ Result<void> Result<void>::pendingf(const char* fmt, ...)
     vsnprintf(msg, sizeof(msg), fmt, args);
     va_end(args);
     return pending(msg);
+}
+
+Result<void>::Type Result<void>::getStatus() const
+{
+    return type;
 }
 
 

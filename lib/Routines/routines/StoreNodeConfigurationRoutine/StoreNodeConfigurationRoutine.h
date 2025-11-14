@@ -4,6 +4,7 @@
 #include "IRoutine.h"
 #include "ModuleProxy/ModuleProxy.hpp"
 #include "NodeConfigurationRepository/NodeConfigurationRepository.h"
+#include "RollbackAgent/RollbackAgent.hpp"
 
 
 class StoreNodeConfigurationRoutine final : public IRoutine<acousea_CommunicationPacket>
@@ -15,6 +16,7 @@ private:
 public:
     CLASS_NAME(StoreNodeConfigurationRoutine)
 
+
     explicit StoreNodeConfigurationRoutine(
         NodeConfigurationRepository& nodeConfigurationRepository,
         ModuleProxy& moduleProxy
@@ -22,6 +24,8 @@ public:
 
     Result<acousea_CommunicationPacket*> execute(acousea_CommunicationPacket* optPacket) override;
 
+private:
+    bool _registerStoreActions(RollbackAgent& agent, const acousea_NodeDevice_ModulesEntry* modules, uint16_t modules_count);
 };
 
 

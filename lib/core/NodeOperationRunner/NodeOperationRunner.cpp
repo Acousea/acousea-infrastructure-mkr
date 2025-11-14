@@ -449,7 +449,7 @@ acousea_CommunicationPacket* NodeOperationRunner::executeRoutine(
     // Execute the routine (NO NEED TO CHECK FOR NULLPTR, SOME ROUTINES USE NULLPTR)
     Result<acousea_CommunicationPacket*> result = routine->execute(optInputPacket);
 
-    if (result.isPending() && (remainingAttempts <= 0 || !requeueAllowed))
+    if (result.isIncomplete() && (remainingAttempts <= 0 || !requeueAllowed))
     {
         LOG_CLASS_WARNING("%s[NO REQUEUE ALLOWED] => incomplete with message: %s", routine->routineName,
                           result.getError());
@@ -457,7 +457,7 @@ acousea_CommunicationPacket* NodeOperationRunner::executeRoutine(
         return &buildErrorPacket(result.getError());
     }
 
-    if (result.isPending() && remainingAttempts > 0 && requeueAllowed)
+    if (result.isIncomplete() && remainingAttempts > 0 && requeueAllowed)
     {
         // pendingRoutines.add({routine, optInputPacket, static_cast<uint8_t>(remainingAttempts - 1), portType});
         LOG_CLASS_WARNING("%s [REQUEUED] => incomplete with message: %s", routine->routineName,

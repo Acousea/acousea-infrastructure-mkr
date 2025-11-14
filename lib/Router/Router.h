@@ -1,8 +1,7 @@
 #ifndef COMMUNICATOR_RELAY_H
 #define COMMUNICATOR_RELAY_H
 
-#include <deque>
-#include <map>
+#include <vector>
 #include <Ports/IPort.h>
 #include <Result.h>
 

@@ -2,16 +2,16 @@
 #define OPERATION_MODE_RUNNER_H
 
 
-#include "IRunnable.h"
-#include "Router.h"
+#include <map>
 #include "IRoutine.h"
-#include "NodeConfigurationRepository/NodeConfigurationRepository.h"
+#include "IRunnable.h"
 #include "Result.h"
+#include "Router.h"
+#include "NodeConfigurationRepository/NodeConfigurationRepository.h"
+#include "PendingRoutines/PendingRoutines.hpp"
 #include "time/getMillis.hpp"
 
-#include "PendingRoutines/PendingRoutines.hpp"
 
-#include <deque>
 
 /**
  * @brief Class that runs the operation modes of the node

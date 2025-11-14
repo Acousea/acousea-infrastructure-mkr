@@ -5,6 +5,7 @@
 //  Inclusiones base del proyecto (como en tu código original)
 // ======================================================================
 #include <libraries.h>
+
 #include "environment/sharedUtils.hpp"
 
 #if __has_include("environment/credentials.hpp")
@@ -57,7 +58,7 @@ namespace Dependencies
         // Devuelve Uart& para cada SERCOM software configurado (Arduino).
         // En Native no existe; si lo necesitas, crea mocks parecidos.
 #ifdef PLATFORM_ARDUINO
-        inline Uart &uart0()
+        inline Uart& uart0()
         {
             static Uart instance(
                 &sercom0,
@@ -68,25 +69,25 @@ namespace Dependencies
             return instance;
         }
 
-        inline Uart &uart1()
+        inline Uart& uart1()
         {
             static Uart instance(
                 &sercom1,
-                PIN_SPI_SCK,  // RX
+                PIN_SPI_SCK, // RX
                 PIN_SPI_MOSI, // TX
                 SERCOM_RX_PAD_1,
                 UART_TX_PAD_0);
             return instance;
         }
 
-        inline ZeroRTCController &zeroRtcController()
+        inline ZeroRTCController& zeroRtcController()
         {
             static ZeroRTCController instance;
             return instance;
         }
 
 #endif // PLATFORM_ARDUINO
-        inline MockRTCController &mockRtcController()
+        inline MockRTCController& mockRtcController()
         {
             static MockRTCController instance;
             return instance;
@@ -94,19 +95,19 @@ namespace Dependencies
 
         // ========================== RTC =========================
         // En tu código actual usas MockRTCController en ambos.
-        inline RTCController &rtc()
+        inline RTCController& rtc()
         {
             // return zeroRtcController();
             return ENV_SELECT(
                 zeroRtcController(), // PROD
-                mockRtcController()  // TEST
+                mockRtcController() // TEST
             );
         }
 
         // ======================== Battery =======================
         // También acceso concreto a SolarX (solo si compilas en Arduino)
 #ifdef PLATFORM_ARDUINO
-        inline SolarXBatteryController &solarXBatteryController()
+        inline SolarXBatteryController& solarXBatteryController()
         {
             // Instancia concreta (coherente con battery())
             static SolarXBatteryController instance(INA219_ADDRESS + 1, INA219_ADDRESS);
@@ -114,53 +115,53 @@ namespace Dependencies
         }
 #endif
 
-        inline MockBatteryController &mockBatteryController()
+        inline MockBatteryController& mockBatteryController()
         {
             static MockBatteryController instance;
             return instance;
         }
 
         // En Arduino: SolarX; en Native: Mock
-        inline IBatteryController &battery()
+        inline IBatteryController& battery()
         {
             return ENV_SELECT(
                 solarXBatteryController(), // PROD
-                mockBatteryController()    // TEST
+                mockBatteryController() // TEST
             );
         }
 
         // ========================== GPS =========================
         // Mantengo los tres (UBloxGNSS, MockGPS, MKRGPS); el acceso genérico es IGPS&.
-        inline UBloxGNSS &_gpsUblox()
+        inline UBloxGNSS& _gpsUblox()
         {
             static UBloxGNSS instance;
             return instance;
         }
 
-        inline MockGPS &_gpsMock()
+        inline MockGPS& _gpsMock()
         {
             static MockGPS instance(0.0, 0.0, 1.0);
             return instance;
         }
 
-        inline MKRGPS &_gpsMKR()
+        inline MKRGPS& _gpsMKR()
         {
             static MKRGPS instance;
             return instance;
         }
 
         // Acceso genérico (elige aquí el “por defecto”)
-        inline IGPS &gps()
+        inline IGPS& gps()
         {
             return ENV_SELECT(
                 _gpsUblox(), // PROD
-                _gpsMock()   // TEST
+                _gpsMock() // TEST
             );
         }
 
         // ======================== Display =======================
 #ifdef PLATFORM_ARDUINO
-        inline SerialArduinoDisplay &arduinoDisplay()
+        inline SerialArduinoDisplay& arduinoDisplay()
         {
             static SerialArduinoDisplay instance(&ConsoleSerial);
             return instance;
@@ -168,14 +169,14 @@ namespace Dependencies
 #endif
 
 #ifdef PLATFORM_NATIVE
-        inline NativeConsoleDisplay &nativeDisplay()
+        inline NativeConsoleDisplay& nativeDisplay()
         {
             static ConsoleDisplay instance;
             return instance;
         }
 #endif
 
-        inline IDisplay &display()
+        inline IDisplay& display()
         {
 #ifdef PLATFORM_ARDUINO
             return arduinoDisplay();
@@ -187,13 +188,13 @@ namespace Dependencies
         // ========================= Power ========================
         // MosfetController / PiController / BatteryProtectionPolicy (Arduino)
 #ifdef PLATFORM_ARDUINO
-        inline MosfetController &mosfet()
+        inline MosfetController& mosfet()
         {
             static MosfetController instance;
             return instance;
         }
 
-        inline PiController &pi()
+        inline PiController& pi()
         {
             static PiController instance;
             return instance;
@@ -202,7 +203,7 @@ namespace Dependencies
 
         // ========================= Storage ======================== [SD (Arduino) / HDD (Native)]
 #ifdef PLATFORM_ARDUINO
-        inline SDStorageManager &sd()
+        inline SDStorageManager& sd()
         {
             static SDStorageManager instance;
             return instance;
@@ -210,14 +211,14 @@ namespace Dependencies
 #endif
 
 #ifdef PLATFORM_NATIVE
-        inline HDDStorageManager &hdd()
+        inline HDDStorageManager& hdd()
         {
             static HDDStorageManager instance;
             return instance;
         }
 #endif
 
-        inline StorageManager &storage()
+        inline StorageManager& storage()
         {
             return PLATFORM_SELECT(
                 sd(), // ARDUINO
@@ -230,8 +231,7 @@ namespace Dependencies
     // ----------------------------------------------------------
     namespace Comm
     {
-
-        inline PacketQueue &packetQueue()
+        inline PacketQueue& packetQueue()
         {
             static PacketQueue instance(
                 Hardware::storage(),
@@ -241,36 +241,36 @@ namespace Dependencies
         }
 
         // =============== Serial / Mocks / HTTP / Native =========
-        inline MockSerialPort &_mockSerial()
+        inline MockSerialPort& _mockSerial()
         {
             static MockSerialPort instance;
             return instance;
         }
 
 #ifdef PLATFORM_ARDUINO
-        inline SerialPort &_realSerial()
+        inline SerialPort& _realSerial()
         {
             static SerialPort instance(Hardware::uart0(), 9600, packetQueue());
             return instance;
         }
 #endif
 
-        inline IPort &serial()
+        inline IPort& serial()
         {
             return ENV_SELECT(
                 _realSerial(), // PROD
-                _mockSerial()  // TEST
+                _mockSerial() // TEST
             );
         }
 
 #ifdef PLATFORM_NATIVE
-        inline NativeSerialPort &nativeSerial()
+        inline NativeSerialPort& nativeSerial()
         {
             static NativeSerialPort instance("/tmp/ttyV0", 9600);
             return instance;
         }
 
-        inline HttpPort &http()
+        inline HttpPort& http()
         {
             static HttpPort instance("http://127.0.0.1:8000", "123456789012345");
             return instance;
@@ -279,12 +279,12 @@ namespace Dependencies
 
         // ========================== LoRa ========================
 #ifdef PLATFORM_HAS_LORA
-        inline LoraPort &lora()
+        inline LoraPort& lora()
         {
             static LoraPort instance;
             return instance;
         }
-        inline MockLoRaPort &_mockLora()
+        inline MockLoRaPort& _mockLora()
         {
             static MockLoRaPort instance;
             return instance;
@@ -292,46 +292,48 @@ namespace Dependencies
 #endif
 
         // ======================== Iridium =======================
-        inline MockIridiumPort &_mockIridium()
+        inline MockIridiumPort& _mockIridium()
         {
             static MockIridiumPort instance;
             return instance;
         }
 
 #ifdef PLATFORM_ARDUINO
-        inline IridiumPort &_realIridiun()
+        inline IridiumPort& _realIridiun()
         {
             static IridiumPort instance(packetQueue());
             return instance;
         }
 #endif
 
-        inline IPort &iridium()
+        inline IPort& iridium()
         {
             return ENV_SELECT(
                 _realIridiun(), // PROD
-                _mockIridium()  // TEST
+                _mockIridium() // TEST
             );
         }
 
         // =========================== GSM ========================
 #ifdef PLATFORM_HAS_GSM
-        inline const GsmConfig &gsmConfig()
+        inline const GsmConfig& gsmConfig()
         {
             // Construimos constexpr-like a partir de macros del credentials
-            static const GsmConfig config({SECRET_PINNUMBER,
-                                           SECRET_GPRS_APN,
-                                           SECRET_GPRS_LOGIN,
-                                           SECRET_GPRS_PASSWORD,
-                                           AWS_MQTT_CLIENT_ID,
-                                           AWS_MQTT_BROKER,
-                                           8883,
-                                           CLIENT_CERTIFICATE,
-                                           CLIENT_PRIVATE_KEY});
+            static const GsmConfig config({
+                SECRET_PINNUMBER,
+                SECRET_GPRS_APN,
+                SECRET_GPRS_LOGIN,
+                SECRET_GPRS_PASSWORD,
+                AWS_MQTT_CLIENT_ID,
+                AWS_MQTT_BROKER,
+                8883,
+                CLIENT_CERTIFICATE,
+                CLIENT_PRIVATE_KEY
+            });
             return config;
         }
 
-        inline GsmMQTTPort &gsm()
+        inline GsmMQTTPort& gsm()
         {
             static GsmMQTTPort instance(gsmConfig(), packetQueue());
             return instance;
@@ -341,15 +343,16 @@ namespace Dependencies
         // ========================= Router =======================
         // En tu init original:
         //   router_({ &gsmPort_, &mockSerialPort_, &mockIridiumPort_ })
-        inline Router &router()
+        inline Router& router()
         {
-            static Router instance({&serial(),
-                                    &iridium(),
+            static Router instance({
+                &serial(),
+                &iridium(),
 #ifdef PLATFORM_HAS_LORA
-                                    &lora(),
+                &lora(),
 #endif
 #ifdef PLATFORM_HAS_GSM
-                                    &gsm()
+                &gsm()
 #endif
             });
             return instance;
@@ -362,60 +365,65 @@ namespace Dependencies
     namespace Logic
     {
         // ===================== ModuleProxy ======================
-        inline std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType> &devicePortMap()
+        inline std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType>& devicePortMap()
         {
             static std::unordered_map<ModuleProxy::DeviceAlias, IPort::PortType> map = {
                 {ModuleProxy::DeviceAlias::PIDevice, IPort::PortType::SerialPort},
-                {ModuleProxy::DeviceAlias::VR2C, IPort::PortType::SerialPort}};
+                {ModuleProxy::DeviceAlias::VR2C, IPort::PortType::SerialPort}
+            };
             return map;
         }
 
-        inline ModuleProxy &moduleProxy()
+        inline ModuleProxy& moduleProxy()
         {
             static ModuleProxy instance(Comm::router(), devicePortMap());
             return instance;
         }
 
+
         // =========== Node Configuration Repository ==============
-        inline NodeConfigurationRepository &nodeConfigurationRepository()
+        inline NodeConfigurationRepository& nodeConfigurationRepository()
         {
             static NodeConfigurationRepository instance(Hardware::storage());
             return instance;
         }
 
+        inline ModuleManager& moduleManager()
+        {
+            static ModuleManager instance(
+                Logic::nodeConfigurationRepository(),
+                Logic::moduleProxy(),
+                Hardware::gps(),
+                Hardware::battery(),
+                Hardware::rtc()
+            );
+            return instance;
+        }
+
         // ======================== Routines ======================
         // Mantengo exactamente tus cuatro rutinas e inputs
-        inline SetNodeConfigurationRoutine &setNodeConfigurationRoutine()
+        inline SetNodeConfigurationRoutine& setNodeConfigurationRoutine()
         {
-            static SetNodeConfigurationRoutine instance(
-                nodeConfigurationRepository(),
-                moduleProxy());
+            static SetNodeConfigurationRoutine instance(Logic::moduleManager());
             return instance;
         }
 
-        inline GetUpdatedNodeConfigurationRoutine &getUpdatedNodeConfigurationRoutine()
+        inline GetUpdatedNodeConfigurationRoutine& getUpdatedNodeConfigurationRoutine()
         {
-            static GetUpdatedNodeConfigurationRoutine instance(
-                nodeConfigurationRepository(),
-                moduleProxy(),
-                Hardware::gps(),
-                Hardware::battery(),
-                Hardware::rtc());
+            static GetUpdatedNodeConfigurationRoutine instance(Logic::moduleManager());
             return instance;
         }
 
-        inline CompleteStatusReportRoutine &completeStatusReportRoutine()
+        inline StatusReportingRoutine& completeStatusReportRoutine()
         {
-            static CompleteStatusReportRoutine instance(
-                nodeConfigurationRepository(),
-                moduleProxy(),
-                Hardware::gps(),
-                Hardware::battery(),
-                Hardware::rtc());
+            static StatusReportingRoutine instance(
+                Logic::nodeConfigurationRepository(),
+                Logic::moduleManager()
+            );
             return instance;
         }
 
-        inline StoreNodeConfigurationRoutine &storeNodeConfigurationRoutine()
+        inline StoreNodeConfigurationRoutine& storeNodeConfigurationRoutine()
         {
             static StoreNodeConfigurationRoutine instance(
                 nodeConfigurationRepository(),
@@ -423,7 +431,7 @@ namespace Dependencies
             return instance;
         }
 
-        inline RelayPacketRoutine &relayPacketRoutine()
+        inline RelayPacketRoutine& relayPacketRoutine()
         {
             static const std::vector<IPort::PortType> relayingPortsVector = {
 #ifdef PLATFORM_HAS_GSM
@@ -432,7 +440,8 @@ namespace Dependencies
 #ifdef PLATFORM_HAS_LORA
                 IPort::PortType::LoraPort,
 #endif
-                IPort::PortType::SBDPort};
+                IPort::PortType::SBDPort
+            };
             static RelayPacketRoutine instance(
                 Comm::router(), relayingPortsVector);
             return instance;
@@ -440,20 +449,38 @@ namespace Dependencies
 
         // ===================== Routines Map =====================
         // Igual que en tu código: std::map<uint8_t, std::map<uint8_t, IRoutine<...>*>>.
-        inline std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket> *>> &routinesMap()
+        inline std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>>& routinesMap()
         {
-            static std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket> *>> map = {
-                {acousea_CommunicationPacket_command_tag, {{acousea_CommandBody_setConfiguration_tag, &setNodeConfigurationRoutine()}, {acousea_CommandBody_requestedConfiguration_tag, &getUpdatedNodeConfigurationRoutine()}}},
-                {acousea_CommunicationPacket_response_tag, {{acousea_ResponseBody_setConfiguration_tag, &storeNodeConfigurationRoutine()}, {acousea_ResponseBody_updatedConfiguration_tag, &storeNodeConfigurationRoutine()}}},
-                {acousea_CommunicationPacket_report_tag, {{acousea_ReportBody_statusPayload_tag, &completeStatusReportRoutine()}}},
-                {acousea_CommunicationPacket_error_tag, {
-                                                            {acousea_ErrorBody_errorMessage_tag, &relayPacketRoutine()} // Reenvía errores
-                                                        }}};
+            static std::map<uint8_t, std::map<uint8_t, IRoutine<acousea_CommunicationPacket>*>> map = {
+                {
+                    acousea_CommunicationPacket_command_tag,
+                    {
+                        {acousea_CommandBody_setConfiguration_tag, &setNodeConfigurationRoutine()},
+                        {acousea_CommandBody_requestedConfiguration_tag, &getUpdatedNodeConfigurationRoutine()}
+                    }
+                },
+                {
+                    acousea_CommunicationPacket_response_tag,
+                    {
+                        {acousea_ResponseBody_setConfiguration_tag, &storeNodeConfigurationRoutine()},
+                        {acousea_ResponseBody_updatedConfiguration_tag, &storeNodeConfigurationRoutine()}
+                    }
+                },
+                {
+                    acousea_CommunicationPacket_report_tag,
+                    {{acousea_ReportBody_statusPayload_tag, &completeStatusReportRoutine()}}
+                },
+                {
+                    acousea_CommunicationPacket_error_tag, {
+                        {acousea_ErrorBody_errorMessage_tag, &relayPacketRoutine()} // Reenvía errores
+                    }
+                }
+            };
             return map;
         }
 
         // ================= Node Operation Runner ================
-        inline NodeOperationRunner &nodeOperationRunner()
+        inline NodeOperationRunner& nodeOperationRunner()
         {
             static NodeOperationRunner instance(
                 Comm::router(),
@@ -464,7 +491,7 @@ namespace Dependencies
         }
 
 #ifdef PLATFORM_ARDUINO
-        inline BatteryProtectionPolicy &batteryProtectionPolicy()
+        inline BatteryProtectionPolicy& batteryProtectionPolicy()
         {
             static BatteryProtectionPolicy instance(
                 Hardware::solarXBatteryController(),
@@ -480,7 +507,7 @@ namespace Dependencies
     // ----------------------------------------------------------
     namespace System
     {
-        inline TaskScheduler &scheduler()
+        inline TaskScheduler& scheduler()
         {
             static TaskScheduler instance;
             return instance;

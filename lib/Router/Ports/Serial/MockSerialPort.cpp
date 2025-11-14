@@ -1,4 +1,5 @@
 #include "MockSerialPort.h"
+#include "Logger/Logger.h"
 
 MockSerialPort::MockSerialPort()
     : IPort(PortType::SerialPort)

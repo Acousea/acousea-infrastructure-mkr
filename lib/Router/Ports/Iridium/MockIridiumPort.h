@@ -5,11 +5,12 @@
 #include "ClassName.h"
 #include "Ports/IPort.h"
 
-class MockIridiumPort : public IPort
+class MockIridiumPort final : public IPort
 {
     CLASS_NAME(MockIridiumPort)
 
 public:
+
     explicit MockIridiumPort();
 
     void init() override;
@@ -21,6 +22,7 @@ public:
     uint16_t readInto(uint8_t* buffer, uint16_t maxSize) override;
 
     bool sync() override;
+
 };
 
 #endif // MOCK_IRIDIUM_PORT_H

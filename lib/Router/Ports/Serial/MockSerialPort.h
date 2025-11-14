@@ -3,13 +3,14 @@
 
 #include "ClassName.h"
 #include "Ports/IPort.h"
-#include "Logger/Logger.h"
 
-class MockSerialPort : public IPort
+
+class MockSerialPort final : public IPort
 {
     CLASS_NAME(MockSerialPort)
 
 public:
+
     explicit MockSerialPort();
     // Inicialización del puerto serial
     void init() override;

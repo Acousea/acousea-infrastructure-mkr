@@ -7,7 +7,6 @@
 
 #include "ClassName.h"
 #include "Ports/IPort.h"
-#include "Logger/Logger.h"
 #include "PacketQueue/PacketQueue.hpp"
 
 class SerialPort final : public IPort

@@ -38,7 +38,7 @@
 
 // ------------------------- ROUTINES -------------------------
 #include <routines/SetNodeConfigurationRoutine/SetNodeConfigurationRoutine.h>
-#include <routines/CompleteStatusReportRoutine/CompleteStatusReportRoutine.h>
+#include <routines/StatusReportingRoutine/StatusReportingRoutine.h>
 #include <routines/GetUpdatedNodeConfigurationRoutine/GetUpdatedNodeConfigurationRoutine.hpp>
 #include "routines/StoreNodeConfigurationRoutine/StoreNodeConfigurationRoutine.h"
 #include "routines/RelayPacketRoutine/RelayPacketRoutine.hpp"
@@ -49,6 +49,7 @@
 // ------------------------- DRIVERS -------------------------
 #include <NodeOperationRunner/NodeOperationRunner.h>
 #include <ModuleProxy/ModuleProxy.hpp>
+#include <ModuleManager/ModuleManager.hpp>
 #include <TaskScheduler/TaskScheduler.h>
 #include <TaskScheduler/FunctionTask.hpp>
 #include <TaskScheduler/LambdaTask.hpp>
