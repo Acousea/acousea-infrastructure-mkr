@@ -13,7 +13,7 @@
 class AdafruitDisplay final : public IDisplay
 {
 public:
-    void init();
+    [[nodiscard]] bool init();
 
     void print(const uint8_t* data, size_t length) override;
 

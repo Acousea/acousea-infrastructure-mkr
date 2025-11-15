@@ -1,4 +1,5 @@
 #if defined(PLATFORM_ARDUINO) && defined(PLATFORM_HAS_LORA)
+#include "wait/WaitFor.hpp"
 #include "LoRaPort.h"
 
 #include <ErrorHandler/ErrorHandler.h>
@@ -49,7 +50,7 @@ bool LoraPort::send(const uint8_t* data, size_t length)
     while (!LoRa.beginPacket())
     {
         LOG_CLASS_INFO("LORA_PORT::send() -> LoRa.beginPacket() Waiting for transmission to end...");
-        delay(10);
+        waitFor(50);
     }
     LoRa.write(data, length);
     LoRa.endPacket();

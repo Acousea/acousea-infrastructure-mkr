@@ -13,14 +13,14 @@ PiController::PiController(const int mosfetControlPin, const int rockPiShutdownP
 bool PiController::isRockPiUp() const
 {
     constexpr int READ_COUNT = 5;
-    constexpr int DELAY_MS = 250;
+    constexpr int WAIT_FOR_MS = 250;
 
     int highCount = 0;
     for (int i = 0; i < READ_COUNT; ++i)
     {
         // Rock Pi está activa si el pin está en HIGH (3.3V, same pin that activates TracoPower)
         if (digitalRead(rockPiMonitorPin) == HIGH) highCount++;
-        delay(DELAY_MS); // DO NOT CHANGE BY WAITFOR (leads to infinite recursion)
+        waitFor(WAIT_FOR_MS); // DO NOT CHANGE BY waitForOrUntil with same method callback (leads to infinite recursion)
     }
 
     return highCount == READ_COUNT;

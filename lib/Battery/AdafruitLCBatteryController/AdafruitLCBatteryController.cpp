@@ -27,8 +27,6 @@ bool AdafruitLCBatteryController::init()
     adafruitLC.setAlarmVoltage(3.8);
     LOG_CLASS_WARNING("Alarm voltage set to 3.8V — service procedure not defined");
 
-    delay(1000);
-
     errorState = false;
 
     return errorState;

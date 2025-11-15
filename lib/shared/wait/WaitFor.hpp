@@ -8,7 +8,7 @@
 #endif
 
 template <typename Condition, typename Callback>
-void waitForOrUntil(const unsigned long durationMs, Condition stopIfTrue,
+unsigned long waitForOrUntil(const unsigned long durationMs, Condition stopIfTrue,
                     const unsigned long tickMs, Callback onTickCallback)
 {
     const unsigned long start = getMillis();
@@ -34,31 +34,31 @@ void waitForOrUntil(const unsigned long durationMs, Condition stopIfTrue,
         }
 #endif
         // yield();
-        // delay(100);
+        delay(5); // Small delay to prevent busy-waiting
     }
-
+    return elapsed;
 }
 
 
 template <typename Condition>
-void waitForOrUntil(const unsigned long durationMs, Condition stopIfTrue)
+unsigned long waitForOrUntil(const unsigned long durationMs, Condition stopIfTrue)
 {
-    waitForOrUntil(durationMs, stopIfTrue, 0, [](unsigned long /*elapsed*/){});
+    return waitForOrUntil(durationMs, stopIfTrue, 0, [](unsigned long /*elapsed*/){});
 }
 
 // Versión ligera sin callback
-inline void waitFor(const unsigned long durationMs)
+inline unsigned long waitFor(const unsigned long durationMs)
 {
-    waitForOrUntil(durationMs, [] { return false; },
+    return waitForOrUntil(durationMs, [] { return false; },
                    0, [](unsigned long/*elapsed*/){}
     );
 }
 
 // Versión con callback
 template <typename Callback>
-void waitFor(const unsigned long durationMs, const unsigned long tickMs, Callback onTickCallback)
+unsigned long waitFor(const unsigned long durationMs, const unsigned long tickMs, Callback onTickCallback)
 {
-    waitForOrUntil(durationMs, [] { return false; }, tickMs, onTickCallback);
+    return waitForOrUntil(durationMs, [] { return false; }, tickMs, onTickCallback);
 }
 
 

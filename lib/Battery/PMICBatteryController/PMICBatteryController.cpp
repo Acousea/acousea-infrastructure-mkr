@@ -15,8 +15,6 @@ bool PMICBatteryController::init() {
     // Apply the configuration
     applySettings();
 
-    // Wait for a second before checking the status
-    delay(1000);
 
     // Log the initial status
     printStatus();

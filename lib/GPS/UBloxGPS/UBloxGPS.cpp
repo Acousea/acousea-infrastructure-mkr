@@ -4,6 +4,7 @@
 #include <Logger/Logger.h>
 #include "SparkFun_u-blox_GNSS_Arduino_Library.h"
 #include "ErrorHandler/ErrorHandler.h"
+#include "wait/WaitFor.hpp"
 
 
 static SFE_UBLOX_GNSS myGNSS;
@@ -97,7 +98,6 @@ bool UBloxGNSS::init() // NO LOGGER CALLS HERE (INIT PHASE)
 {
     Serial.println(String(getClassNameCString()) + "Initializing GNSS ...");
 
-
     if (myGNSS.begin() == false)
     {
         ERROR_HANDLE_CLASS("GNSS Failed! => u-blox GNSS not detected at default I2C address. Please check wiring");
@@ -112,69 +112,79 @@ bool UBloxGNSS::init() // NO LOGGER CALLS HERE (INIT PHASE)
     Serial.println(String(getClassNameCString()) + "GNSS initialized! Awaiting first GNSS fix ...");
 
     bool fixed = false;
-    const uint32_t beginFix_ms = millis();
+    auto fixType = NO_FIX;
 
-    auto fixType = static_cast<GNSSFixType>(myGNSS.getFixType());
-    if (fixType != NO_FIX && fixType != TIME_ONLY_FIX)
-    {
-        fixed = true;
-    }
-    while (!fixed && ((millis() - beginFix_ms) < GNSS_MAX_FIX_TIME_MS))
-    {
-        fixType = static_cast<GNSSFixType>(myGNSS.getFixType());
-        if (fixType != NO_FIX && fixType != TIME_ONLY_FIX)
+    // Wait until GNSS fix or timeout
+    const unsigned long fixTimeMs = waitForOrUntil(
+        GNSS_MAX_FIX_TIME_MS,
+        [&]
         {
-            fixed = true;
+            fixType = static_cast<GNSSFixType>(myGNSS.getFixType());
+            fixed = (fixType != NO_FIX && fixType != TIME_ONLY_FIX);
+            return fixed;
         }
-    }
+    );
 
     if (!fixed)
     {
         ERROR_HANDLE_CLASS("ERROR: NO GNSS fix after %lu sec\n",
-                           static_cast<unsigned long>((millis() - beginFix_ms) / 1000));
+                           static_cast<unsigned long>(fixTimeMs / 1000));
         return false;
     }
     SerialUSB.println(
         String("Fix type: ") + fixTypeToString(fixType) +
-        " GNSS fix took " + String((millis() - beginFix_ms) / 1000) + " sec"
+        " GNSS fix took " + String(fixTimeMs / 1000) + " sec"
     );
     return true;
 }
 
 GPSLocation UBloxGNSS::read()
 {
-    const uint32_t beginTime_ms = millis();
+    auto fixType = NO_FIX;
 
-    while ((millis() - beginTime_ms) < GNSS_WAIT_TIME_MS)
-    {
-        const auto fixType = static_cast<GNSSFixType>(myGNSS.getFixType());
-        if (fixType != NO_FIX && fixType != TIME_ONLY_FIX)
+    // Esperar hasta que haya fix o se alcance el timeout
+    waitForOrUntil(
+        GNSS_WAIT_TIME_MS,
+        [&]
         {
-            break;
+            fixType = static_cast<GNSSFixType>(myGNSS.getFixType());
+            return (fixType != NO_FIX && fixType != TIME_ONLY_FIX);
         }
-    }
+    );
 
-    latitude = float(myGNSS.getLatitude() * 1E-7);
-    longitude = float(myGNSS.getLongitude() * 1E-7);
+
+    latitude = static_cast<float>(myGNSS.getLatitude() * 1E-7);
+    longitude = static_cast<float>(myGNSS.getLongitude() * 1E-7);
 
     return {latitude, longitude};
 }
 
+
 unsigned long UBloxGNSS::getTimestamp()
 {
     // Wait for valid time and date. If time is not valid for 10 seconds, return the given time
-    unsigned long startWaitTime = millis();
-    while ((myGNSS.getTimeValid() == false) || (myGNSS.getDateValid() == false))
+    waitForOrUntil(
+        GNSS_MAX_TIMESTAMP_WAIT_TIME_MS,
+        [&]
+        {
+            return myGNSS.getTimeValid() && myGNSS.getDateValid();
+        }
+    );
+
+    if (!myGNSS.getTimeValid() || !myGNSS.getDateValid())
     {
-        if ((millis() - startWaitTime) > GNSS_MAX_TIMESTAMP_WAIT_TIME_MS) break;
+        LOG_CLASS_WARNING("GNSS time/date not valid after wait period");
     }
+
+    // Devolver el timestamp aunque no sean válidos (igual que antes)
     return myGNSS.getUnixEpoch();
 }
+
 
 void UBloxGNSS::wakeup()
 {
     digitalWrite(GNSS_WAKEUP_PIN, HIGH);
-    delay(1);
+    waitFor(5);
     digitalWrite(GNSS_WAKEUP_PIN, LOW);
 }
 

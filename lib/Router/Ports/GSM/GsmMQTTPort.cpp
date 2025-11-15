@@ -123,7 +123,11 @@ void GsmMQTTPort::init()
     UBlox201_GSMSSLClient::setModemDebug();
 
     // ========= Initialize SSL/TLS ==========
-    ublox_gsmSslClient.init(config);
+    if (const bool modemInitOk = ublox_gsmSslClient.init(config); !modemInitOk)
+    {
+        ERROR_HANDLE_CLASS(" -> GSM SSL client initialization failed.");
+        return;
+    }
 
     // #define RESET_GSM_ON_INIT
 #ifdef RESET_GSM_ON_INIT

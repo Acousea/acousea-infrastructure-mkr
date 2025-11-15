@@ -17,6 +17,7 @@
 #include "GPRS.h"
 #include "Logger/Logger.h"
 #include "Ports/GSM/GsmConfig.hpp"
+#include "wait/WaitFor.hpp"
 
 
 enum class CertType : uint8_t
@@ -68,22 +69,9 @@ public:
         GSMSSLClient::setUserRoots(GSM_CUSTOM_ROOT_CERTS, GSM_CUSTOM_NUM_ROOT_CERTS);
     }
 
-    void init(const GsmConfig& config)
-    {
-        LOG_CLASS_INFO(" -> Connecting to GSM network...");
-        while ((gsmAccess.begin(config.pin) != GSM_READY) ||
-            (gprs.attachGPRS(config.apn, config.user, config.pass) != GPRS_READY))
-        {
-            LOG_CLASS_WARNING(" -> GSM/GPRS not available, retrying...");
-            delay(2000);
-        }
-        LOG_CLASS_INFO(" -> GSM/GPRS connected");
-    }
+    [[nodiscard]] bool init(const GsmConfig& config);
 
-    unsigned long getTime()
-    {
-        return gsmAccess.getTime();
-    }
+    unsigned long getTime();
 
     int connect(const char* host, uint16_t port) override
     {
