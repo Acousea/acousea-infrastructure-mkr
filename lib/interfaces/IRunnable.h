@@ -4,6 +4,9 @@
 
 class IRunnable
 {
+protected:
+    ~IRunnable() = default;
+
 public:
     // Constructor that receives a reference to the display
     virtual void init() = 0;

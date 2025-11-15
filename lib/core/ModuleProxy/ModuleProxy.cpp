@@ -2,6 +2,7 @@
 
 #include <cstdio>
 
+#include "BinaryFrame/BinaryFrame.hpp"
 #include "Logger/Logger.h"
 #include "SharedMemory/SharedMemory.hpp"
 
@@ -32,19 +33,23 @@ bool ModuleProxy::begin()
 }
 
 #else
-ModuleProxy::ModuleProxy(Router& router,
-                         StorageManager& storageManager,
-                         const std::unordered_map<DeviceAlias, IPort::PortType>& devicePortMap) :
+ModuleProxy::ModuleProxy(
+    Router& router,
+    const std::unordered_map<DeviceAlias, IPort::PortType>& devicePortMap,
+    StorageManager& storageManager,
+    RTCController& rtcController
+) :
     router(router),
-    storage(storageManager),
-    devicePortMap(devicePortMap)
+    devicePortMap(devicePortMap),
+    storage_(storageManager),
+    rtc_(rtcController)
 {
 }
 
 bool ModuleProxy::begin()
 {
     // Initialize storage manager if needed
-    if (const bool beginOk = storage.begin(); !beginOk)
+    if (const bool beginOk = storage_.begin(); !beginOk)
     {
         LOG_CLASS_ERROR("::begin() -> Failed to initialize StorageManager");
         return false;
@@ -57,15 +62,15 @@ bool ModuleProxy::begin()
         char path[10];
         snprintf(path, sizeof(path), "/mod%d", static_cast<int>(code));
 
-        if (storage.fileExists(path))
+        if (storage_.fileExists(path))
         {
             LOG_CLASS_INFO("::begin() -> Module cache file exists for module %d", static_cast<int>(code));
-            readOffset_[code] = storage.fileSize(path);
-            writeOffset_[code] = storage.fileSize(path);
+            readOffset_[code] = storage_.fileSize(path);
+            writeOffset_[code] = storage_.fileSize(path);
         }
         else
         {
-            if (const bool createOk = storage.createEmptyFile(path); !createOk)
+            if (const bool createOk = storage_.createEmptyFile(path); !createOk)
             {
                 LOG_CLASS_ERROR("::begin() -> Cannot create module cache file: %s", path);
                 return false;
@@ -296,6 +301,7 @@ void ModuleProxy::invalidateAll()
 }
 
 #else
+
 bool ModuleProxy::storeModule(const acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper)
 {
     // Archivo del módulo
@@ -303,42 +309,50 @@ bool ModuleProxy::storeModule(const acousea_ModuleCode code, const acousea_Modul
     std::snprintf(filePath, sizeof(filePath), "/mod%d", static_cast<int>(code));
 
     // Buffer temporal compartido
-    auto* tmp = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
-    constexpr size_t maxSize = SharedMemory::tmpBufferSize();
+    auto* tmpEncodingBuffer = SharedMemory::tmpBuffer();
+    constexpr size_t tmpEncodingBufferMaxSize = SharedMemory::tmpBufferSize();
 
-    // Reservamos los 3 bytes de cabecera en tmp
-    // payload irá en tmp[3 .. 3+len-1]
-    Result<size_t> encodeRes = ProtoUtils::ModuleWrapper::encodeInto(
+    // Codificamos el wrapper dentro de los límites del buffer
+    Result<size_t> encodeResultWithEncodedLength = ProtoUtils::ModuleWrapper::encodeInto(
         wrapper,
-        tmp + 3, // dejamos espacio para start + len
-        maxSize - 4 // también dejamos espacio para end byte
+        tmpEncodingBuffer + BinaryFrame::HEADER_SIZE, // Leave space for BinaryFrame header
+        tmpEncodingBufferMaxSize - BinaryFrame::HEADER_SIZE - BinaryFrame::FOOTER_SIZE
+        // Leave space for header and footer
     );
 
-    if (!encodeRes.isSuccess())
+    if (!encodeResultWithEncodedLength.isSuccess())
     {
         LOG_CLASS_WARNING("::storeModule() -> Failed to encode module %d", static_cast<int>(code));
         return false;
     }
 
-    const auto payloadLen = static_cast<uint16_t>(encodeRes.getValue());
-    const size_t totalRecordSize = 1 + 2 + payloadLen + 1; // START + LEN + PAYLOAD + END
+    const auto payloadLen = static_cast<uint16_t>(encodeResultWithEncodedLength.getValue());
+    const size_t totalRecordSize = BinaryFrame::requiredSize(payloadLen); // START + LEN + PAYLOAD + END
 
-    if (totalRecordSize > maxSize)
+    if (totalRecordSize > tmpEncodingBufferMaxSize)
     {
         LOG_CLASS_ERROR("::storeModule() -> Module record too large (%u bytes)", totalRecordSize);
         return false;
     }
 
-    // --- CABECERA ---
-    tmp[0] = START_BYTE;
-    tmp[1] = static_cast<uint8_t>(payloadLen & 0xFF);
-    tmp[2] = static_cast<uint8_t>((payloadLen >> 8) & 0xFF);
+    // --- CABECERA con BinaryFrame ---
+    const uint32_t timestamp = rtc_.getEpoch();
+    auto* payloadPtr = tmpEncodingBuffer + BinaryFrame::HEADER_SIZE; // Payload comienza después de la cabecera
 
-    // --- FOOTER ---
-    tmp[3 + payloadLen] = END_BYTE;
+    if (!BinaryFrame::wrapInPlace(
+            tmpEncodingBuffer, // The out buffer which will contain the full wrapped frame
+            tmpEncodingBufferMaxSize, // The max size of the out buffer
+            payloadPtr, // The payload ptr, which is already written in place
+            payloadLen, // The payload length
+            timestamp) // The timestamp
+    )
+    {
+        LOG_CLASS_WARNING("::storeModule() -> Failed to wrap module %d", static_cast<int>(code));
+        return false;
+    }
 
     // --- APPEND A SD ---
-    if (const bool appendOk = storage.appendBytesToFile(filePath, tmp, totalRecordSize); !appendOk)
+    if (const bool appendOk = storage_.appendBytesToFile(filePath, tmpEncodingBuffer, totalRecordSize); !appendOk)
     {
         LOG_CLASS_WARNING("::storeModule() -> Failed to write module %d to file %s",
                           static_cast<int>(code),
@@ -357,99 +371,92 @@ bool ModuleProxy::storeModule(const acousea_ModuleCode code, const acousea_Modul
 }
 
 
-const acousea_ModuleWrapper* ModuleProxy::getIfFresh(acousea_ModuleCode code)
+const acousea_ModuleWrapper* ModuleProxy::getIfFresh(const acousea_ModuleCode code)
 {
     const int idx = static_cast<int>(code);
-    constexpr uint8_t HEADER_SIZE = 3; // START + LEN_LO + LEN_HI
-    constexpr uint8_t FOOTER_SIZE = 1; // END
 
-    // Si ya está cargado en RAM → devolverlo directamente
+    // Si ya está cargado en RAM → devolverlo
     if (optLoadedModule_.has_value())
         return &optLoadedModule_.value();
 
     // Si no hay datos nuevos → no está fresco
     if (readOffset_[idx] == writeOffset_[idx])
     {
-        LOG_CLASS_INFO("::getIfFresh() -> Module %d not fresh (readOffset==writeOffset)", idx);
+        LOG_CLASS_INFO("::getIfFresh() -> Module %d not fresh (readOffset == writeOffset)", idx);
         return nullptr;
     }
 
     char filePath[10];
     std::snprintf(filePath, sizeof(filePath), "/mod%d", idx);
 
-    if (!storage.fileExists(filePath))
+    if (!storage_.fileExists(filePath))
     {
         LOG_CLASS_INFO("::getIfFresh() -> Module file %s does not exist", filePath);
         return nullptr;
     }
 
-    auto* readBuf = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    // Buffer temporal
+    auto* readBuf = SharedMemory::tmpBuffer();
     constexpr size_t readBufMaxSize = SharedMemory::tmpBufferSize();
 
+    // --- Leer desde almacenamiento ---
+    const size_t bytesRead = storage_.readFileRegionBytes(
+        filePath,
+        readOffset_[idx],
+        readBuf,
+        readBufMaxSize
+    );
 
-    // --- 1) Leer cabecera: START + LEN_LO + LEN_HI ---
-    if (storage.readFileRegionBytes(filePath, readOffset_[idx], readBuf, HEADER_SIZE) != HEADER_SIZE)
+    if (bytesRead == 0)
     {
-        LOG_CLASS_WARNING("::getIfFresh() -> Failed to read header for module %d", idx);
-        readOffset_[idx] = writeOffset_[idx]; // marcar como no fresco
-        return nullptr;
-    }
-
-    if (readBuf[0] != START_BYTE)
-    {
-        LOG_CLASS_WARNING("::getIfFresh() -> Bad START_BYTE for module %d", idx);
+        LOG_CLASS_WARNING("::getIfFresh() -> Failed to read module %d from file %s", idx, filePath);
         readOffset_[idx] = writeOffset_[idx];
         return nullptr;
     }
 
-    const uint16_t registeredLength = readBuf[1] | (readBuf[2] << 8);
-
-    // Check if registered length exceeds the reading buffer capacity
-    if (registeredLength + HEADER_SIZE + FOOTER_SIZE > readBufMaxSize) // 3 header + 1 footer
+    // --- Unwrap ---
+    BinaryFrame::FrameView outFrameView{};
+    if (!BinaryFrame::unwrap(readBuf, bytesRead, outFrameView))
     {
-        LOG_CLASS_ERROR("::getIfFresh() -> Module %d record too large (%u bytes)", idx, registeredLength);
+        LOG_CLASS_WARNING("::getIfFresh() -> unwrap failed for module %d", idx);
         readOffset_[idx] = writeOffset_[idx];
         return nullptr;
     }
 
-    // --- 2) Leer payload + END_BYTE ---
-    if (storage.readFileRegionBytes(filePath,
-                                    readOffset_[idx] + HEADER_SIZE,
-                                    readBuf + HEADER_SIZE,
-                                    registeredLength + FOOTER_SIZE) != registeredLength + FOOTER_SIZE)
+    // Sanity check: payload fits buffer
+    const size_t totalFrameSize = BinaryFrame::requiredSize(outFrameView.payloadLength);
+    if (bytesRead < totalFrameSize)
     {
-        LOG_CLASS_WARNING("::getIfFresh() -> Failed to read payload for module %d", idx);
+        LOG_CLASS_WARNING("::getIfFresh() -> Incomplete frame read for module %d (read %u < needed %u)",
+                          idx, static_cast<unsigned int>(bytesRead), static_cast<unsigned int>(totalFrameSize));
         readOffset_[idx] = writeOffset_[idx];
         return nullptr;
     }
 
-    if (readBuf[HEADER_SIZE + registeredLength] != END_BYTE)
-    {
-        LOG_CLASS_WARNING("::getIfFresh() -> Bad END_BYTE for module %d", idx);
-        readOffset_[idx] = writeOffset_[idx];
-        return nullptr;
-    }
-
-    // --- 3) Decodificar directamente en optLoadedModule_ ---
-    optLoadedModule_.emplace();
-    const auto decodeResult = ProtoUtils::ModuleWrapper::decodeInto(
-        readBuf + HEADER_SIZE, // payload begins here
-        registeredLength,
+    // --- Decodificar directamente dentro del optional ---
+    optLoadedModule_.emplace(); // Crear el optional vacío
+    const Result<void> decodeResult = ProtoUtils::ModuleWrapper::decodeInto(
+        outFrameView.payload, // Puntero directo al payload
+        outFrameView.payloadLength, // Longitud exacta del payload
         &optLoadedModule_.value()
     );
 
     if (!decodeResult.isSuccess())
     {
         LOG_CLASS_WARNING("::getIfFresh() -> decodeInto failed for module %d", idx);
-        readOffset_[idx] = writeOffset_[idx];
         optLoadedModule_.reset();
+        readOffset_[idx] = writeOffset_[idx];
         return nullptr;
     }
 
-    // --- 4) Avanzar readOffset ---
-    readOffset_[idx] += (HEADER_SIZE + registeredLength + FOOTER_SIZE);
+    // --- Avanzar offset ---
+    readOffset_[idx] += totalFrameSize;
 
-    LOG_CLASS_INFO("::getIfFresh() -> Loaded module %d from offset=%llu", idx, readOffset_[idx]);
+    LOG_CLASS_INFO("::getIfFresh() -> Loaded module %d (ts=%lu, size=%u) nextOffset=%llu",
+                   idx,
+                   static_cast<unsigned long>(outFrameView.timestamp),
+                   outFrameView.payloadLength,
+                   static_cast<unsigned long long>(readOffset_[idx]));
 
     return &optLoadedModule_.value();
 }
@@ -470,12 +477,12 @@ void ModuleProxy::invalidateModule(const acousea_ModuleCode code)
     // Si había un módulo cargado, lo invalidamos también
     optLoadedModule_.reset();
 
-    LOG_CLASS_INFO( "::invalidateModule() -> Invalidated module %d (readOffset=%lu%lu, writeOffset=%lu%lu)",
-        idx,
-        static_cast<unsigned long>(readOffset_[idx] >> 32),
-        static_cast<unsigned long>(readOffset_[idx] & 0xFFFFFFFFULL),
-        static_cast<unsigned long>(writeOffset_[idx] >> 32),
-        static_cast<unsigned long>(writeOffset_[idx] & 0xFFFFFFFFULL)
+    LOG_CLASS_INFO("::invalidateModule() -> Invalidated module %d (readOffset=%lu%lu, writeOffset=%lu%lu)",
+                   idx,
+                   static_cast<unsigned long>(readOffset_[idx] >> 32),
+                   static_cast<unsigned long>(readOffset_[idx] & 0xFFFFFFFFULL),
+                   static_cast<unsigned long>(writeOffset_[idx] >> 32),
+                   static_cast<unsigned long>(writeOffset_[idx] & 0xFFFFFFFFULL)
     );
 }
 

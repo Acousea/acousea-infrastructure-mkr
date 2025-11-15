@@ -5,6 +5,7 @@
 #include "GsmMQTTPort.hpp"
 #include <ErrorHandler/ErrorHandler.h>
 #include "SharedMemory/SharedMemory.hpp"
+#include "wait/WaitFor.hpp"
 
 // #include "../../private_keys/cert.h"
 // #include "../../private_keys/key.h"
@@ -20,7 +21,7 @@ unsigned long GsmMQTTPort::getTime()
 void GsmMQTTPort::mqttMessageHandler(int messageSize)
 {
     LOG_CLASS_INFO(" -> MQTT Message Handler invoked. Message size: %d bytes", messageSize);
-    auto* packetBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    auto* packetBuffer = SharedMemory::tmpBuffer();
     constexpr size_t maxBufferSize = SharedMemory::tmpBufferSize();
     size_t readCount = 0;
 
@@ -92,7 +93,7 @@ bool GsmMQTTPort::tryConnect()
 {
     if (instance == nullptr)
     {
-        LOG_CLASS_ERROR(" -> GsmMQTTPort::tryConnect() called before initialization.");
+        LOG_CLASS_ERROR(" -> ::tryConnect() called before initialization.");
         return false;
     }
     if (mqttClient.connected())
@@ -105,7 +106,7 @@ bool GsmMQTTPort::tryConnect()
     while (!mqttClient.connect(config.broker, config.port) && (attempt++ < MAX_MQTT_CONNECT_RETRIES))
     {
         LOG_CLASS_WARNING(" -> MQTT connection failed, retrying...");
-        delay(5000);
+        waitFor(5000);
     }
     LOG_CLASS_INFO(" -> Successfully connected to MQTT broker");
     return mqttClient.connected();
@@ -119,7 +120,7 @@ void GsmMQTTPort::init()
     instance = this;
 
     // ========= Set debug mode for modem ==========
-    // UBlox201_GSMSSLClient::setModemDebug();
+    UBlox201_GSMSSLClient::setModemDebug();
 
     // ========= Initialize SSL/TLS ==========
     ublox_gsmSslClient.init(config);
@@ -179,8 +180,8 @@ void GsmMQTTPort::init()
 
 
     // --------------------------- DEVICE CERTIFICATE & PRIVATE KEY ---------------------------
-    // const std::vector<StoredCert> currentCerts = UBlox201_GSMSSLClient::listCertificates(CertType::All);
-    // GsmMQTTPort::printCertificates(currentCerts);
+    const std::vector<StoredCert> currentCerts = UBlox201_GSMSSLClient::listCertificates(CertType::All);
+    GsmMQTTPort::printCertificates(currentCerts);
 
     // LOG_CLASS_INFO(" -> Using Amazon Root CA for TLS...");
     // ublox_gsmSslClient.setTrustedRoot(GSM_CUSTOM_ROOT_CERTS[0].name);
@@ -191,18 +192,11 @@ void GsmMQTTPort::init()
     LOG_CLASS_INFO(" -> Using device certificate for TLS...");
     ublox_gsmSslClient.useSignedCertificate("my_device_cert");
 
-    // UBlox201_GSMSSLClient::printTLSProfileStatus();
+    UBlox201_GSMSSLClient::printTLSProfileStatus();
 
     UBlox201_GSMSSLClient::setModemNoDebug();
 
     LOG_CLASS_INFO(" -> Credentials loaded: Certificate 'device_cert', Private Key 'device_key'");
-
-    // String modemTime;
-    // LOG_CLASS_INFO(" -> Retrieving time from modem...");
-    // const bool clockOk = ublox_gsmSslClient.getClock(modemTime);
-    // clockOk
-    //     ? LOG_CLASS_INFO(" -> Modem time retrieved: %s", modemTime.c_str())
-    //     : LOG_CLASS_WARNING(" -> Failed to retrieve modem time.");
 
     LOG_FREE_MEMORY("%s -> Post-initializing GSM SSL client...", getClassNameCString());
 
@@ -215,13 +209,18 @@ void GsmMQTTPort::init()
     mqttClient.setConnectionTimeout(30 * 1000L); // 30 seconds for connection timeout
 
 
-    LOG_CLASS_INFO(" -> Connecting to MQTT broker %s:%d... Modem Time is %lu",
+    LOG_CLASS_INFO(" -> Connecting to MQTT broker %s:%d... gsmAccess time is %lu",
                    config.broker, config.port, getTime()
     );
 
 
     // Try to connect to the MQTT broker
-    tryConnect();
+
+    if (const bool connectOk = tryConnect(); !connectOk)
+    {
+        ERROR_HANDLE_CLASS(" -> MQTT connection failed after retries. Initialization aborted.");
+        return;
+    }
 
     // Setup Last Will and Testament (LWT)
     // setupLastWill();
@@ -360,7 +359,7 @@ bool GsmMQTTPort::sync()
 {
     if (instance == nullptr)
     {
-        LOG_CLASS_WARNING(" -> GsmMQTTPort::sync() called before init(). Ignoring.");
+        LOG_CLASS_WARNING(" -> ::sync() called before init(). Ignoring.");
         return false;
     }
     if (!instance->mqttClient.connected())

@@ -67,7 +67,7 @@ bool IridiumPort::send(const uint8_t* data, const size_t length)
                    Logger::vectorToHexString(data, length).c_str(), length
     );
 
-    auto* rxBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    auto* rxBuffer = SharedMemory::tmpBuffer();
     size_t rxBufferSize = SharedMemory::tmpBufferSize();
 
     const int err = sbd_modem.sendReceiveSBDBinary(data, length, rxBuffer, rxBufferSize);
@@ -183,7 +183,7 @@ void IridiumPort::storeReceivedPacket(const uint8_t* data, size_t length)
 void IridiumPort::_receiveIncomingMessages()
 {
     LOG_CLASS_INFO("IridiumPort::receiveIncomingMessages() -> Checking for incoming messages...");
-    auto* rxBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    auto* rxBuffer = SharedMemory::tmpBuffer();
     size_t rxBufferSize = SharedMemory::tmpBufferSize();
     do
     {

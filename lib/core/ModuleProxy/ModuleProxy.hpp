@@ -14,6 +14,7 @@
 
 #ifndef MODULE_PROXY_CACHE_IN_RAM_ENABLED
 #include "StorageManager/StorageManager.hpp"
+#include "RTCController.hpp"
 #endif
 
 /**
@@ -41,8 +42,10 @@ public:
     ModuleProxy(Router& router, const std::unordered_map<DeviceAlias, IPort::PortType>& devicePortMap);
 #else
     explicit ModuleProxy(Router& router,
+                         const std::unordered_map<DeviceAlias, IPort::PortType>& devicePortMap,
                          StorageManager& storageManager,
-                         const std::unordered_map<DeviceAlias, IPort::PortType>& devicePortMap);
+                         RTCController& rtcController
+                         );
     bool begin();
 #endif
 
@@ -67,7 +70,11 @@ public:
 
 private:
     Router& router;
-
+    // ===================== Mapeo alias -> puerto =====================
+    const std::unordered_map<DeviceAlias, IPort::PortType> devicePortMap{
+            {DeviceAlias::PIDevice, IPort::PortType::SerialPort},
+            {DeviceAlias::VR2C, IPort::PortType::SerialPort}
+    };
 #ifdef MODULE_PROXY_CACHE_IN_RAM_ENABLED
     static constexpr const auto MAX_MODULES = ProtoUtils::ACOUSEA_MAX_MODULE_COUNT;
     std::optional<acousea_ModuleWrapper> entries[MAX_MODULES] = {}; // Initialized to std::nullopt
@@ -76,15 +83,12 @@ private:
     static constexpr uint8_t END_BYTE   = 0x55;
     uint64_t writeOffset_[_acousea_ModuleCode_MAX + 1]{}; // Current write offsets for each port (1-based index)
     uint64_t readOffset_[_acousea_ModuleCode_MAX + 1]{}; // Current read offsets for each port (1-based index)
-    StorageManager& storage;
+    StorageManager& storage_;
+    RTCController& rtc_;
     std::optional<acousea_ModuleWrapper> optLoadedModule_ = std::nullopt; // Módulo cargado actualmente en memoria
 #endif
 
-    // ===================== Mapeo alias -> puerto =====================
-    const std::unordered_map<DeviceAlias, IPort::PortType> devicePortMap{
-        {DeviceAlias::PIDevice, IPort::PortType::SerialPort},
-        {DeviceAlias::VR2C, IPort::PortType::SerialPort}
-    };
+
 
     [[nodiscard]] IPort::PortType resolvePort(DeviceAlias alias) const noexcept;
 

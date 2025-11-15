@@ -4,7 +4,6 @@
 #include <cstdarg>
 #include <cstring>
 
-#include "wait/WaitFor.hpp"
 #include "WatchDog/WatchDogUtils.hpp"
 
 #ifdef PLATFORM_ARDUINO
@@ -76,7 +75,8 @@ void ErrorHandler::performReset()
     WatchdogUtils::disable();
     WatchdogUtils::enable(2000); // Set a short timeout to trigger the reset quickly
     rawPrintLine("-> Forcing WATCHDOG reset (Arduino).");
-    waitFor(WatchdogUtils::getTimeout() + 1000); // Wait longer than the watchdog timeout
+    // WARNING: DO NOT USE waitFor(), since it internally resets the watchdog!
+    delay(WatchdogUtils::getTimeout() + 1000); // Wait longer than the watchdog timeout
 }
 
 #else // Implementación nativa (Linux/Windows/macOS)

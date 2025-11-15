@@ -193,7 +193,11 @@ void test_setup()
     // ErrorHandler::handleError("Failed to initialize module.");
 
     // Inicializa el administrador de la tarjeta SD
-    hardware::sd().begin();
+    bool beginOk = hardware::sd().begin();
+    if (!beginOk)
+    {
+        ErrorHandler::handleError("test_setup() -> Failed to initialize SDStorageManager");
+    }
 
     // Initialize the RTC
     hardware::rtc().init();
@@ -218,7 +222,11 @@ void test_setup()
 
     // ------------ Initialize communication ports ------------
     // Initialize the packet queue
-    comm::packetQueue().begin();
+    beginOk = comm::packetQueue().begin();
+    if (!beginOk)
+    {
+        ErrorHandler::handleError("test_setup() -> Failed to initialize PacketQueue");
+    }
 
     // Initialize the serial communicator
     comm::serial().init();
@@ -268,13 +276,13 @@ void test_setup()
 
     // *** GSM MQTT Polling Task ***
     // static MethodTask<GsmMQTTPort> mqttPollTask(10000,
-                                                // &comm::gsm(),
-                                                // &GsmMQTTPort::sync
+    // &comm::gsm(),
+    // &GsmMQTTPort::sync
     // );
 
     // *** SolarX Battery Sync Task ***
     static LambdaTask mqttPollTask(10000,
-                                            [&]() {  comm::gsm().sync(); }
+                                   [&]() { comm::gsm().sync(); }
     );
     // sys::scheduler().addTask(&mqttPollTask);
 
@@ -287,7 +295,8 @@ void test_setup()
     // sys::scheduler().addTask(&batteryTestTask);
 
     static FunctionTask printNodeRoutinesMap(10000,
-                                             [] {
+                                             []
+                                             {
                                                  LOG_CLASS_INFO("=== BEGIN ROUTINES MAP DUMP ===");
                                                  const auto routines = logic::routinesMap();
                                                  for (const auto& bodyEntry : routines)
@@ -296,7 +305,8 @@ void test_setup()
                                                      const auto& packetBodyRoutinesMap = bodyEntry.second;
 
                                                      LOG_CLASS_INFO(" BodyTag %d -> has %d payload entries",
-                                                                    bodyTag, static_cast<int>(packetBodyRoutinesMap.size()));
+                                                                    bodyTag,
+                                                                    static_cast<int>(packetBodyRoutinesMap.size()));
 
                                                      for (const auto& payloadEntry : packetBodyRoutinesMap)
                                                      {
@@ -315,7 +325,7 @@ void test_setup()
         10000, // 20 seconds
         &logic::nodeOperationRunner(),
         &NodeOperationRunner::dumpRoutinesMap
-   );
+    );
     // sys::scheduler().addTask(&tryDumpRoutinesMapTask);
 
     // *** Node Operation Runner Task ***

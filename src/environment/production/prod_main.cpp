@@ -43,7 +43,12 @@ void prod_setup()
     // ErrorHandler::handleError("Failed to initialize module.");
 
     // Initialize the storage manager
-    hardware::storage().begin(); // ALWAYS INITIALIZE STORAGE BEFORE LOGGING FOR THE FIRST TIME
+    bool beginOk = hardware::sd().begin(); // ALWAYS INITIALIZE STORAGE BEFORE LOGGING FOR THE FIRST TIME
+    if (!beginOk)
+    {
+        ErrorHandler::handleError("test_setup() -> Failed to initialize StorageManager");
+    }
+
 
     // Initialize the RTC
     hardware::rtc().init();
@@ -67,8 +72,11 @@ void prod_setup()
 
     // ------------ Initialize communication ports ------------
     // Initialize the packet queue
-    comm::packetQueue().begin();
-
+    beginOk = comm::packetQueue().begin();
+    if (!beginOk)
+    {
+        ErrorHandler::handleError("test_setup() -> Failed to initialize PacketQueue");
+    }
     // Initialize the serial communicator
     comm::serial().init();
 

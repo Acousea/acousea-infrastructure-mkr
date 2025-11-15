@@ -41,7 +41,7 @@ public:
     [[nodiscard]] bool isPortEmpty(uint8_t port) const;
 
     // Pushes a packet into the queue for the specified port
-    [[nodiscard]] bool push(uint8_t port, const uint8_t* data, uint16_t length);
+    [[nodiscard]] bool push(uint8_t port, const uint8_t* data, uint16_t dataLength);
 
     // Peeks the next packet from the specified port without removing it
     [[nodiscard]] uint16_t peekNext(uint8_t port, uint8_t* outBuffer, uint16_t maxOutSize);
@@ -70,7 +70,7 @@ public:
     [[nodiscard]] uint64_t getNextReadOffset(uint8_t port) const;
 
 private:
-    [[nodiscard]] uint16_t _next(uint8_t port, uint8_t* outBuffer, uint16_t maxOutSize, bool pop);
+    [[nodiscard]] uint16_t _next(uint8_t port,  uint8_t* outBuffer, uint16_t maxOutSize, bool pop);
 
 private:
     StorageManager& storage_;

@@ -3,6 +3,7 @@
 #include <cstdio>
 
 #include "SharedMemory/SharedMemory.hpp"
+#include "BinaryFrame/BinaryFrame.hpp"
 #include "Logger/Logger.h"
 
 PacketQueue::PacketQueue(StorageManager& storage, RTCController& rtc) : storage_(storage), rtc_(rtc), writeOffset_{0}
@@ -125,9 +126,9 @@ bool PacketQueue::isPortEmpty(uint8_t port) const
     return writeOffset_[port] == readOffset_[port];
 }
 
-bool PacketQueue::push(uint8_t port, const uint8_t* data, uint16_t length)
+bool PacketQueue::push(uint8_t port, const uint8_t* data, const uint16_t dataLength)
 {
-    if (!data || length == 0)
+    if (!data || dataLength == 0)
         return false;
     if (port == 0 || port > MAX_PORT)
         return false;
@@ -135,46 +136,24 @@ bool PacketQueue::push(uint8_t port, const uint8_t* data, uint16_t length)
     char path[32];
     snprintf(path, sizeof(path), "%s%u", queueBaseName_, port);
 
-    auto* tmp = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
-    const size_t max = SharedMemory::tmpBufferSize();
+    auto* outWrappedBuffer = SharedMemory::tmpBuffer();
+    constexpr size_t outWrapperBufferMaxLength = SharedMemory::tmpBufferSize();
+    const uint32_t ts = rtc_.getEpoch();
 
-    const size_t needed = HEADER_SIZE + length + FOOTER_SIZE;
-    if (needed > max)
+    if (const bool wrapOk = BinaryFrame::wrapInPlace(outWrappedBuffer, outWrapperBufferMaxLength, data, dataLength, ts);
+        !wrapOk)
     {
+        LOG_CLASS_ERROR("PacketQueue::push() -> Failed to wrap data for port %u", port);
         return false;
     }
 
-    // Safe handling if data == tmp (in case the user uses the temporary buffer directly)
-    if (data == tmp)
-    {
-        memmove(tmp + HEADER_SIZE, tmp, length);
-    }
-    else
-    {
-        memcpy(tmp + HEADER_SIZE, data, length);
-    }
-
-    const uint32_t ts = rtc_.getEpoch();
-
-    // Copy the header afterwards
-    tmp[0] = START_BYTE; // Start byte
-    tmp[1] = static_cast<uint8_t>(ts & 0xFF); // Timestamp (4 bytes)
-    tmp[2] = static_cast<uint8_t>((ts >> 8) & 0xFF); // Timestamp (4 bytes)
-    tmp[3] = static_cast<uint8_t>((ts >> 16) & 0xFF); // Timestamp (4 bytes)
-    tmp[4] = static_cast<uint8_t>((ts >> 24) & 0xFF); // Timestamp (4 bytes)
-    tmp[5] = static_cast<uint8_t>(length & 0xFF); // Length (2 bytes)
-    tmp[6] = static_cast<uint8_t>((length >> 8) & 0xFF); // Length (2 bytes) [HEADER_SIZE - 1]
-
-    // Add footer
-    tmp[HEADER_SIZE + length] = END_BYTE;
-
     // Calculate the end position (header + data + footer)
-    const size_t pos = HEADER_SIZE + length + FOOTER_SIZE;
+    const size_t outWrapperBufferSize = BinaryFrame::requiredSize(dataLength);
 
-    const bool ok = storage_.appendBytesToFile(path, tmp, pos);
+    const bool ok = storage_.appendBytesToFile(path, outWrappedBuffer, outWrapperBufferSize);
     if (ok)
     {
-        writeOffset_[port] += pos; // Update write offset
+        writeOffset_[port] += outWrapperBufferSize; // Update write offset
     }
 
     return ok;
@@ -306,69 +285,43 @@ uint16_t PacketQueue::_next(const uint8_t port, uint8_t* outBuffer, const uint16
     char path[32];
     snprintf(path, sizeof(path), "%s%u", queueBaseName_, port);
 
-    auto* readBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    auto* dataBuffer = SharedMemory::tmpBuffer();
 
-    const size_t readBytes = storage_.readFileRegionBytes(path, readOffset_[port], readBuffer,
-                                                          SharedMemory::tmpBufferSize());
+    const size_t dataBufferSize = storage_.readFileRegionBytes(
+        path, readOffset_[port], dataBuffer, SharedMemory::tmpBufferSize()
+    );
 
-    if (readBytes < HEADER_SIZE + FOOTER_SIZE)
+    BinaryFrame::FrameView outFrameView{};
+    if (const bool unwrapOk = BinaryFrame::unwrap(dataBuffer, dataBufferSize, outFrameView); !unwrapOk)
     {
+        LOG_CLASS_ERROR("PacketQueue::popNext() -> Port %u: Failed to unwrap binary frame", port);
         return 0;
     }
 
-    size_t pos = 0;
 
-    if (readBuffer[pos] != START_BYTE)
+    // Copy the payload to the output buffer
+    if (outFrameView.payloadLength > maxOutSize)
     {
+        LOG_CLASS_ERROR("PacketQueue::popNext() -> Port %u: Output buffer too small (%u < %u)",
+                        port,
+                        static_cast<unsigned int>(maxOutSize),
+                        static_cast<unsigned int>(outFrameView.payloadLength));
         return 0;
     }
+    memcpy(outBuffer, outFrameView.payload, outFrameView.payloadLength);
 
-    pos++; // Skip start byte
-    uint32_t timestamp =
-    (static_cast<uint32_t>(readBuffer[pos++]) |
-        (static_cast<uint32_t>(readBuffer[pos++]) << 8) |
-        (static_cast<uint32_t>(readBuffer[pos++]) << 16) |
-        (static_cast<uint32_t>(readBuffer[pos++]) << 24));
-
-    const uint16_t readLen = static_cast<uint16_t>(readBuffer[pos]) | (static_cast<uint16_t>(readBuffer[pos + 1]) << 8);
-    pos += 2;
-
-    // LOG_CLASS_INFO("PacketQueue::popNext() -> Port %u: ts=%lu len=%u (w=%lu:%lu r=%lu:%lu size=%lu)",
-    //            port,
-    //            static_cast<unsigned long>(timestamp),
-    //            static_cast<unsigned int>(readLen),
-    //            static_cast<unsigned long>(writeOffset_[port] >> 32),
-    //            static_cast<unsigned long>(writeOffset_[port] & 0xFFFFFFFF),
-    //            static_cast<unsigned long>(readOffset_[port] >> 32),
-    //            static_cast<unsigned long>(readOffset_[port] & 0xFFFFFFFF),
-    //            static_cast<unsigned long>(storage_.fileSize(path)));
+    LOG_CLASS_INFO("PacketQueue::popNext() -> Port %u: ts=%lu len=%u (w=%lu:%lu r=%lu:%lu size=%lu)",
+                   port,
+                   static_cast<unsigned long>(outFrameView.timestamp),
+                   static_cast<unsigned int>(outFrameView.payloadLength),
+                   static_cast<unsigned long>(writeOffset_[port] >> 32),
+                   static_cast<unsigned long>(writeOffset_[port] & 0xFFFFFFFF),
+                   static_cast<unsigned long>(readOffset_[port] >> 32),
+                   static_cast<unsigned long>(readOffset_[port] & 0xFFFFFFFF),
+                   static_cast<unsigned long>(storage_.fileSize(path)));
 
 
-    if (readLen > maxOutSize)
-    {
-        LOG_CLASS_ERROR("PacketQueue::popNext() -> Port %u: Output buffer too small (need %u, have %u)", port,
-                        static_cast<unsigned int>(readLen), static_cast<unsigned int>(maxOutSize));
-        return 0;
-    }
-
-    memcpy(outBuffer, readBuffer + pos, readLen);
-
-    pos += readLen; // Skip to the end byte
-
-    // The required position to read is greater than the available bytes
-    if (pos >= readBytes)
-    {
-        LOG_CLASS_ERROR("PacketQueue::popNext() -> Port %u: Incomplete packet data", port);
-        return 0;
-    }
-
-    if (readBuffer[pos] != END_BYTE)
-    {
-        LOG_CLASS_ERROR("PacketQueue::popNext() -> Port %u: Invalid end byte", port);
-        return 0;
-    }
-
-    const auto totalEntrySize = HEADER_SIZE + readLen + FOOTER_SIZE;
+    const auto totalEntrySize = BinaryFrame::requiredSize(outFrameView.payloadLength);
 
     // Always update the next read offset
     nextReadOffset_[port] = readOffset_[port] + totalEntrySize;
@@ -379,7 +332,7 @@ uint16_t PacketQueue::_next(const uint8_t port, uint8_t* outBuffer, const uint16
         readOffset_[port] = nextReadOffset_[port];
     }
 
-
     // LOG_CLASS_INFO("PacketQueue::popNext() -> Port %u, Read %u bytes", port, static_cast<unsigned int>(readLen));
-    return readLen;
+    return outFrameView.payloadLength;
+
 }

@@ -8,7 +8,7 @@
 
 #include "SharedMemory/SharedMemory.hpp"
 
-inline CertType certTypeFromInt(int type)
+inline CertType certTypeFromInt(const int type)
 {
     switch (type)
     {
@@ -45,21 +45,19 @@ void normalizeOutputCrlfAndQuotationMarks(char* input)
     size_t w = 0;
     bool lastWasNewline = false;
 
-    for (size_t r = 0; input[r]; ++r)
+    for (size_t r = 0; input[r]; r++)
     {
         const char c = input[r];
 
-        if (c == '\r' || c == '"') continue; // ignorar CR y comillas
+        if (c == '\r' || c == '"' || (c == '\n' && lastWasNewline))
+        {
+            continue; // ignorar CR, comillas y nuevas líneas repetidas
+        }
 
-        if (c == '\n')
-        {
-            if (lastWasNewline) continue;
-            lastWasNewline = true;
-        }
-        else
-        {
-            lastWasNewline = false;
-        }
+        // If current is \n and last was not \n, set lastWasNewline to true,
+        // if current is not \n, set to false,
+        // If current is \n and last was \n, keep lastWasNewline as true
+        lastWasNewline = (c == '\n' && !lastWasNewline);
 
         input[w++] = c;
     }
@@ -107,7 +105,7 @@ StoredCert buildStoredCert(const char* line)
     strncpy(buffer, line, sizeof(buffer) - 1);
     buffer[sizeof(buffer) - 1] = '\0';
 
-    char* token = strtok(buffer, ",");
+    const char* token = strtok(buffer, ",");
     while (token && partIndex < 4)
     {
         parts[partIndex++] = token;
@@ -197,7 +195,7 @@ std::vector<StoredCert> UBlox201_GSMSSLClient::listCertificates(CertType type)
 
 
     // --- Reemplazo del buffer local por el buffer temporal global ---
-    char* modemResponseBuf = SharedMemory::tmpBuffer();
+    auto* modemResponseBuf = reinterpret_cast<char*>(SharedMemory::tmpBuffer());
     constexpr size_t bufSize = SharedMemory::tmpBufferSize();
     SharedMemory::clearTmpBuffer();
 
@@ -368,6 +366,7 @@ void UBlox201_GSMSSLClient::importTrustedRoots(const GSMRootCert* certs, size_t 
         importTrustedRoot(certs[i].data, certs[i].name, certs[i].size);
     }
 }
+
 /**
  * =============================================================================
  *  ⚠️  WARNING — CONSTRUCTOR CONTEXT: NO VIRTUAL DISPATCH ALLOWED
@@ -384,7 +383,7 @@ void UBlox201_GSMSSLClient::setTrustedRoots(const GSMRootCert* gsm_root_cert, co
 {
     for (size_t i = 0; i < size; ++i)
     {
-        GSMSSLClient::setTrustedRoot(gsm_root_cert[i].name);  // explicit non-virtual call
+        GSMSSLClient::setTrustedRoot(gsm_root_cert[i].name); // explicit non-virtual call
         LOG_CLASS_INFO(" -> Trusted root set: %s", gsm_root_cert[i].name);
     }
 }
@@ -507,7 +506,8 @@ bool UBlox201_GSMSSLClient::getClock(String& outTime, uint32_t* outUnix)
         int tzQH = 0;
 
         // Helper lambda para parsear con strtol de forma segura
-        auto parseField = [](const char* str, int& out, int base = 10) -> bool {
+        auto parseField = [](const char* str, int& out, int base = 10) -> bool
+        {
             errno = 0;
             char* end;
             long val = strtol(str, &end, base);
@@ -652,11 +652,11 @@ bool UBlox201_GSMSSLClient::testTLSConnection(const char* host, const uint16_t p
     LOG_CLASS_INFO(" -> TLS connection SUCCESS");
 
     // ----------- Construir y enviar petición HTTPs ----------- //
-    char* buffer = SharedMemory::tmpBuffer();
+    auto* buffer = reinterpret_cast<char*>(SharedMemory::tmpBuffer());
     constexpr size_t bufSize = SharedMemory::tmpBufferSize();
     SharedMemory::clearTmpBuffer();
 
-    std::snprintf(buffer,bufSize,
+    std::snprintf(buffer, bufSize,
                   "GET %s HTTP/1.1\r\n"
                   "Host: %s\r\n"
                   "Connection: close\r\n\r\n",

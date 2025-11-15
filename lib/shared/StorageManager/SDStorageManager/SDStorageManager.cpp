@@ -43,8 +43,7 @@ bool SDStorageManager::begin()
     }
     if (!sd.begin(SD_CONFIG))
     {
-        sd.initErrorHalt(&Serial);
-        ERROR_HANDLE_CLASS("SDStorageManager::begin() -> SD init failed");
+        sd.initErrorPrint(&Serial);
         return false;
     }
     waitFor(STABILIZATION_DELAY_MS); // Wait a bit for the SD card to settle

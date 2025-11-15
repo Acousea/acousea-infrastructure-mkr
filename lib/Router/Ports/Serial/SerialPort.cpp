@@ -42,7 +42,7 @@ bool SerialPort::send(const uint8_t* data, const size_t length)
 
 bool SerialPort::sync()
 {
-    auto* rxBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    auto* rxBuffer = SharedMemory::tmpBuffer();
     constexpr size_t RX_BUFFER_CAPACITY = SharedMemory::tmpBufferSize();
     static size_t rxBufferLength = 0; // bytes actualmente acumulados en el buffer
 

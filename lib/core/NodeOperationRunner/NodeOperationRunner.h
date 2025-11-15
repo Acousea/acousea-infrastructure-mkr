@@ -72,10 +72,8 @@ private:
 
     void processNextIncomingPacket();
     void sendResponsePacket(IPort::PortType portType, uint8_t localAddress, uint8_t recipientAddress,
-                            acousea_CommunicationPacket* outputPacketPtr) const;
+                            acousea_CommunicationPacket* outputPacketPtr);
 
-
-    acousea_CommunicationPacket* processPacket(IPort::PortType portType, acousea_CommunicationPacket& inPacketRef);
 
     acousea_CommunicationPacket* executeRoutine(IRoutine<acousea_CommunicationPacket>* routine,
                                                        acousea_CommunicationPacket* optInputPacket,

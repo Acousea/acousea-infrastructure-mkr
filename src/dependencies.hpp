@@ -391,7 +391,7 @@ namespace Dependencies
 
             static ModuleProxy instance(Comm::router(), devicePortMap());
 #else
-            static ModuleProxy instance(Comm::router(), Hardware::storage(), devicePortMap());
+            static ModuleProxy instance(Comm::router(), devicePortMap(), Hardware::storage(), Hardware::rtc());
 #endif
             return instance;
         }

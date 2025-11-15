@@ -25,12 +25,11 @@ public:
 
     static void resetCommunicationPacket() noexcept;
 
-    static char* tmpBuffer() noexcept;
+    static uint8_t* tmpBuffer() noexcept;
 
     static constexpr size_t tmpBufferSize() noexcept { return TMP_BUFFER_SIZE; }
 
     static void clearTmpBuffer() noexcept;
-
 
 private:
     // ---- Datos compartidos ----
@@ -39,7 +38,7 @@ private:
     static inline acousea_CommunicationPacket communicationPacket_ = acousea_CommunicationPacket_init_default;
 
     static constexpr size_t TMP_BUFFER_SIZE = 2048;
-    static inline char tmpBuffer_[TMP_BUFFER_SIZE] = {};
+    static inline uint8_t tmpBuffer_[TMP_BUFFER_SIZE] = {};
 };
 
 #endif

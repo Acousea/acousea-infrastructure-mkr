@@ -41,13 +41,13 @@ const acousea_CommunicationPacket& SharedMemory::getCommunicationPacketConst() n
 }
 
 
-void SharedMemory::resetCommunicationPacket()
+void SharedMemory::resetCommunicationPacket() noexcept
 {
     memset(&communicationPacket_, 0, sizeof(communicationPacket_));
     communicationPacket_ = acousea_CommunicationPacket_init_default;
 }
 
-char* SharedMemory::tmpBuffer() noexcept
+uint8_t* SharedMemory::tmpBuffer() noexcept
 {
     return tmpBuffer_;
 }

@@ -58,7 +58,7 @@ namespace
     acousea_CommunicationPacket& buildErrorPacketF(const char* fmt, ...)
     {
         // Usamos el scratch buffer de SharedMemory
-        char* tmp = SharedMemory::tmpBuffer();
+        auto* tmp = reinterpret_cast<char*>(SharedMemory::tmpBuffer());
         SharedMemory::clearTmpBuffer();
 
         va_list args;
@@ -385,7 +385,7 @@ void NodeOperationRunner::processNextIncomingPacket()
 void NodeOperationRunner::sendResponsePacket(const IPort::PortType portType,
                                              const uint8_t localAddress,
                                              const uint8_t recipientAddress,
-                                             acousea_CommunicationPacket* outputPacketPtr) const
+                                             acousea_CommunicationPacket* outputPacketPtr)
 {
     if (!outputPacketPtr) // Check for null pointer
     {
@@ -406,7 +406,26 @@ void NodeOperationRunner::sendResponsePacket(const IPort::PortType portType,
                                   .through(portType)
                                   .send(outputPacketRef); !sendOk)
     {
-        LOG_CLASS_ERROR(": Failed to send response packet through %s", IPort::portTypeToCString(portType));
+        retryAttemptsLeft_[static_cast<uint8_t>(portType)].attemptsLeft += 1;
+        LOG_CLASS_ERROR(
+            ": Failed to send response packet through %s. Will retry processing one more time. (Attempts left = %d)",
+            IPort::portTypeToCString(portType),
+            retryAttemptsLeft_[static_cast<uint8_t>(portType)].attemptsLeft
+        );
+    }
+    else
+    {
+        LOG_CLASS_INFO(
+            "Response packet for packet id % " PRId32 " sent successfully through %s. Skipping to next packet...",
+            outputPacketRef.packetId, IPort::portTypeToCString(portType)
+        );
+        if (const bool discardOk = router.skipToNextPacket(portType); !discardOk)
+        {
+            LOG_CLASS_ERROR(
+                "Failed to discard processed packet with id % " PRId32 " from port %s after successful send.",
+                outputPacketRef.packetId, IPort::portTypeToCString(portType)
+            );
+        }
     }
 }
 
@@ -443,15 +462,7 @@ acousea_CommunicationPacket* NodeOperationRunner::executeRoutine(
 
         return &buildErrorPacket(result.getError());
     }
-    LOG_CLASS_INFO("%s => succeeded. Skipping to next packet", routine->routineName);
-    if (const bool discardOk = router.skipToNextPacket(portType); !discardOk)
-    {
-        LOG_CLASS_ERROR("%s: Failed to discard processed packet from port %s.",
-                        routine->routineName, IPort::portTypeToCString(portType)
-        );
-    }
-
-
+    LOG_CLASS_INFO("%s => succeeded.", routine->routineName);
     return result.getValueConst();
 }
 

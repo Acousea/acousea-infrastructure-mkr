@@ -40,7 +40,7 @@ void NodeConfigurationRepository::reset()
 void NodeConfigurationRepository::printNodeConfiguration(const acousea_NodeConfiguration& cfg)
 {
     // Usar el buffer temporal global de SharedMemory
-    char* line = SharedMemory::tmpBuffer();
+    auto* line = reinterpret_cast<char*>(SharedMemory::tmpBuffer());
     constexpr size_t lineSize = SharedMemory::tmpBufferSize();
 
     SharedMemory::clearTmpBuffer();
@@ -184,7 +184,7 @@ acousea_NodeConfiguration& NodeConfigurationRepository::getNodeConfiguration() c
     SharedMemory::resetNodeConfiguration();
 
     // Usamos el buffer temporal global para evitar uso de stack
-    auto* tmpBuf = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    auto* tmpBuf = SharedMemory::tmpBuffer();
     constexpr size_t tmpBufSize = SharedMemory::tmpBufferSize();
 
     const size_t bytesRead = storageManager.readFileBytes(configFilePath, tmpBuf, tmpBufSize);
