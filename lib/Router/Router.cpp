@@ -71,7 +71,7 @@ std::optional<std::pair<IPort::PortType, acousea_CommunicationPacket*>> Router::
             continue;
         }
 
-        const auto readBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+        auto* readBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
         constexpr auto readSize = SharedMemory::tmpBufferSize();
 
 

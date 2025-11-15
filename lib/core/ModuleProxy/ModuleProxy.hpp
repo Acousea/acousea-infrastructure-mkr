@@ -43,6 +43,7 @@ public:
     explicit ModuleProxy(Router& router,
                          StorageManager& storageManager,
                          const std::unordered_map<DeviceAlias, IPort::PortType>& devicePortMap);
+    bool begin();
 #endif
 
 
@@ -64,7 +65,6 @@ public:
 
     [[nodiscard]] bool storeModule(acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper);
 
-
 private:
     Router& router;
 
@@ -72,6 +72,10 @@ private:
     static constexpr const auto MAX_MODULES = ProtoUtils::ACOUSEA_MAX_MODULE_COUNT;
     std::optional<acousea_ModuleWrapper> entries[MAX_MODULES] = {}; // Initialized to std::nullopt
 #else
+    static constexpr uint8_t START_BYTE = 0xAA;
+    static constexpr uint8_t END_BYTE   = 0x55;
+    uint64_t writeOffset_[_acousea_ModuleCode_MAX + 1]{}; // Current write offsets for each port (1-based index)
+    uint64_t readOffset_[_acousea_ModuleCode_MAX + 1]{}; // Current read offsets for each port (1-based index)
     StorageManager& storage;
     std::optional<acousea_ModuleWrapper> optLoadedModule_ = std::nullopt; // Módulo cargado actualmente en memoria
 #endif

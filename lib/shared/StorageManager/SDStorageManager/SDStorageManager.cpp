@@ -36,6 +36,11 @@ SDStorageManager::SDStorageManager(uint8_t chipSelectPin)
 
 bool SDStorageManager::begin()
 {
+    if (initialized)
+    {
+        Serial.println("SDStorageManager::begin() -> Already initialized.");
+        return true;
+    }
     if (!sd.begin(SD_CONFIG))
     {
         sd.initErrorHalt(&Serial);
@@ -43,6 +48,7 @@ bool SDStorageManager::begin()
         return false;
     }
     waitFor(STABILIZATION_DELAY_MS); // Wait a bit for the SD card to settle
+    initialized = true;
     Serial.println("SDStorageManager::begin() -> SD initialized successfully.");
     return true;
 }

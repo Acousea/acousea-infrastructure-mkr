@@ -20,7 +20,7 @@ public:
 
     [[nodiscard]] virtual size_t readFileBytes(const char* path, uint8_t* outBuffer, size_t maxLen) = 0;
 
-    [[nodiscard]] virtual size_t readFileRegionBytes(const char* path, size_t offset, uint8_t* outBuffer, size_t len) =
+    [[nodiscard]] virtual size_t readFileRegionBytes(const char* path, size_t offset, uint8_t* outBuffer, size_t outBufferLen) =
     0;
 
     [[nodiscard]] virtual bool writeFileBytes(const char* path, const uint8_t* data, size_t length) = 0;

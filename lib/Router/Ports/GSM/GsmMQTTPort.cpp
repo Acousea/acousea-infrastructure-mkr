@@ -20,7 +20,7 @@ unsigned long GsmMQTTPort::getTime()
 void GsmMQTTPort::mqttMessageHandler(int messageSize)
 {
     LOG_CLASS_INFO(" -> MQTT Message Handler invoked. Message size: %d bytes", messageSize);
-    auto packetBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    auto* packetBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
     constexpr size_t maxBufferSize = SharedMemory::tmpBufferSize();
     size_t readCount = 0;
 

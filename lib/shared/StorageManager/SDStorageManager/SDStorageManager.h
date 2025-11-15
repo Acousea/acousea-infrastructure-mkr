@@ -55,6 +55,7 @@ public:
 
 private:
     uint8_t chipSelectPin;
+    bool initialized = false;
 };
 
 #endif  // PLATFORM_ARDUINO

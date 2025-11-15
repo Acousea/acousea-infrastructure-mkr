@@ -26,6 +26,11 @@ ModuleProxy::ModuleProxy(Router& router, const std::unordered_map<DeviceAlias, I
 {
 }
 
+bool ModuleProxy::begin()
+{
+    return true;
+}
+
 #else
 ModuleProxy::ModuleProxy(Router& router,
                          StorageManager& storageManager,
@@ -36,7 +41,43 @@ ModuleProxy::ModuleProxy(Router& router,
 {
 }
 
+bool ModuleProxy::begin()
+{
+    // Initialize storage manager if needed
+    if (const bool beginOk = storage.begin(); !beginOk)
+    {
+        LOG_CLASS_ERROR("::begin() -> Failed to initialize StorageManager");
+        return false;
+    }
+
+    constexpr auto MIN_CODE = _acousea_ModuleCode_MIN + 1;
+    constexpr auto MAX_CODE = _acousea_ModuleCode_MAX;
+    for (auto code = MIN_CODE; code <= MAX_CODE; code++)
+    {
+        char path[10];
+        snprintf(path, sizeof(path), "/mod%d", static_cast<int>(code));
+
+        if (storage.fileExists(path))
+        {
+            LOG_CLASS_INFO("::begin() -> Module cache file exists for module %d", static_cast<int>(code));
+            readOffset_[code] = storage.fileSize(path);
+            writeOffset_[code] = storage.fileSize(path);
+        }
+        else
+        {
+            if (const bool createOk = storage.createEmptyFile(path); !createOk)
+            {
+                LOG_CLASS_ERROR("::begin() -> Cannot create module cache file: %s", path);
+                return false;
+            }
+            LOG_CLASS_INFO("::begin() -> Created module cache file: %s", path);
+        }
+    }
+    return true;
+}
+
 #endif
+
 
 // ===================================================
 // ============== Envío de comandos ==================
@@ -255,100 +296,189 @@ void ModuleProxy::invalidateAll()
 }
 
 #else
-
 bool ModuleProxy::storeModule(const acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper)
 {
-    // Use the code to build the filename (e.g., "mod1", "mod2", ..., "modN")
+    // Archivo del módulo
     char filePath[10];
     std::snprintf(filePath, sizeof(filePath), "/mod%d", static_cast<int>(code));
 
-    // Serializamos el módulo
-    uint8_t buffer[SharedMemory::tmpBufferSize()];
-    auto encodeResult = ProtoUtils::ModuleWrapper::encodeInto(wrapper, buffer, sizeof(buffer));
-    if (!encodeResult.isSuccess())
+    // Buffer temporal compartido
+    auto* tmp = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    constexpr size_t maxSize = SharedMemory::tmpBufferSize();
+
+    // Reservamos los 3 bytes de cabecera en tmp
+    // payload irá en tmp[3 .. 3+len-1]
+    Result<size_t> encodeRes = ProtoUtils::ModuleWrapper::encodeInto(
+        wrapper,
+        tmp + 3, // dejamos espacio para start + len
+        maxSize - 4 // también dejamos espacio para end byte
+    );
+
+    if (!encodeRes.isSuccess())
     {
         LOG_CLASS_WARNING("::storeModule() -> Failed to encode module %d", static_cast<int>(code));
         return false;
     }
 
-    // Escribimos el módulo en el archivo correspondiente
-    if (const bool writeResult = storage.writeFileBytes(filePath, buffer, encodeResult.getValue()); !writeResult)
+    const auto payloadLen = static_cast<uint16_t>(encodeRes.getValue());
+    const size_t totalRecordSize = 1 + 2 + payloadLen + 1; // START + LEN + PAYLOAD + END
+
+    if (totalRecordSize > maxSize)
     {
-        LOG_CLASS_WARNING("::storeModule() -> Failed to write module %d to file %s", static_cast<int>(code), filePath);
+        LOG_CLASS_ERROR("::storeModule() -> Module record too large (%u bytes)", totalRecordSize);
         return false;
     }
 
-    LOG_CLASS_INFO("::storeModule() -> Successfully stored module %d in file %s", static_cast<int>(code), filePath);
+    // --- CABECERA ---
+    tmp[0] = START_BYTE;
+    tmp[1] = static_cast<uint8_t>(payloadLen & 0xFF);
+    tmp[2] = static_cast<uint8_t>((payloadLen >> 8) & 0xFF);
+
+    // --- FOOTER ---
+    tmp[3 + payloadLen] = END_BYTE;
+
+    // --- APPEND A SD ---
+    if (const bool appendOk = storage.appendBytesToFile(filePath, tmp, totalRecordSize); !appendOk)
+    {
+        LOG_CLASS_WARNING("::storeModule() -> Failed to write module %d to file %s",
+                          static_cast<int>(code),
+                          filePath);
+        return false;
+    }
+
+    writeOffset_[static_cast<int>(code)] += totalRecordSize;
+
+    LOG_CLASS_INFO("::storeModule() -> Stored module %d (%u bytes) in %s",
+                   static_cast<int>(code),
+                   totalRecordSize,
+                   filePath);
+
     return true;
 }
 
 
 const acousea_ModuleWrapper* ModuleProxy::getIfFresh(acousea_ModuleCode code)
 {
-    // Primero comprobamos si el módulo está cargado en memoria
+    const int idx = static_cast<int>(code);
+    constexpr uint8_t HEADER_SIZE = 3; // START + LEN_LO + LEN_HI
+    constexpr uint8_t FOOTER_SIZE = 1; // END
+
+    // Si ya está cargado en RAM → devolverlo directamente
     if (optLoadedModule_.has_value())
-    {
-        // Si el módulo está en memoria, lo devolvemos directamente
         return &optLoadedModule_.value();
+
+    // Si no hay datos nuevos → no está fresco
+    if (readOffset_[idx] == writeOffset_[idx])
+    {
+        LOG_CLASS_INFO("::getIfFresh() -> Module %d not fresh (readOffset==writeOffset)", idx);
+        return nullptr;
     }
 
-    // Si el módulo no está cargado, intentamos cargarlo desde el archivo correspondiente
     char filePath[10];
-    std::snprintf(filePath, sizeof(filePath), "/mod%d", static_cast<int>(code));
+    std::snprintf(filePath, sizeof(filePath), "/mod%d", idx);
 
-    const auto& readBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
-    constexpr auto readBufSize = SharedMemory::tmpBufferSize();
-
-    // Leemos el archivo correspondiente (modX) directamente en el tmpBuffer de SharedMemory
     if (!storage.fileExists(filePath))
     {
         LOG_CLASS_INFO("::getIfFresh() -> Module file %s does not exist", filePath);
-        return nullptr; // El archivo no existe, el módulo no está fresco
+        return nullptr;
     }
 
-    const size_t bytesRead = storage.readFileBytes(filePath, readBuffer, readBufSize);
-    if (bytesRead == 0)
+    auto* readBuf = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    constexpr size_t readBufMaxSize = SharedMemory::tmpBufferSize();
+
+
+    // --- 1) Leer cabecera: START + LEN_LO + LEN_HI ---
+    if (storage.readFileRegionBytes(filePath, readOffset_[idx], readBuf, HEADER_SIZE) != HEADER_SIZE)
     {
-        LOG_CLASS_WARNING("::getIfFresh() -> Failed to read module %d from file %s", static_cast<int>(code), filePath);
-        return nullptr; // No se pudo cargar el módulo desde el archivo
+        LOG_CLASS_WARNING("::getIfFresh() -> Failed to read header for module %d", idx);
+        readOffset_[idx] = writeOffset_[idx]; // marcar como no fresco
+        return nullptr;
     }
 
-    // Intentamos decodificar el módulo directamente en optLoadedModule_
-    auto decodeResult = ProtoUtils::ModuleWrapper::decodeInto(
-        readBuffer,
-        bytesRead,
-        &optLoadedModule_.value() // Deserializamos directamente en optLoadedModule_
+    if (readBuf[0] != START_BYTE)
+    {
+        LOG_CLASS_WARNING("::getIfFresh() -> Bad START_BYTE for module %d", idx);
+        readOffset_[idx] = writeOffset_[idx];
+        return nullptr;
+    }
+
+    const uint16_t registeredLength = readBuf[1] | (readBuf[2] << 8);
+
+    // Check if registered length exceeds the reading buffer capacity
+    if (registeredLength + HEADER_SIZE + FOOTER_SIZE > readBufMaxSize) // 3 header + 1 footer
+    {
+        LOG_CLASS_ERROR("::getIfFresh() -> Module %d record too large (%u bytes)", idx, registeredLength);
+        readOffset_[idx] = writeOffset_[idx];
+        return nullptr;
+    }
+
+    // --- 2) Leer payload + END_BYTE ---
+    if (storage.readFileRegionBytes(filePath,
+                                    readOffset_[idx] + HEADER_SIZE,
+                                    readBuf + HEADER_SIZE,
+                                    registeredLength + FOOTER_SIZE) != registeredLength + FOOTER_SIZE)
+    {
+        LOG_CLASS_WARNING("::getIfFresh() -> Failed to read payload for module %d", idx);
+        readOffset_[idx] = writeOffset_[idx];
+        return nullptr;
+    }
+
+    if (readBuf[HEADER_SIZE + registeredLength] != END_BYTE)
+    {
+        LOG_CLASS_WARNING("::getIfFresh() -> Bad END_BYTE for module %d", idx);
+        readOffset_[idx] = writeOffset_[idx];
+        return nullptr;
+    }
+
+    // --- 3) Decodificar directamente en optLoadedModule_ ---
+    optLoadedModule_.emplace();
+    const auto decodeResult = ProtoUtils::ModuleWrapper::decodeInto(
+        readBuf + HEADER_SIZE, // payload begins here
+        registeredLength,
+        &optLoadedModule_.value()
     );
 
     if (!decodeResult.isSuccess())
     {
-        LOG_CLASS_WARNING("::getIfFresh() -> Failed to decode module %d from file %s", static_cast<int>(code),
-                          filePath);
-        return nullptr; // Fallo al decodificar el módulo
+        LOG_CLASS_WARNING("::getIfFresh() -> decodeInto failed for module %d", idx);
+        readOffset_[idx] = writeOffset_[idx];
+        optLoadedModule_.reset();
+        return nullptr;
     }
-    // Devolvemos el módulo recién cargado
+
+    // --- 4) Avanzar readOffset ---
+    readOffset_[idx] += (HEADER_SIZE + registeredLength + FOOTER_SIZE);
+
+    LOG_CLASS_INFO("::getIfFresh() -> Loaded module %d from offset=%llu", idx, readOffset_[idx]);
+
     return &optLoadedModule_.value();
 }
 
 
 void ModuleProxy::invalidateModule(const acousea_ModuleCode code)
 {
-    // Si el módulo no está cargado, intentamos cargarlo desde el archivo correspondiente
-    char filePath[10];
-    std::snprintf(filePath, sizeof(filePath), "/mod%d", static_cast<int>(code));
+    const int idx = code;
+    if (idx < _acousea_ModuleCode_MIN + 1 | idx > _acousea_ModuleCode_MAX)
+    {
+        LOG_CLASS_WARNING("::invalidateModule() -> Module code %d out of bounds", static_cast<int>(code));
+        return; // Código inválido
+    }
 
-    if (const bool doesFileExist = storage.fileExists(filePath); !doesFileExist)
-    {
-        LOG_CLASS_INFO("::invalidateModule() -> Module file %s does not exist, nothing to invalidate", filePath);
-        return; // El archivo no existe, nada que invalidar
-    }
-    // Borramos el archivo correspondiente
-    if (const bool clearResult = storage.clearFile(filePath); !clearResult)
-    {
-        LOG_CLASS_WARNING("::invalidateModule() -> Failed to delete module file %s", filePath);
-    }
-    LOG_CLASS_INFO("::invalidateModule() -> Deleted module file %s", filePath);
+    // Marcamos como “no fresco”
+    readOffset_[idx] = writeOffset_[idx];
+
+    // Si había un módulo cargado, lo invalidamos también
+    optLoadedModule_.reset();
+
+    LOG_CLASS_INFO( "::invalidateModule() -> Invalidated module %d (readOffset=%lu%lu, writeOffset=%lu%lu)",
+        idx,
+        static_cast<unsigned long>(readOffset_[idx] >> 32),
+        static_cast<unsigned long>(readOffset_[idx] & 0xFFFFFFFFULL),
+        static_cast<unsigned long>(writeOffset_[idx] >> 32),
+        static_cast<unsigned long>(writeOffset_[idx] & 0xFFFFFFFFULL)
+    );
 }
+
 
 void ModuleProxy::invalidateAll()
 {
