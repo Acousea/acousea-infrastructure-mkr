@@ -445,6 +445,31 @@ void UBlox201_GSMSSLClient::setPrivateKey(const uint8_t* key, const char* name, 
 }
 
 
+bool UBlox201_GSMSSLClient::init(const GsmConfig& config)
+{
+    LOG_CLASS_INFO(" -> Connecting to GSM network...");
+    int max_retries = 5;
+    while ((gsmAccess.begin(config.pin) != GSM_READY ||
+            gprs.attachGPRS(config.apn, config.user, config.pass) != GPRS_READY) &&
+        max_retries-- > 0)
+    {
+        LOG_CLASS_WARNING(" -> GSM/GPRS not available, retrying...");
+        waitFor(2000); // Internally resets the watchdog
+    }
+    if (max_retries <= 0)
+    {
+        LOG_CLASS_ERROR(" -> GSM/GPRS connection failed");
+        return false;
+    }
+    LOG_CLASS_INFO(" -> GSM/GPRS connected");
+    return true;
+}
+
+unsigned long UBlox201_GSMSSLClient::getTime()
+{
+    return gsmAccess.getTime();
+}
+
 bool UBlox201_GSMSSLClient::logAndCheckResponse(const int result, const char* action, const char* name)
 {
     switch (result)

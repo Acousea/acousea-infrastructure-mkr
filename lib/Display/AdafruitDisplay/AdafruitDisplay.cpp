@@ -3,22 +3,21 @@
 
 #include <Arduino.h>
 #include "Adafruit_SSD1306.h"
+#include "../../shared/wait/WaitFor.hpp"
 
 static Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-void AdafruitDisplay::init()
+bool AdafruitDisplay::init()
 {
     if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS))
     {
         SerialUSB.println(F("SSD1306 allocation failed"));
-        while (true)
-        {
-            delay(10);
-        };
+        return false;
     }
     display.display();
-    delay(2000); // Pausa inicial para la pantalla
+    waitFor(2000); // Pausa inicial para la pantalla
     display.clearDisplay();
+    return true;
 }
 
 

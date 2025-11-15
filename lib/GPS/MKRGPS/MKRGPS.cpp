@@ -8,6 +8,7 @@
 
 #include "ErrorHandler/ErrorHandler.h"
 #include "Logger/Logger.h"
+#include "wait/WaitFor.hpp"
 
 bool MKRGPS::init() // NO LOGGER CALLS HERE (INIT PHASE)
 {
@@ -22,22 +23,21 @@ bool MKRGPS::init() // NO LOGGER CALLS HERE (INIT PHASE)
 
     SerialUSB.println(String(getClassNameCString()) + "Awaiting first GNSS fix ...");
 
-    unsigned long startMillis = millis();
-    while (!GPS.available() && ((millis() - startMillis) < GNSS_MAX_FIX_TIME_MS))
-    {
-        delay(500);
-    }
-    unsigned long endMillis = millis();
+
+    const unsigned long waitedForMs = waitForOrUntil(
+        GNSS_MAX_FIX_TIME_MS,
+        [&] { return GPS.available(); } // stopIfTrue
+    );
 
     char buffer[50];
-    if (endMillis - startMillis >= GNSS_MAX_FIX_TIME_MS)
+    if (waitedForMs >= GNSS_MAX_FIX_TIME_MS)
     {
-        ERROR_HANDLE_CLASS("ERROR: NO GNSS fix after %lu sec\n", (endMillis - startMillis) / 1000);
+        ERROR_HANDLE_CLASS("ERROR: NO GNSS fix after %lu sec\n", waitedForMs / 1000);
         return false;
     }
 
     SerialUSB.println(
-        String(getClassNameCString()) + " GNSS fix took " + String((endMillis - startMillis) / 1000) + " sec"
+        String(getClassNameCString()) + " GNSS fix took " + String((waitedForMs) / 1000) + " sec"
     );
 
     return true;
@@ -45,12 +45,11 @@ bool MKRGPS::init() // NO LOGGER CALLS HERE (INIT PHASE)
 
 GPSLocation MKRGPS::read()
 {
-    unsigned long startMillis = millis();
 
-    while (!GPS.available() && ((millis() - startMillis) < GNSS_WAIT_TIME_MS))
-    {
-        delay(500);
-    }
+    waitForOrUntil(
+        GNSS_MAX_FIX_TIME_MS,
+        [&] { return GPS.available(); } // stopIfTrue
+    );
 
     if (GPS.available())
     {

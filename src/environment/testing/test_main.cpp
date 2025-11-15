@@ -193,7 +193,7 @@ void test_setup()
     // ErrorHandler::handleError("Failed to initialize module.");
 
     // Inicializa el administrador de la tarjeta SD
-    bool beginOk = hardware::sd().begin();
+    bool beginOk = hardware::storage().begin();
     if (!beginOk)
     {
         ErrorHandler::handleError("test_setup() -> Failed to initialize SDStorageManager");
