@@ -10,7 +10,7 @@
 #include "ProtoUtils/ProtoUtils.hpp"
 
 
-#define MODULE_PROXY_CACHE_IN_RAM_ENABLED
+// #define MODULE_PROXY_CACHE_IN_RAM_ENABLED
 
 #ifndef MODULE_PROXY_CACHE_IN_RAM_ENABLED
 #include "StorageManager/StorageManager.hpp"
@@ -23,6 +23,7 @@
 class ModuleProxy
 {
     CLASS_NAME(ModuleProxy)
+
 public:
     // ===================== Alias for devices associated with prots =====================
     enum class DeviceAlias
@@ -50,7 +51,7 @@ public:
         DeviceAlias alias
     );
 
-    [[nodiscard]] const acousea_ModuleWrapper* getIfFresh(acousea_ModuleCode code) const;
+    const acousea_ModuleWrapper* getIfFresh(acousea_ModuleCode code);
 
     [[nodiscard]] const acousea_ModuleWrapper* getIfFreshOrSetOnDevice(acousea_ModuleCode code,
                                                                        const acousea_ModuleWrapper& module,
@@ -63,6 +64,7 @@ public:
 
     [[nodiscard]] bool storeModule(acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper);
 
+
 private:
     Router& router;
 
@@ -71,7 +73,7 @@ private:
     std::optional<acousea_ModuleWrapper> entries[MAX_MODULES] = {}; // Initialized to std::nullopt
 #else
     StorageManager& storage;
-    acousea_ModuleWrapper* loadedModule_ = nullptr; // Módulo cargado actualmente en memoria
+    std::optional<acousea_ModuleWrapper> optLoadedModule_ = std::nullopt; // Módulo cargado actualmente en memoria
 #endif
 
     // ===================== Mapeo alias -> puerto =====================
@@ -83,10 +85,10 @@ private:
     [[nodiscard]] IPort::PortType resolvePort(DeviceAlias alias) const noexcept;
 
     // ===================== Construcción de paquetes =====================
-    [[nodiscard]] static acousea_CommunicationPacket buildRequestPacket(acousea_ModuleCode code);
+    [[nodiscard]] static acousea_CommunicationPacket& buildRequestModulePacket(acousea_ModuleCode code);
 
-    [[nodiscard]] static acousea_CommunicationPacket buildSetPacket(acousea_ModuleCode code,
-                                                                    const acousea_ModuleWrapper& module);
+    [[nodiscard]] static acousea_CommunicationPacket& buildSetModulePacket(
+        acousea_ModuleCode code, const acousea_ModuleWrapper& module);
 
     void invalidateModule(acousea_ModuleCode code);
     void invalidateAll();

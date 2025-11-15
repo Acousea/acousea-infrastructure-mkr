@@ -387,7 +387,12 @@ namespace Dependencies
 
         inline ModuleProxy& moduleProxy()
         {
+#ifdef MODULE_PROXY_CACHE_IN_RAM_ENABLED
+
             static ModuleProxy instance(Comm::router(), devicePortMap());
+#else
+            static ModuleProxy instance(Comm::router(), Hardware::storage(), devicePortMap());
+#endif
             return instance;
         }
 

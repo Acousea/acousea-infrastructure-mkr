@@ -55,7 +55,7 @@ bool SDStorageManager::createEmptyFile(const char* path)
         LOG_CLASS_ERROR("createEmptyFile() -> Cannot create file: %s", path);
         return false;
     }
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
     file.close();
     return true;
 }
@@ -71,9 +71,9 @@ bool SDStorageManager::appendBytesToFile(const char* path, const uint8_t* data, 
         LOG_CLASS_ERROR("appendBytesToFile() -> Cannot open file: %s", path);
         return false;
     }
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
     const size_t written = file.write(data, length);
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
     file.close();
     return (written == length);
 }
@@ -88,9 +88,9 @@ bool SDStorageManager::overwriteBytesToFile(const char* path, const uint8_t* dat
         LOG_CLASS_ERROR("overwriteBytesToFile() -> Cannot open file: %s", path);
         return false;
     }
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
     const size_t written = file.write(data, length);
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
     file.close();
     return (written == length);
 }
@@ -121,14 +121,14 @@ bool SDStorageManager::deleteFile(const char* path)
         return false;
     }
 
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
 
     if (!sd.remove(path))
     {
         LOG_CLASS_ERROR("deleteFile() -> Failed to remove file: %s", path);
         return false;
     }
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
 
     return true;
 }
@@ -143,10 +143,10 @@ bool SDStorageManager::writeFileBytes(const char* path, const uint8_t* data, siz
         LOG_CLASS_ERROR("writeFileBytes() -> Cannot open file: %s", path);
         return false;
     }
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
 
     size_t written = file.write(data, length);
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
     file.close();
 
     return (written == length);
@@ -162,9 +162,9 @@ size_t SDStorageManager::readFileBytes(const char* path, uint8_t* outBuffer, siz
         LOG_CLASS_ERROR("readFileBytes() -> Cannot open file: %s", path);
         return 0;
     }
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
     const size_t readTotal = file.read(outBuffer, maxLen);
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
 
     file.close();
     return readTotal;
@@ -182,13 +182,13 @@ size_t SDStorageManager::readFileRegionBytes(const char* path, size_t offset, ui
         LOG_CLASS_ERROR("readFileRegion() -> Cannot open file: %s", path);
         return 0;
     }
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
 
     file.seekSet(offset);
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
 
     const size_t readBytes = file.read(outBuffer, len);
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
 
     file.close();
 
@@ -207,7 +207,7 @@ bool SDStorageManager::truncateFileFromOffset(const char* path, size_t offset)
         LOG_CLASS_ERROR("truncateFileFromOffset() -> Cannot open file: %s", path);
         return false;
     }
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
 
     const size_t total = file.fileSize();
     if (offset >= total)
@@ -247,7 +247,7 @@ bool SDStorageManager::fileExists(const char* path)
 {
     // Helper para comprobar existencia
     const bool exists =  sd.exists(path);
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
     return exists;
 }
 
@@ -258,7 +258,7 @@ bool SDStorageManager::renameFile(const char* oldPath, const char* newPath)
         LOG_CLASS_ERROR("renameFile() -> Cannot open: %s", oldPath);
         return false;
     }
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
 
     const char* baseName = strrchr(newPath, '/');
     baseName = baseName ? baseName + 1 : newPath;
@@ -269,7 +269,7 @@ bool SDStorageManager::renameFile(const char* oldPath, const char* newPath)
         file.close();
         return false;
     }
-    waitFor(STABILIZATION_DELAY_MS); 
+    waitFor(STABILIZATION_DELAY_MS);
 
     file.close();
     return true;
@@ -284,11 +284,11 @@ size_t SDStorageManager::fileSize(const char* str)
         LOG_CLASS_ERROR("fileSize() -> Cannot open file: %s", str);
         return 0;
     }
-    waitFor(STABILIZATION_DELAY_MS); 
-    
+    waitFor(STABILIZATION_DELAY_MS);
+
     const size_t size = file.fileSize();
-    waitFor(STABILIZATION_DELAY_MS); 
-    
+    waitFor(STABILIZATION_DELAY_MS);
+
     file.close();
     return size;
 }
@@ -300,14 +300,14 @@ bool SDStorageManager::createDirectory(const char* str)
         return true;
     }
 
-    
+
     if (!sd.mkdir(str))
     {
         LOG_CLASS_ERROR("createDirectory() -> Cannot create directory: %s", str);
         return false;
     }
     waitFor(STABILIZATION_DELAY_MS);
-    
+
     return true;
 }
 
@@ -385,7 +385,7 @@ bool SDStorageManager::clearDirectory(const char* path)
     return true;
 }
 
-    
+
 
 bool SDStorageManager::deleteDirectory(const char* path)
 {

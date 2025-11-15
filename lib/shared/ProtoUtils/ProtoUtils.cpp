@@ -8,15 +8,14 @@
 
 namespace ProtoUtils
 {
-
     namespace CommunicationPacket
     {
         CLASS_NAME(ProtoUtils::CommunicationPacket)
 
         // ================================ FROM BUFFER ================================
 
-       // Decodifica un buffer raw -> acousea_CommunicationPacket
-       Result<acousea_CommunicationPacket> decode(const std::vector<uint8_t>& raw)
+        // Decodifica un buffer raw -> acousea_CommunicationPacket
+        Result<acousea_CommunicationPacket> decode(const std::vector<uint8_t>& raw)
         {
             if (raw.empty())
             {
@@ -54,7 +53,6 @@ namespace ProtoUtils
                 return RESULT_VOID_FAILUREF("decodeInto: pb_decode failed: %s", PB_GET_ERROR(&is));
             }
             return RESULT_VOID_SUCCESS();
-
         }
 
         // ================================ TO BUFFER ================================
@@ -98,7 +96,8 @@ namespace ProtoUtils
             if (required > bufferSize)
             {
                 return RESULT_CLASS_FAILUREF(size_t,
-                    "encodeInto: buffer too small (required=%zu, available=%zu)", required, bufferSize);
+                                             "encodeInto: buffer too small (required=%zu, available=%zu)", required,
+                                             bufferSize);
             }
 
             // Segundo paso: codificar realmente
@@ -110,9 +109,6 @@ namespace ProtoUtils
 
             return RESULT_SUCCESS(size_t, os.bytes_written);
         }
-
-
-
     }
 
     namespace NodeConfiguration
@@ -181,7 +177,8 @@ namespace ProtoUtils
             if (required > bufferSize)
             {
                 return RESULT_CLASS_FAILUREF(size_t,
-                                             "encodeInto: buffer too small (required=%zu, available=%zu)", required, bufferSize);
+                                             "encodeInto: buffer too small (required=%zu, available=%zu)", required,
+                                             bufferSize);
             }
 
             // Segundo paso: codificar realmente
@@ -209,6 +206,64 @@ namespace ProtoUtils
             pb_istream_t is = pb_istream_from_buffer(data, length);
 
             if (!pb_decode(&is, acousea_NodeConfiguration_fields, out))
+            {
+                return RESULT_VOID_FAILUREF("decodeInto: pb_decode failed: %s", PB_GET_ERROR(&is));
+            }
+
+            return RESULT_VOID_SUCCESS();
+        }
+    }
+
+    namespace ModuleWrapper
+    {
+        // Codifica un acousea_ModuleWrapper en el buffer proporcionado
+        Result<size_t> encodeInto(const acousea_ModuleWrapper& moduleWrapper, uint8_t* buffer, const size_t bufferSize)
+        {
+            if (buffer == nullptr || bufferSize == 0)
+            {
+                return RESULT_CLASS_FAILUREF(size_t, "encodeInto: invalid buffer (null or empty)");
+            }
+
+            // Primer paso: obtener el tamaño necesario para la codificación
+            pb_ostream_t sizing = PB_OSTREAM_SIZING;
+            if (!pb_encode(&sizing, acousea_ModuleWrapper_fields, &moduleWrapper))
+            {
+                return RESULT_CLASS_FAILUREF(size_t, "encodeInto(SIZE): pb_encode failed: %s", PB_GET_ERROR(&sizing));
+            }
+
+            const size_t required = sizing.bytes_written;
+            if (required > bufferSize)
+            {
+                return RESULT_CLASS_FAILUREF(size_t, "encodeInto: buffer too small (required=%zu, available=%zu)",
+                                             required, bufferSize);
+            }
+
+            // Segundo paso: codificar realmente en el buffer proporcionado
+            pb_ostream_t os = pb_ostream_from_buffer(buffer, bufferSize);
+            if (!pb_encode(&os, acousea_ModuleWrapper_fields, &moduleWrapper))
+            {
+                return RESULT_CLASS_FAILUREF(size_t, "encodeInto(WRITE): pb_encode failed: %s", PB_GET_ERROR(&os));
+            }
+
+            return RESULT_SUCCESS(size_t, os.bytes_written);
+        }
+
+        // Decodifica un acousea_ModuleWrapper desde el buffer proporcionado
+        Result<void> decodeInto(const uint8_t* data, size_t length, acousea_ModuleWrapper* moduleWrapper)
+        {
+            if (moduleWrapper == nullptr)
+            {
+                return RESULT_VOID_FAILUREF("decodeInto: destination pointer is null");
+            }
+
+            if (data == nullptr || length == 0)
+            {
+                return RESULT_VOID_FAILUREF("decodeInto: invalid buffer (null or empty)");
+            }
+
+            // Decodifica el buffer en el módulo proporcionado
+            pb_istream_t is = pb_istream_from_buffer(data, length);
+            if (!pb_decode(&is, acousea_ModuleWrapper_fields, moduleWrapper))
             {
                 return RESULT_VOID_FAILUREF("decodeInto: pb_decode failed: %s", PB_GET_ERROR(&is));
             }

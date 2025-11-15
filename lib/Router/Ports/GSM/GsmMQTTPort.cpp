@@ -256,14 +256,14 @@ bool GsmMQTTPort::mqttPublishToTopic(const uint8_t* data, size_t size, const cha
                                      const uint8_t qos)
 {
     // Try to connect to the MQTT broker
-    const bool connOk = tryConnect();
-    if (!connOk)
+    if (const bool connOk = tryConnect(); !connOk)
     {
         LOG_CLASS_ERROR(" -> Cannot publish to MQTT topic %s: not connected to broker", topic);
         return false;
     }
     LOG_CLASS_INFO(" -> Publishing %d bytes to topic: %s (retain=%s, QoS=%d)",
                    size, topic, retained ? "true" : "false", qos);
+
     if (!mqttClient.beginMessage(topic, false, 1)) // QoS 1, retain =false
     {
         LOG_CLASS_ERROR("Failed to begin MQTT message on %s", topic);

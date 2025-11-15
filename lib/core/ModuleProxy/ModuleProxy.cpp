@@ -1,5 +1,9 @@
 #include "ModuleProxy.hpp"
+
+#include <cstdio>
+
 #include "Logger/Logger.h"
+#include "SharedMemory/SharedMemory.hpp"
 
 
 // ===================================================
@@ -40,7 +44,7 @@ ModuleProxy::ModuleProxy(Router& router,
 
 bool ModuleProxy::requestModule(const acousea_ModuleCode code, const DeviceAlias alias)
 {
-    auto pkt = buildRequestPacket(code);
+    acousea_CommunicationPacket& pkt = buildRequestModulePacket(code);
     const auto portType = resolvePort(alias);
     if (portType == IPort::PortType::None)
     {
@@ -65,7 +69,7 @@ bool ModuleProxy::sendModule(const acousea_ModuleCode code,
                              const acousea_ModuleWrapper& module,
                              const DeviceAlias alias)
 {
-    auto pkt = buildSetPacket(code, module);
+    acousea_CommunicationPacket& pkt = buildSetModulePacket(code, module);
     const auto portType = resolvePort(alias);
     if (portType == IPort::PortType::None)
     {
@@ -102,10 +106,12 @@ IPort::PortType ModuleProxy::resolvePort(const DeviceAlias alias) const noexcept
 }
 
 
-acousea_CommunicationPacket ModuleProxy::buildRequestPacket(acousea_ModuleCode code)
+// Build the request packet using SharedMemory's communicationPacketRef()
+acousea_CommunicationPacket& ModuleProxy::buildRequestModulePacket(acousea_ModuleCode code)
 {
     LOG_CLASS_FREE_MEMORY("::buildRequestPacket(start)");
-    acousea_CommunicationPacket pkt = acousea_CommunicationPacket_init_default;
+    auto& pkt = SharedMemory::communicationPacketRef(); // Use SharedMemory's communication packet
+    pkt = acousea_CommunicationPacket_init_default; // Initialize the packet
     pkt.has_routing = true;
     pkt.routing.sender = Router::broadcastAddress;
     pkt.routing.receiver = 0; // backend
@@ -125,9 +131,11 @@ acousea_CommunicationPacket ModuleProxy::buildRequestPacket(acousea_ModuleCode c
 // ============ buildSetPacket (corregido) ===========
 // ===================================================
 
-acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode code, const acousea_ModuleWrapper& module)
+acousea_CommunicationPacket& ModuleProxy::buildSetModulePacket(acousea_ModuleCode code,
+                                                               const acousea_ModuleWrapper& module)
 {
-    acousea_CommunicationPacket pkt = acousea_CommunicationPacket_init_default;
+    auto& pkt = SharedMemory::communicationPacketRef(); // Usamos el paquete de SharedMemory
+    pkt = acousea_CommunicationPacket_init_default; // Inicializamos el paquete en SharedMemory
     pkt.has_routing = true;
     pkt.routing.sender = Router::broadcastAddress;
     pkt.routing.receiver = 0; // backend
@@ -147,39 +155,11 @@ acousea_CommunicationPacket ModuleProxy::buildSetPacket(acousea_ModuleCode code,
     return pkt;
 }
 
-// ===================================================
-// =============== ModuleCache impl ==================
-// ===================================================
-
-bool ModuleProxy::storeModule(const acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper)
-{
-    const uint16_t idx = static_cast<uint16_t>(code) - 1;
-    if (idx < 0 || idx > ModuleProxy::MAX_MODULES - 1)
-    {
-        LOG_CLASS_WARNING("::storeModule() -> Module idx %d out of bounds [0, %d)",
-                          static_cast<int>(idx), ModuleProxy::MAX_MODULES - 1);
-        return false; // Código inválido
-    }
-    entries[idx].emplace(wrapper);
-    return true; // No hay espacio
-}
-
-const acousea_ModuleWrapper* ModuleProxy::getIfFresh(acousea_ModuleCode code) const
-{
-    const auto& entry = entries[static_cast<uint16_t>(code) - 1];
-    if (entry.has_value())
-    {
-        return &entry.value();
-    }
-    return nullptr;
-}
-
-
 const acousea_ModuleWrapper* ModuleProxy::getIfFreshOrRequestFromDevice(
     const acousea_ModuleCode code, const DeviceAlias alias
 )
 {
-    const auto optModulePtr = getIfFresh(code);
+    const acousea_ModuleWrapper* optModulePtr = getIfFresh(code);
 
     if (optModulePtr != nullptr)
     {
@@ -205,7 +185,7 @@ const acousea_ModuleWrapper* ModuleProxy::getIfFreshOrSetOnDevice(
     const DeviceAlias alias
 )
 {
-    const auto optModulePtr = getIfFresh(code);
+    const acousea_ModuleWrapper* optModulePtr = getIfFresh(code);
 
     if (optModulePtr != nullptr)
     {
@@ -226,6 +206,33 @@ const acousea_ModuleWrapper* ModuleProxy::getIfFreshOrSetOnDevice(
     return nullptr;
 }
 
+// =============================================================================================
+// ================================ CACHE IN RAM IMPLEMENTATION ================================
+// =============================================================================================
+
+#ifdef MODULE_PROXY_CACHE_IN_RAM_ENABLED
+bool ModuleProxy::storeModule(const acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper)
+{
+    const uint16_t idx = static_cast<uint16_t>(code) - 1;
+    if (idx < 0 || idx > ModuleProxy::MAX_MODULES - 1)
+    {
+        LOG_CLASS_WARNING("::storeModule() -> Module idx %d out of bounds [0, %d)",
+                          static_cast<int>(idx), ModuleProxy::MAX_MODULES - 1);
+        return false; // Código inválido
+    }
+    entries[idx].emplace(wrapper);
+    return true; // No hay espacio
+}
+
+const acousea_ModuleWrapper* ModuleProxy::getIfFresh(acousea_ModuleCode code)
+{
+    const auto& entry = entries[static_cast<uint16_t>(code) - 1];
+    if (entry.has_value())
+    {
+        return &entry.value();
+    }
+    return nullptr;
+}
 
 void ModuleProxy::invalidateModule(const acousea_ModuleCode code)
 {
@@ -246,3 +253,112 @@ void ModuleProxy::invalidateAll()
         e = std::nullopt;
     }
 }
+
+#else
+
+bool ModuleProxy::storeModule(const acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper)
+{
+    // Use the code to build the filename (e.g., "mod1", "mod2", ..., "modN")
+    char filePath[10];
+    std::snprintf(filePath, sizeof(filePath), "/mod%d", static_cast<int>(code));
+
+    // Serializamos el módulo
+    uint8_t buffer[SharedMemory::tmpBufferSize()];
+    auto encodeResult = ProtoUtils::ModuleWrapper::encodeInto(wrapper, buffer, sizeof(buffer));
+    if (!encodeResult.isSuccess())
+    {
+        LOG_CLASS_WARNING("::storeModule() -> Failed to encode module %d", static_cast<int>(code));
+        return false;
+    }
+
+    // Escribimos el módulo en el archivo correspondiente
+    if (const bool writeResult = storage.writeFileBytes(filePath, buffer, encodeResult.getValue()); !writeResult)
+    {
+        LOG_CLASS_WARNING("::storeModule() -> Failed to write module %d to file %s", static_cast<int>(code), filePath);
+        return false;
+    }
+
+    LOG_CLASS_INFO("::storeModule() -> Successfully stored module %d in file %s", static_cast<int>(code), filePath);
+    return true;
+}
+
+
+const acousea_ModuleWrapper* ModuleProxy::getIfFresh(acousea_ModuleCode code)
+{
+    // Primero comprobamos si el módulo está cargado en memoria
+    if (optLoadedModule_.has_value())
+    {
+        // Si el módulo está en memoria, lo devolvemos directamente
+        return &optLoadedModule_.value();
+    }
+
+    // Si el módulo no está cargado, intentamos cargarlo desde el archivo correspondiente
+    char filePath[10];
+    std::snprintf(filePath, sizeof(filePath), "/mod%d", static_cast<int>(code));
+
+    const auto& readBuffer = reinterpret_cast<uint8_t*>(SharedMemory::tmpBuffer());
+    constexpr auto readBufSize = SharedMemory::tmpBufferSize();
+
+    // Leemos el archivo correspondiente (modX) directamente en el tmpBuffer de SharedMemory
+    if (!storage.fileExists(filePath))
+    {
+        LOG_CLASS_INFO("::getIfFresh() -> Module file %s does not exist", filePath);
+        return nullptr; // El archivo no existe, el módulo no está fresco
+    }
+
+    const size_t bytesRead = storage.readFileBytes(filePath, readBuffer, readBufSize);
+    if (bytesRead == 0)
+    {
+        LOG_CLASS_WARNING("::getIfFresh() -> Failed to read module %d from file %s", static_cast<int>(code), filePath);
+        return nullptr; // No se pudo cargar el módulo desde el archivo
+    }
+
+    // Intentamos decodificar el módulo directamente en optLoadedModule_
+    auto decodeResult = ProtoUtils::ModuleWrapper::decodeInto(
+        readBuffer,
+        bytesRead,
+        &optLoadedModule_.value() // Deserializamos directamente en optLoadedModule_
+    );
+
+    if (!decodeResult.isSuccess())
+    {
+        LOG_CLASS_WARNING("::getIfFresh() -> Failed to decode module %d from file %s", static_cast<int>(code),
+                          filePath);
+        return nullptr; // Fallo al decodificar el módulo
+    }
+    // Devolvemos el módulo recién cargado
+    return &optLoadedModule_.value();
+}
+
+
+void ModuleProxy::invalidateModule(const acousea_ModuleCode code)
+{
+    // Si el módulo no está cargado, intentamos cargarlo desde el archivo correspondiente
+    char filePath[10];
+    std::snprintf(filePath, sizeof(filePath), "/mod%d", static_cast<int>(code));
+
+    if (const bool doesFileExist = storage.fileExists(filePath); !doesFileExist)
+    {
+        LOG_CLASS_INFO("::invalidateModule() -> Module file %s does not exist, nothing to invalidate", filePath);
+        return; // El archivo no existe, nada que invalidar
+    }
+    // Borramos el archivo correspondiente
+    if (const bool clearResult = storage.clearFile(filePath); !clearResult)
+    {
+        LOG_CLASS_WARNING("::invalidateModule() -> Failed to delete module file %s", filePath);
+    }
+    LOG_CLASS_INFO("::invalidateModule() -> Deleted module file %s", filePath);
+}
+
+void ModuleProxy::invalidateAll()
+{
+    constexpr auto minCode = _acousea_ModuleCode_MIN + 1;
+    constexpr auto maxCode = _acousea_ModuleCode_MAX;
+    for (uint8_t code = minCode; code <= maxCode; code++)
+    {
+        invalidateModule(static_cast<acousea_ModuleCode>(code));
+    }
+}
+
+
+#endif

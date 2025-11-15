@@ -19,10 +19,8 @@ StatusReportingRoutine::StatusReportingRoutine(NodeConfigurationRepository& node
 Result<acousea_CommunicationPacket*> StatusReportingRoutine::execute(
     acousea_CommunicationPacket* const /*optPacket*/) // input unused, always nullptr
 {
-    LOG_FREE_MEMORY("PRENODECONFIG");
     // --- Obtener configuración actual ---
     const acousea_NodeConfiguration& nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
-    LOG_FREE_MEMORY("POSTNODECONFIG");
 
     const auto reportTypePtr = getCurrentReportingConfiguration(nodeConfig);
     if (!reportTypePtr)
@@ -30,7 +28,6 @@ Result<acousea_CommunicationPacket*> StatusReportingRoutine::execute(
         return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*, "%s",
                                      "Cannot get current reporting configuration: missing operation mode or report type");
     }
-    LOG_FREE_MEMORY("POSTREPORTTYPE");
     const acousea_ReportType& reportType = *reportTypePtr;
 
     // --- Log included modules ---
@@ -45,7 +42,7 @@ Result<acousea_CommunicationPacket*> StatusReportingRoutine::execute(
     snprintf(moduleIds + pos, sizeof(moduleIds) - pos, "]");
     LOG_CLASS_INFO("Building report packet with %d modules: %s", reportType.includedModules_count, moduleIds);
 
-    LOG_FREE_MEMORY("POSTMODULEIDS");
+    LOG_CLASS_FREE_MEMORY("POSTMODULEIDS");
 
     // --- CommunicationPacket ---
     SharedMemory::resetCommunicationPacket();

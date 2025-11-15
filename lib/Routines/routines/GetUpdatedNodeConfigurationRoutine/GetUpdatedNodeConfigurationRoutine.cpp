@@ -32,6 +32,13 @@ Result<acousea_CommunicationPacket*> GetUpdatedNodeConfigurationRoutine::execute
     }
 
 
+    // Copy the requested modules beforehand (the packet later is overwritten to build the response)
+    const acousea_GetUpdatedNodeConfigurationPayload reqConfigPayloadCopy = inPacket.body.command.command.
+        requestedConfiguration;
+
+    const acousea_ModuleCode* reqModules = reqConfigPayloadCopy.requestedModules;
+    const pb_size_t& modulesCount = reqConfigPayloadCopy.requestedModules_count;
+
     // ----------------  Prepare response packet ----------------
     SharedMemory::resetCommunicationPacket();
     acousea_CommunicationPacket& responsePacket = SharedMemory::communicationPacketRef();
@@ -48,26 +55,22 @@ Result<acousea_CommunicationPacket*> GetUpdatedNodeConfigurationRoutine::execute
     responsePacket.body.response.which_response = acousea_ResponseBody_updatedConfiguration_tag;
     responsePacket.body.response.response.updatedConfiguration = acousea_UpdatedNodeConfigurationPayload_init_default;
 
-    acousea_UpdatedNodeConfigurationPayload& updatedConfiguration = responsePacket.body.response.response.
-        updatedConfiguration;
-    updatedConfiguration.modules_count = 0;
+    auto& updatedConfigPayloadRef = responsePacket.body.response.response.
+                                                   updatedConfiguration;
 
-    const acousea_GetUpdatedNodeConfigurationPayload& requestedConfigurationPayload = inPacket.body.command.command.
-        requestedConfiguration;
+    auto* outModulesArray = reinterpret_cast<acousea_NodeDevice_ModulesEntry*>(updatedConfigPayloadRef.modules);
+    pb_size_t& outModulesCount = updatedConfigPayloadRef.modules_count = 0;
 
-    auto* outModulesArr = reinterpret_cast<acousea_NodeDevice_ModulesEntry*>(updatedConfiguration.modules);
-    pb_size_t& outModulesArrSize = updatedConfiguration.modules_count;
+    const auto resOk = moduleManager.getModules(outModulesArray, outModulesCount, reqModules, modulesCount);
 
-    const acousea_ModuleCode* reqModules = requestedConfigurationPayload.requestedModules;
-    const pb_size_t& modulesCount = requestedConfigurationPayload.requestedModules_count;
+    LOG_CLASS_INFO("GetUpdatedNodeConfigurationRoutine::execute() -> Retrieved %d updated modules", outModulesCount);
 
-    const auto resOk = moduleManager.getModules(outModulesArr, outModulesArrSize, reqModules, modulesCount);
 
     return resOk.isSuccess()
-        ? RESULT_SUCCESS(acousea_CommunicationPacket*, &responsePacket)
-        : RESULT_CLASS_FAILUREF(
-            acousea_CommunicationPacket*,
-            "Failed to get updated node configuration modules: %s",
-            resOk.getError()
-        );
+               ? RESULT_SUCCESS(acousea_CommunicationPacket*, &responsePacket)
+               : RESULT_CLASS_FAILUREF(
+                   acousea_CommunicationPacket*,
+                   "Failed to get updated node configuration modules: %s",
+                   resOk.getError()
+               );
 }

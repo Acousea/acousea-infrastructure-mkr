@@ -29,6 +29,12 @@ namespace ProtoUtils
         Result<size_t> encodeInto(const acousea_NodeConfiguration& conf, uint8_t* buffer, size_t bufferSize);
         Result<void> decodeInto(const uint8_t* data, size_t length, acousea_NodeConfiguration* out);
     }
+
+    namespace ModuleWrapper
+    {
+        Result<size_t> encodeInto(const acousea_ModuleWrapper& moduleWrapper, uint8_t* buffer, size_t bufferSize);
+        Result<void> decodeInto(const uint8_t* data, size_t length, acousea_ModuleWrapper* out);
+    }
 } // ProtoUtils
 
 #endif //ACOUSEA_INFRASTRUCTURE_MKR_PROTOUTILS_HPP

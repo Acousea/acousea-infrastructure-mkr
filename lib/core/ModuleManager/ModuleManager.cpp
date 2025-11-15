@@ -9,7 +9,7 @@ Result<void> ModuleManager::getModules(
     const acousea_ModuleCode* requestedModules,
     const pb_size_t requestedModulesSize)
 {
-    LOG_CLASS_FREE_MEMORY("::GetModules(start)");
+    LOG_CLASS_FREE_MEMORY("::GetModules(start) -> requestedModulesSize=%d", requestedModulesSize);
     const acousea_NodeConfiguration& nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
 
     for (uint16_t i = 0; i < requestedModulesSize; i++)
@@ -17,12 +17,14 @@ Result<void> ModuleManager::getModules(
         const acousea_ModuleCode& currentModuleCode = requestedModules[i];
         auto& currentEntry = outModulesArr[outModulesArrSize];
 
-        LOG_CLASS_INFO("Processing requested module code: %d, index %d of %d",
+        LOG_CLASS_INFO("Processing requested module code: %d, index %d, max index=%d, total requested=%d",
                        static_cast<int>(currentModuleCode),
                        i,
-                       requestedModulesSize - 1
+                       requestedModulesSize - 1,
+                       requestedModulesSize
         );
 
+        currentEntry = acousea_NodeDevice_ModulesEntry_init_default;
         currentEntry.has_value = true;
         currentEntry.key = currentModuleCode;
 
@@ -77,7 +79,6 @@ Result<void> ModuleManager::getModules(
                 auto batteryStatus = battery.status();
                 auto batteryPercentage = battery.voltageSOC_rounded();
 
-                currentEntry = acousea_NodeDevice_ModulesEntry_init_default;
                 currentEntry.value.which_module = acousea_ModuleWrapper_battery_tag;
                 currentEntry.value.module.battery = acousea_BatteryModule_init_default;
                 currentEntry.value.module.battery.batteryStatus = batteryStatus;
@@ -89,7 +90,6 @@ Result<void> ModuleManager::getModules(
             {
                 auto [latitude, longitude] = gps.read();
 
-                currentEntry = acousea_NodeDevice_ModulesEntry_init_default;
                 currentEntry.value.which_module = acousea_ModuleWrapper_location_tag;
                 currentEntry.value.module.location = acousea_LocationModule_init_default;
 
@@ -106,7 +106,7 @@ Result<void> ModuleManager::getModules(
                     LOG_CLASS_ERROR("Node configuration does not have report types module configured");
                     break;
                 }
-                currentEntry = acousea_NodeDevice_ModulesEntry_init_default;
+
                 currentEntry.value.which_module = acousea_ModuleWrapper_reportTypes_tag;
                 currentEntry.value.module.reportTypes = nodeConfig.reportTypesModule;
                 outModulesArr[outModulesArrSize++] = currentEntry;
@@ -119,7 +119,7 @@ Result<void> ModuleManager::getModules(
                     LOG_CLASS_ERROR("Node configuration does not have operation modes module configured");
                     break;
                 }
-                currentEntry = acousea_NodeDevice_ModulesEntry_init_default;
+
                 currentEntry.value.which_module = acousea_ModuleWrapper_operationModes_tag;
                 currentEntry.value.module.operationModes = nodeConfig.operationModesModule;
                 outModulesArr[outModulesArrSize++] = currentEntry;
@@ -132,7 +132,7 @@ Result<void> ModuleManager::getModules(
                     LOG_CLASS_ERROR("Node configuration does not have LoRa module configured");
                     break;
                 }
-                currentEntry = acousea_NodeDevice_ModulesEntry_init_default;
+
                 currentEntry.value.which_module = acousea_ModuleWrapper_loraReporting_tag;
                 currentEntry.value.module.loraReporting = nodeConfig.loraModule;
                 outModulesArr[outModulesArrSize++] = currentEntry;
@@ -145,7 +145,7 @@ Result<void> ModuleManager::getModules(
                     LOG_CLASS_ERROR("Node configuration does not have Iridium module configured");
                     break;
                 }
-                currentEntry = acousea_NodeDevice_ModulesEntry_init_default;
+
                 currentEntry.value.which_module = acousea_ModuleWrapper_iridiumReporting_tag;
                 currentEntry.value.module.iridiumReporting = nodeConfig.iridiumModule;
                 outModulesArr[outModulesArrSize++] = currentEntry;
@@ -158,7 +158,7 @@ Result<void> ModuleManager::getModules(
                     LOG_CLASS_ERROR("Node configuration does not have GSM-MQTT module configured");
                     break;
                 }
-                currentEntry = acousea_NodeDevice_ModulesEntry_init_default;
+
                 currentEntry.value.which_module = acousea_ModuleWrapper_gsmMqttReporting_tag;
                 currentEntry.value.module.gsmMqttReporting = nodeConfig.gsmMqttModule;
                 outModulesArr[outModulesArrSize++] = currentEntry;
@@ -167,7 +167,7 @@ Result<void> ModuleManager::getModules(
         case acousea_ModuleCode_RTC_MODULE:
             {
                 const auto epochSeconds = rtc.getEpoch();
-                currentEntry = acousea_NodeDevice_ModulesEntry_init_default;
+
                 currentEntry.value.which_module = acousea_ModuleWrapper_rtc_tag;
                 currentEntry.value.module.rtc = acousea_RTCModule_init_default;
                 currentEntry.value.module.rtc.epochSeconds = epochSeconds;
@@ -267,7 +267,7 @@ Result<void> ModuleManager::getModules(
             break;
         }
     }
-    LOG_CLASS_FREE_MEMORY("::GetModules(end)");
+    LOG_CLASS_FREE_MEMORY("::GetModules(end) -> outModulesArrSize=%d", outModulesArrSize);
     return RESULT_VOID_SUCCESS();
 }
 
@@ -348,7 +348,7 @@ Result<void> ModuleManager::setModules(const pb_size_t modules_count,
 }
 
 bool ModuleManager::_fetchModuleEntry(acousea_NodeDevice_ModulesEntry& outModuleEntry,
-                                      acousea_ModuleCode code,
+                                      const acousea_ModuleCode code,
                                       const uint16_t whichTag,
                                       const ModuleProxy::DeviceAlias alias) const
 {

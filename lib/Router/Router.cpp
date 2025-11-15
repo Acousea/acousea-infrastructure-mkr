@@ -149,9 +149,7 @@ bool Router::skipToNextPacket(IPort::PortType portType) const
 {
     const auto portU8 = static_cast<uint8_t>(portType);
 
-    const bool skipOk = packetQueue_.skipToNextPacket(portU8);
-
-    if (skipOk != 0)
+    if (const bool skipOk = packetQueue_.skipToNextPacket(portU8); skipOk != 0)
     {
         LOG_CLASS_ERROR("::skipToNextPacket -> Failed to skip packet");
         return false;
