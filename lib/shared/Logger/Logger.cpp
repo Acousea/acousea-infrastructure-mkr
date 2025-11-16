@@ -231,14 +231,18 @@ void Logger::vlog(const char* loggingClass, const char* fmt, va_list& args)
 }
 
 
-void Logger::vectorToHexString(const unsigned char* data, const size_t length, char* outBuffer, const size_t outSize)
+void Logger::vectorToHexString(const unsigned char* data, const size_t dataLength, char* outBuffer, const size_t outSize)
 {
-    size_t needed = (length * 2) + 1;
+    const size_t needed = (dataLength * 2) + 1;
     if (outSize < needed)
+    {
         return;
-    for (size_t i = 0; i < length; ++i)
+    }
+    for (size_t i = 0; i < dataLength; ++i)
+    {
         sprintf(outBuffer + i * 2, "%02X", data[i]);
-    outBuffer[length * 2] = '\0';
+    }
+    outBuffer[dataLength * 2] = '\0';
 }
 
 // FIXME: Too much memory usage with large buffers?

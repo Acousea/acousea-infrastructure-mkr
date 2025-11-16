@@ -69,14 +69,25 @@ namespace Dependencies
             return instance;
         }
 
+        // inline Uart& uart0()
+        // {
+        //     static Uart instance(
+        //         &sercom0,
+        //         PIN_SPI_SCK, // RX
+        //         PIN_SPI_MOSI, // TX
+        //         SERCOM_RX_PAD_1,
+        //         UART_TX_PAD_0);
+        //     return instance;
+        // }
+
         inline Uart& uart1()
         {
             static Uart instance(
                 &sercom1,
-                PIN_SPI_SCK, // RX
-                PIN_SPI_MOSI, // TX
-                SERCOM_RX_PAD_1,
-                UART_TX_PAD_0);
+                PIN_SERIAL1_RX, // RX
+                PIN_SERIAL1_TX, // TX
+                PAD_SERIAL1_RX,
+                PAD_SERIAL1_TX);
             return instance;
         }
 
@@ -250,7 +261,7 @@ namespace Dependencies
 #ifdef PLATFORM_ARDUINO
         inline SerialPort& _realSerial()
         {
-            static SerialPort instance(Hardware::uart0(), 9600, packetQueue());
+            static SerialPort instance(Serial1, 9600, packetQueue());
             return instance;
         }
 #endif
@@ -259,7 +270,8 @@ namespace Dependencies
         {
             return ENV_SELECT(
                 _realSerial(), // PROD
-                _mockSerial() // TEST
+                // _mockSerial() // TEST
+                _realSerial() // TEST
             );
         }
 

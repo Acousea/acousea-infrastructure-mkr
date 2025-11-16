@@ -45,8 +45,9 @@ public:
                          const std::unordered_map<DeviceAlias, IPort::PortType>& devicePortMap,
                          StorageManager& storageManager,
                          RTCController& rtcController
-                         );
+    );
     bool begin();
+    bool requestMultipleModules(const acousea_ModuleCode* codes, pb_size_t count, DeviceAlias alias);
 #endif
 
 
@@ -56,31 +57,34 @@ public:
     );
 
     const acousea_ModuleWrapper* getIfFresh(acousea_ModuleCode code);
+    void invalidateMultiple(const acousea_ModuleCode* codes, pb_size_t count);
 
     [[nodiscard]] const acousea_ModuleWrapper* getIfFreshOrSetOnDevice(acousea_ModuleCode code,
                                                                        const acousea_ModuleWrapper& module,
                                                                        DeviceAlias alias);
+    bool storeMultipleModules(const acousea_ModuleWrapper* const* wrappers, pb_size_t count);
 
     // ===================== Send / Receive =====================
     [[nodiscard]] bool requestModule(acousea_ModuleCode code, DeviceAlias alias);
 
-    [[nodiscard]] bool sendModule(acousea_ModuleCode code, const acousea_ModuleWrapper& module, DeviceAlias alias);
+    [[nodiscard]] bool sendModule(const acousea_ModuleWrapper& module, DeviceAlias alias);
 
-    [[nodiscard]] bool storeModule(acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper);
+    [[nodiscard]] bool storeModule(const acousea_ModuleWrapper& wrapper);
+    bool isModuleFresh(acousea_ModuleCode code) const;
 
 private:
     Router& router;
     // ===================== Mapeo alias -> puerto =====================
     const std::unordered_map<DeviceAlias, IPort::PortType> devicePortMap{
-            {DeviceAlias::PIDevice, IPort::PortType::SerialPort},
-            {DeviceAlias::VR2C, IPort::PortType::SerialPort}
+        {DeviceAlias::PIDevice, IPort::PortType::SerialPort},
+        {DeviceAlias::VR2C, IPort::PortType::SerialPort}
     };
 #ifdef MODULE_PROXY_CACHE_IN_RAM_ENABLED
     static constexpr const auto MAX_MODULES = ProtoUtils::ACOUSEA_MAX_MODULE_COUNT;
     std::optional<acousea_ModuleWrapper> entries[MAX_MODULES] = {}; // Initialized to std::nullopt
 #else
     static constexpr uint8_t START_BYTE = 0xAA;
-    static constexpr uint8_t END_BYTE   = 0x55;
+    static constexpr uint8_t END_BYTE = 0x55;
     uint64_t writeOffset_[_acousea_ModuleCode_MAX + 1]{}; // Current write offsets for each port (1-based index)
     uint64_t readOffset_[_acousea_ModuleCode_MAX + 1]{}; // Current read offsets for each port (1-based index)
     StorageManager& storage_;
@@ -89,11 +93,11 @@ private:
 #endif
 
 
-
     [[nodiscard]] IPort::PortType resolvePort(DeviceAlias alias) const noexcept;
 
     // ===================== Construcción de paquetes =====================
-    [[nodiscard]] static acousea_CommunicationPacket& buildRequestModulePacket(acousea_ModuleCode code);
+    [[nodiscard]] static acousea_CommunicationPacket& buildRequestModulePacket(
+        const acousea_ModuleCode* codes, pb_size_t count);
 
     [[nodiscard]] static acousea_CommunicationPacket& buildSetModulePacket(
         acousea_ModuleCode code, const acousea_ModuleWrapper& module);

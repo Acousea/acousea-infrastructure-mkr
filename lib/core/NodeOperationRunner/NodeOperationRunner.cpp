@@ -35,40 +35,39 @@ namespace
     }
 
 
-    acousea_CommunicationPacket& buildErrorPacket(const char* errorMessage)
+    acousea_CommunicationPacket& buildErrorPacketF(const char* fmt, ...)
     {
+        // Formatear el mensaje de error en el buffer temporal
+        auto* tmpErrMsgBuffer = reinterpret_cast<char*>(SharedMemory::tmpBuffer());
+        SharedMemory::clearTmpBuffer();
+
+        va_list args;
+        va_start(args, fmt);
+        vsnprintf(tmpErrMsgBuffer, SharedMemory::tmpBufferSize(), fmt, args); // Prints to tmp buffer
+        va_end(args);
+
+        // Ahora construir el paquete usando SOLO este buffer
         SharedMemory::resetCommunicationPacket();
         auto& packet = SharedMemory::communicationPacketRef();
 
-        // Reinicializar routing y encabezado
+        // Ruta estándar
         packet.has_routing = true;
         packet.routing = acousea_RoutingChunk_init_default;
 
-        // Importante: cambiar el tipo de cuerpo antes de acceder al union
+        // Elegimos el tipo del union ANTES de tocarlo
         packet.which_body = acousea_CommunicationPacket_error_tag;
 
-        // Inicializar correctamente el cuerpo de error
+        // Inicializamos correctamente el body
         packet.body.error = acousea_ErrorBody_init_default;
-        strncpy(packet.body.error.errorMessage, errorMessage, sizeof(packet.body.error.errorMessage) - 1);
+
+        // Copiar mensaje al campo nanopb sin desbordar
+        strncpy(packet.body.error.errorMessage, tmpErrMsgBuffer, sizeof(packet.body.error.errorMessage) - 1);
+
         packet.body.error.errorMessage[sizeof(packet.body.error.errorMessage) - 1] = '\0';
 
         return packet;
     }
 
-    acousea_CommunicationPacket& buildErrorPacketF(const char* fmt, ...)
-    {
-        // Usamos el scratch buffer de SharedMemory
-        auto* tmp = reinterpret_cast<char*>(SharedMemory::tmpBuffer());
-        SharedMemory::clearTmpBuffer();
-
-        va_list args;
-        va_start(args, fmt);
-        vsnprintf(tmp, SharedMemory::tmpBufferSize(), fmt, args);
-        va_end(args);
-
-        // La versión simple se encarga de copiarlo al CommunicationPacket
-        return buildErrorPacket(tmp);
-    }
 
     // -----------------------------------------------------------------------------
     // Optimized tag-to-string helpers (const char* version)
@@ -207,6 +206,7 @@ void NodeOperationRunner::tryReport(const IPort::PortType port,
                                     unsigned long& lastMinute,
                                     const unsigned long currentMinute)
 {
+    const auto& nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
     const auto cfgResult = getReportingEntryForCurrentOperationMode(cache.currentOperationMode.id, port);
 
     if (cfgResult.isError())
@@ -250,12 +250,9 @@ void NodeOperationRunner::tryReport(const IPort::PortType port,
     LOG_CLASS_INFO("%s Executing routine...", IPort::portTypeToCString(port));
     LOG_CLASS_INFO("Routine pointer address: %p", routinePtr);
 
-    uint8_t dummyAttemptsLeft = 1;
-    acousea_CommunicationPacket* outPacketPtr = executeRoutine(
+    auto [resultType, outPacketPtr] = executeRoutine(
         routinePtr, // Routine to execute
-        nullptr, // No input packet for report routines
-        port, // Port type
-        dummyAttemptsLeft // Attempts left (not used for reports)
+        nullptr // No input packet for report routines
     );
 
     if (!outPacketPtr) // Check for null pointer
@@ -267,14 +264,31 @@ void NodeOperationRunner::tryReport(const IPort::PortType port,
 
     LOG_CLASS_INFO("%s Report routine successfully executed.", IPort::portTypeToCString(port));
 
-    sendResponsePacket(port, // Port type
-                       nodeConfigurationRepository.getNodeConfiguration().localAddress, // Local address
-                       Router::originAddress, // Recipient address
-                       outPacketPtr // Output packet
-    );
-    lastMinute = currentMinute;
+
+    if (const auto sendOk = sendResponsePacket(nodeConfig.localAddress, port, Router::originAddress, outPacketPtr);
+        !sendOk)
+    {
+        LOG_CLASS_ERROR("Failed to send report through %s. Will retry again", IPort::portTypeToCString(port));
+    }
+    else
+    {
+        LOG_CLASS_INFO("Report packet sent successfully through %s.", IPort::portTypeToCString(port));
+        lastMinute = currentMinute;
+    }
 }
 
+
+void NodeOperationRunner::skipPacketForPort(const uint32_t packetId, IPort::PortType portType)
+{
+    // Discard the packet
+    if (const bool discardOk = router.skipToNextPacket(portType); !discardOk)
+    {
+        LOG_CLASS_ERROR("Failed to skip packet id % " PRId32 " from port %s.",
+                        packetId,
+                        IPort::portTypeToCString(portType)
+        );
+    }
+}
 
 void NodeOperationRunner::processNextIncomingPacket()
 {
@@ -304,10 +318,9 @@ void NodeOperationRunner::processNextIncomingPacket()
 
     if (!nextInPacketPtr->has_routing)
     {
-        LOG_CLASS_ERROR("Packet without routing. Dropping packet...");
-        // Puedes devolver un error, o bien construir una respuesta de error.
-        const auto errorPkt = &buildErrorPacket("Packet has no routing information.");
-        sendResponsePacket(portType, localAddress, Router::broadcastAddress, errorPkt);
+        LOG_CLASS_ERROR("Packet with id % " PRId32 " has no routing information. Discarding packet.",
+                        nextInPacketPtr->packetId
+        );
         return;
     }
 
@@ -328,8 +341,13 @@ void NodeOperationRunner::processNextIncomingPacket()
     {
         LOG_CLASS_ERROR("Routine not found for Body %d and Payload %d. Building error packet...",
                         bodyTag, payloadTag);
-        const auto errorPkt = &buildErrorPacketF("Routine not found for %d and Payload %d.", bodyTag, payloadTag);
-        return sendResponsePacket(portType, localAddress, nextInPacketSender, errorPkt);
+        const auto errorPkt = &buildErrorPacketF(
+            "This node cannot process the received packet. No routine for Body=%d and Payload=%d.", bodyTag, payloadTag
+        );
+        // return sendResponsePacket(portType, localAddress, nextInPacketSender, errorPkt);
+        [[maybe_unused]] const bool sendOk = sendResponsePacket(localAddress, portType, nextInPacketSender, errorPkt);
+        skipPacketForPort(packetId, portType);
+        return;
     }
 
     // Check if requeue is allowed for this packet type
@@ -344,97 +362,98 @@ void NodeOperationRunner::processNextIncomingPacket()
                           retryEntry.packetId
         );
         retryEntry.packetId = packetId;
-        retryEntry.attemptsLeft = MAX_RETRIES;
+        retryEntry.processingAttemptsLeft = MAX_RETRIES;
+        retryEntry.sendingAttemptsLeft = MAX_RETRIES;
         return;
     }
 
-    if (retryEntry.attemptsLeft == 0)
+    if (retryEntry.processingAttemptsLeft == 0 || retryEntry.sendingAttemptsLeft == 0)
     {
-        LOG_CLASS_ERROR("No retry attempts left for packet id % " PRId32 " on port %s. Discarding packet.",
-                        packetId,
-                        IPort::portTypeToCString(portType)
+        LOG_CLASS_ERROR(
+            "Ran out of attempts for packet id % " PRId32
+            " on port %s. (processingAttempts= %d, sendingAttempts=%d). Skipping packet...",
+            packetId, IPort::portTypeToCString(portType),
+            retryEntry.processingAttemptsLeft, retryEntry.sendingAttemptsLeft
         );
         // Reset retry entry
-        retryEntry.packetId = 0;
-        retryEntry.attemptsLeft = 0;
-
-        // Discard the packet
-        if (const bool discardOk = router.skipToNextPacket(portType); !discardOk)
-        {
-            LOG_CLASS_ERROR("Failed to discard packet id % " PRId32 " from port %s after exhausting retries.",
-                            packetId,
-                            IPort::portTypeToCString(portType)
-            );
-        }
+        retryEntry = RetryEntry{0, 0, 0};
+        skipPacketForPort(packetId, portType);
         return;
     }
 
-    acousea_CommunicationPacket* outPacketPtr = executeRoutine(
-        routinePtr, // Routine to execute
-        nextInPacketPtr, // Input packet for the routine
-        portType, // Port type
-        retryEntry.attemptsLeft // Attempts left for retries
-    );
+    // Execute the routine and get the output packet
+    auto [resultType, outPacketPtr] = executeRoutine(routinePtr, nextInPacketPtr);
 
-    sendResponsePacket(portType, localAddress, nextInPacketSender, outPacketPtr);
+    if (resultType == Result<void>::Type::Incomplete)
+    {
+        LOG_CLASS_WARNING("Routine %s execution incomplete for packet id % " PRId32 " on port %s. (Attempts left: %d)",
+                          routinePtr->routineName, packetId,
+                          IPort::portTypeToCString(portType), retryEntry.processingAttemptsLeft
+        );
+        // Skip to next packet if result was successfull
+        retryEntry.processingAttemptsLeft -= 1; // Incomplete routine execution
+        return;
+    }
+
+    if (!outPacketPtr) // Check for null pointer
+    {
+        LOG_CLASS_ERROR(
+            "Routine %s with RESULT = %s did not produce an output packet for packet id % " PRId32
+            " on port %s. Skipping packet.",
+            routinePtr->routineName, resultType == Result<void>::Type::Failure ? "FAILURE" : "SUCCESS",
+            packetId, IPort::portTypeToCString(portType)
+        );
+        skipPacketForPort(packetId, portType);
+        return;
+    }
+    // Ensure that the packet ID is preserved
+    outPacketPtr->packetId = packetId;
+
+    // Send the packet. If successful, clear the retry entry and skip the packet from the port queue.
+    // If sending fails, decrement sending attempts left.
+    if (const bool sendOk = sendResponsePacket(localAddress, portType, nextInPacketSender, outPacketPtr); !sendOk)
+    {
+        retryEntry.sendingAttemptsLeft -= 1; // Sending failed
+        LOG_CLASS_WARNING("Packet with id % " PRId32 " on port %s has %d attempts left",
+                          packetId, IPort::portTypeToCString(portType), retryEntry.sendingAttemptsLeft
+        );
+    }
+    else
+    {
+        retryEntry = RetryEntry{0, 0};
+        skipPacketForPort(packetId, portType);
+    }
 }
 
 
-// -------------------------------------- Packet Sending --------------------------------------
-// There is no input packet in this method, since there is only one packet in memory at a time.
-void NodeOperationRunner::sendResponsePacket(const IPort::PortType portType,
-                                             const uint8_t localAddress,
-                                             const uint8_t recipientAddress,
-                                             acousea_CommunicationPacket* outputPacketPtr)
+bool NodeOperationRunner::sendResponsePacket(const uint32_t& sender,
+                                             const IPort::PortType portType,
+                                             const uint8_t destination,
+                                             acousea_CommunicationPacket* outPacketPtr)
 {
-    if (!outputPacketPtr) // Check for null pointer
+    const auto sendOk = router.from(sender).to(destination).through(portType).send(*outPacketPtr);
+    if (!sendOk)
     {
-        LOG_CLASS_ERROR("No output packet provided to sendResponsePacket. Aborting send.");
-        return;
-    }
-
-    auto& outputPacketRef = *outputPacketPtr;
-
-    LOG_CLASS_INFO("Sending response packet with type %s through %s from local address %d ...",
-                   bodyAndPayloadTagToCString(outputPacketRef.which_body, getPayloadTag(outputPacketRef)),
-                   IPort::portTypeToCString(portType),
-                   localAddress
-    );
-
-    if (const auto sendOk = router.from(localAddress)
-                                  .to(recipientAddress)
-                                  .through(portType)
-                                  .send(outputPacketRef); !sendOk)
-    {
-        retryAttemptsLeft_[static_cast<uint8_t>(portType)].attemptsLeft += 1;
         LOG_CLASS_ERROR(
-            ": Failed to send response packet through %s. Will retry processing one more time. (Attempts left = %d)",
-            IPort::portTypeToCString(portType),
-            retryAttemptsLeft_[static_cast<uint8_t>(portType)].attemptsLeft
+            "Failed to send packet with id % " PRId32 " through %s",
+            outPacketPtr->packetId, IPort::portTypeToCString(portType)
         );
     }
     else
     {
         LOG_CLASS_INFO(
-            "Response packet for packet id % " PRId32 " sent successfully through %s. Skipping to next packet...",
-            outputPacketRef.packetId, IPort::portTypeToCString(portType)
+            "Packet for packet id % " PRId32 " sent successfully through %s",
+            outPacketPtr->packetId, IPort::portTypeToCString(portType)
         );
-        if (const bool discardOk = router.skipToNextPacket(portType); !discardOk)
-        {
-            LOG_CLASS_ERROR(
-                "Failed to discard processed packet with id % " PRId32 " from port %s after successful send.",
-                outputPacketRef.packetId, IPort::portTypeToCString(portType)
-            );
-        }
     }
+    return sendOk;
 }
 
+// -------------------------------------- Packet Sending --------------------------------------
 
-acousea_CommunicationPacket* NodeOperationRunner::executeRoutine(
+std::pair<Result<void>::Type, acousea_CommunicationPacket*> NodeOperationRunner::executeRoutine(
     IRoutine<acousea_CommunicationPacket>* routine,
-    acousea_CommunicationPacket* const optInputPacket, // Const pointer, not const data!
-    const IPort::PortType portType,
-    uint8_t& attemptsLeft
+    acousea_CommunicationPacket* const optInputPacket
 )
 {
     // Execute the routine (NO NEED TO CHECK FOR NULLPTR, SOME ROUTINES USE NULLPTR)
@@ -444,26 +463,24 @@ acousea_CommunicationPacket* NodeOperationRunner::executeRoutine(
 
     if (result.isIncomplete())
     {
-        attemptsLeft -= 1;
-        LOG_CLASS_WARNING("%s => incomplete (left attempts = %d) with message: %s",
-                          routine->routineName, attemptsLeft, result.getError());
-        return &buildErrorPacket(result.getError());
+        LOG_CLASS_WARNING("%s => incomplete with message: %s", routine->routineName, result.getError());
+        return {Result<void>::Type::Incomplete, nullptr};
     }
 
     if (result.isError())
     {
         LOG_CLASS_ERROR("%s => failed with message: %s", routine->routineName, result.getError());
-        attemptsLeft = 0; // No more attempts left on error
         if (!optInputPacket) // Check for null pointer
         {
             LOG_CLASS_INFO("%s: Cannot send error packet, there was no original packet.", routine->routineName);
-            return nullptr;
+            return {Result<void>::Type::Failure, nullptr};
         }
 
-        return &buildErrorPacket(result.getError());
+        return {Result<void>::Type::Failure, &buildErrorPacketF(result.getError())};
     }
+
     LOG_CLASS_INFO("%s => succeeded.", routine->routineName);
-    return result.getValueConst();
+    return {Result<void>::Type::Success, result.getValueConst()};
 }
 
 
@@ -553,7 +570,7 @@ Result<acousea_ReportingPeriodEntry> NodeOperationRunner::getReportingEntryForCu
 IRoutine<acousea_CommunicationPacket>* NodeOperationRunner::findRoutine(
     const uint8_t bodyTag, const uint8_t payloadTag) const
 {
-    dumpRoutinesMap();
+    // dumpRoutinesMap();
     LOG_CLASS_INFO("Searching routine for Body %d and Payload %d...",
                    bodyTag, payloadTag
     );

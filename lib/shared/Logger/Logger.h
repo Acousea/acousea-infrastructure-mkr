@@ -59,8 +59,8 @@ public:
     static void logfError(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
 
 
-    static void vectorToHexString(const unsigned char* data, size_t length, char* outBuffer, size_t outSize);
-    static HexString vectorToHexString(const unsigned char* data, size_t length);
+    static void vectorToHexString(const unsigned char* data, size_t dataLength, char* outBuffer, size_t outSize);
+    [[nodiscard]] static HexString vectorToHexString(const unsigned char* data, size_t length);
 
 private:
     friend class ErrorHandler; // To have access to logging internal methods and shared Buffer

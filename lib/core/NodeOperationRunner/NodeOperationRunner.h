@@ -39,12 +39,13 @@ private:
     struct RetryEntry
     {
         uint32_t packetId = 0;
-        uint8_t attemptsLeft = 0;
-        bool inUse = false;
+        uint8_t processingAttemptsLeft = 0;
+        uint8_t sendingAttemptsLeft = 0;
     };
 
-    RetryEntry retryAttemptsLeft_[IPort::MAX_PORT_TYPE_U8 + 1] = {};
     static constexpr uint8_t MAX_RETRIES = 3;
+
+    RetryEntry retryAttemptsLeft_[IPort::MAX_PORT_TYPE_U8 + 1] = {};
 
 
     // Struct to store the current currentOperationMode and cycle count
@@ -66,18 +67,17 @@ private:
         uint8_t bodyTag, uint8_t payloadTag) const;
     void tryTransitionOpMode();
     void tryReport(IPort::PortType port, unsigned long& lastMinute, unsigned long currentMinute);
+    void skipPacketForPort(uint32_t packetId, IPort::PortType portType);
+    [[nodiscard]] bool sendResponsePacket(const uint32_t& sender, IPort::PortType portType,
+                                          uint8_t destination, acousea_CommunicationPacket* outPacketPtr);
 
 
     void processReportingRoutines();
 
     void processNextIncomingPacket();
-    void sendResponsePacket(IPort::PortType portType, uint8_t localAddress, uint8_t recipientAddress,
-                            acousea_CommunicationPacket* outputPacketPtr);
 
-
-    acousea_CommunicationPacket* executeRoutine(IRoutine<acousea_CommunicationPacket>* routine,
-                                                       acousea_CommunicationPacket* optInputPacket,
-                                                       IPort::PortType portType, uint8_t& attemptsLeft);
+    std::pair<Result<void>::Type, acousea_CommunicationPacket*> executeRoutine(IRoutine<acousea_CommunicationPacket>* routine,
+                                                acousea_CommunicationPacket* optInputPacket);
 
     [[nodiscard]] Result<acousea_OperationMode> searchForOperationMode(uint8_t modeId) const;
     [[nodiscard]] Result<acousea_ReportingPeriodEntry> getReportingEntryForCurrentOperationMode(

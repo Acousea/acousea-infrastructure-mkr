@@ -61,16 +61,41 @@ Result<acousea_CommunicationPacket*> GetUpdatedNodeConfigurationRoutine::execute
     auto* outModulesArray = reinterpret_cast<acousea_NodeDevice_ModulesEntry*>(updatedConfigPayloadRef.modules);
     pb_size_t& outModulesCount = updatedConfigPayloadRef.modules_count = 0;
 
-    const auto resOk = moduleManager.getModules(outModulesArray, outModulesCount, reqModules, modulesCount);
+    const Result<void> resultGetModules = moduleManager.getModules(outModulesArray, outModulesCount, reqModules,
+                                                                   modulesCount);
 
     LOG_CLASS_INFO("GetUpdatedNodeConfigurationRoutine::execute() -> Retrieved %d updated modules", outModulesCount);
 
-
-    return resOk.isSuccess()
-               ? RESULT_SUCCESS(acousea_CommunicationPacket*, &responsePacket)
-               : RESULT_CLASS_FAILUREF(
-                   acousea_CommunicationPacket*,
-                   "Failed to get updated node configuration modules: %s",
-                   resOk.getError()
-               );
+    switch (resultGetModules.getStatus())
+    {
+    case Result<void>::Type::Success:
+        {
+            LOG_CLASS_INFO("::execute() -> Successfully got updated modules");
+            return RESULT_SUCCESS(acousea_CommunicationPacket*, &responsePacket);
+        }
+    case Result<void>::Type::Incomplete:
+        {
+            LOG_CLASS_WARNING("::execute() -> Incomplete getting updated modules: %s",
+                              resultGetModules.getError());
+            return RESULT_CLASS_INCOMPLETEF(acousea_CommunicationPacket*,
+                                            "Incomplete getting updated node modules: %s",
+                                            resultGetModules.getError()
+            );
+        }
+    case Result<void>::Type::Failure:
+        {
+            LOG_CLASS_ERROR("::execute() -> Failed to get updated modules: %s", resultGetModules.getError());
+            return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*,
+                                         "Failed to get updated node modules: %s",
+                                         resultGetModules.getError()
+            );
+        }
+    default:
+        {
+            LOG_CLASS_ERROR("::execute() -> Unknown result status when getting updated modules");
+            return RESULT_CLASS_FAILUREF(acousea_CommunicationPacket*,
+                                         "Unknown result status when getting updated node modules"
+            );
+        }
+    }
 }

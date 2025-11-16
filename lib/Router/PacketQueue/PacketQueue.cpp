@@ -161,11 +161,13 @@ bool PacketQueue::push(uint8_t port, const uint8_t* data, const uint16_t dataLen
 
 uint64_t PacketQueue::getReadOffset(const uint8_t port) const
 {
+    if (port == 0 || port > MAX_PORT) return 0;
     return readOffset_[port];
 }
 
 uint64_t PacketQueue::getNextReadOffset(const uint8_t port) const
 {
+    if (port == 0 || port > MAX_PORT) return 0;
     return nextReadOffset_[port];
 }
 

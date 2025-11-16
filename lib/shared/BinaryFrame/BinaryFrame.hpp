@@ -26,6 +26,13 @@ namespace BinaryFrame
         uint32_t timestamp = 0;
     };
 
+    struct Header
+    {
+        uint8_t startByte;
+        uint32_t timestamp;
+        uint16_t payloadLength;
+    };
+
     /**
      * Returns the required buffer size to wrap a payload of the given length.
      */
@@ -33,6 +40,11 @@ namespace BinaryFrame
     {
         return HEADER_SIZE + static_cast<size_t>(payloadLen) + FOOTER_SIZE;
     }
+
+    bool parseHeader(const uint8_t* buffer, size_t bufferSize, Header& outHeader) noexcept;
+
+    bool encodeHeader(uint8_t* outBuffer, size_t outBufferSize, const Header& header) noexcept;
+
     /** Writes the header and footer into the buffer without copying the payload.
      *
      * It is assumed that:
@@ -41,10 +53,10 @@ namespace BinaryFrame
      *  - bufferSize >= HEADER_SIZE + payloadLen + FOOTER_SIZE
      */
     [[nodiscard]] bool wrapInPlace(uint8_t* outFrameBuffer,
-                            size_t outFrameBufferSize,
-                            const uint8_t* payloadBuffer,
-                            uint16_t payloadLen,
-                            uint32_t timestamp) noexcept;
+                                   size_t outFrameBufferSize,
+                                   const uint8_t* payloadBuffer,
+                                   uint16_t payloadLen,
+                                   uint32_t timestamp) noexcept;
 
     /**
      * Returs the unwrapped frame view from the given buffer.
@@ -54,8 +66,8 @@ namespace BinaryFrame
      * bufferSize  -> number of valid bytes from buffer
      */
     [[nodiscard]] bool unwrap(const uint8_t* buffer,
-                       size_t bufferSize,
-                       FrameView& outFrameView) noexcept;
+                              size_t bufferSize,
+                              FrameView& outFrameView) noexcept;
 } // BinaryFrame
 
 #endif //ACOUSEA_INFRASTRUCTURE_MKR_BINARYFRAME_HPP

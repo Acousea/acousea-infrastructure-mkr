@@ -88,9 +88,32 @@ bool ModuleProxy::begin()
 // ============== Envío de comandos ==================
 // ===================================================
 
+bool ModuleProxy::requestMultipleModules(const acousea_ModuleCode* codes,
+                                         const pb_size_t count,
+                                         const DeviceAlias alias)
+{
+    acousea_CommunicationPacket& pkt = buildRequestModulePacket(codes, count);
+    const auto portType = resolvePort(alias);
+    if (portType == IPort::PortType::None)
+    {
+        LOG_CLASS_WARNING("ModuleProxy::requestMultipleModules() -> Could not resolve port for alias %s",
+                          toString(alias));
+        return false;
+    }
+    // The modules will be marked as not fresh when the response is received
+    invalidateMultiple(codes, count);
+    LOG_CLASS_INFO("Requesting %d modules through %s for alias %s", static_cast<int>(count),
+                   IPort::portTypeToCString(portType), toString(alias)
+    );
+    return router
+           .from(Router::broadcastAddress)
+           .through(portType)
+           .send(pkt);
+}
+
 bool ModuleProxy::requestModule(const acousea_ModuleCode code, const DeviceAlias alias)
 {
-    acousea_CommunicationPacket& pkt = buildRequestModulePacket(code);
+    acousea_CommunicationPacket& pkt = buildRequestModulePacket(&code, 1);
     const auto portType = resolvePort(alias);
     if (portType == IPort::PortType::None)
     {
@@ -111,11 +134,20 @@ bool ModuleProxy::requestModule(const acousea_ModuleCode code, const DeviceAlias
            .send(pkt);
 }
 
-bool ModuleProxy::sendModule(const acousea_ModuleCode code,
-                             const acousea_ModuleWrapper& module,
+bool ModuleProxy::sendModule(const acousea_ModuleWrapper& module,
                              const DeviceAlias alias)
 {
+    const auto moduleCodeUint = module.which_module;
+    if (moduleCodeUint < _acousea_ModuleCode_MIN + 1 || moduleCodeUint > _acousea_ModuleCode_MAX)
+    {
+        LOG_CLASS_WARNING("ModuleProxy::sendModule() -> Invalid module code %d in ModuleWrapper",
+                          static_cast<int>(moduleCodeUint));
+        return false;
+    }
+    const auto code = static_cast<acousea_ModuleCode>(module.which_module);
+
     acousea_CommunicationPacket& pkt = buildSetModulePacket(code, module);
+
     const auto portType = resolvePort(alias);
     if (portType == IPort::PortType::None)
     {
@@ -153,23 +185,39 @@ IPort::PortType ModuleProxy::resolvePort(const DeviceAlias alias) const noexcept
 
 
 // Build the request packet using SharedMemory's communicationPacketRef()
-acousea_CommunicationPacket& ModuleProxy::buildRequestModulePacket(acousea_ModuleCode code)
+acousea_CommunicationPacket& ModuleProxy::buildRequestModulePacket(const acousea_ModuleCode* codes,
+                                                                   const pb_size_t count)
 {
-    LOG_CLASS_FREE_MEMORY("::buildRequestPacket(start)");
+    LOG_CLASS_FREE_MEMORY("::buildRequestPacket(start multi)");
     auto& pkt = SharedMemory::communicationPacketRef(); // Use SharedMemory's communication packet
     pkt = acousea_CommunicationPacket_init_default; // Initialize the packet
     pkt.has_routing = true;
     pkt.routing.sender = Router::broadcastAddress;
-    pkt.routing.receiver = 0; // backend
+    pkt.routing.receiver = 0; // device
     pkt.routing.ttl = 5;
 
     pkt.which_body = acousea_CommunicationPacket_command_tag;
     pkt.body.command = acousea_CommandBody_init_default;
     pkt.body.command.which_command = acousea_CommandBody_requestedConfiguration_tag;
-    pkt.body.command.command.requestedConfiguration = acousea_GetUpdatedNodeConfigurationPayload_init_default;
-    pkt.body.command.command.requestedConfiguration.requestedModules_count = 1;
-    pkt.body.command.command.requestedConfiguration.requestedModules[0] = code;
-    LOG_CLASS_FREE_MEMORY("::buildRequestPacket(end)");
+
+    auto& req = pkt.body.command.command.requestedConfiguration;
+    req = acousea_GetUpdatedNodeConfigurationPayload_init_default;
+
+    // Limitar count al máximo permitido por nanopb
+    constexpr pb_size_t maxModules = _acousea_ModuleCode_MAX;
+    const pb_size_t safeCount = (count > maxModules) ? maxModules : count;
+    req.requestedModules_count = safeCount;
+    for (pb_size_t i = 0; i < safeCount; i++)
+    {
+        req.requestedModules[i] = codes[i];
+    }
+
+    LOG_CLASS_FREE_MEMORY(
+        "::buildRequestPacket(end multi) -> requested %d modules (max allowed %d)",
+        safeCount,
+        maxModules
+    );
+
     return pkt;
 }
 
@@ -239,7 +287,7 @@ const acousea_ModuleWrapper* ModuleProxy::getIfFreshOrSetOnDevice(
         return optModulePtr;
     }
 
-    if (const bool sendOk = sendModule(code, module, alias); !sendOk)
+    if (const bool sendOk = sendModule(module, alias); !sendOk)
     {
         LOG_CLASS_ERROR("ModuleProxy::getIfFreshOrSetOnDevice() -> Failed to send module %d to %s",
                         static_cast<int>(code), toString(alias));
@@ -302,11 +350,32 @@ void ModuleProxy::invalidateAll()
 
 #else
 
-bool ModuleProxy::storeModule(const acousea_ModuleCode code, const acousea_ModuleWrapper& wrapper)
+bool ModuleProxy::storeMultipleModules(const acousea_ModuleWrapper* const* wrappers, const pb_size_t count)
+{
+    for (pb_size_t i = 0; i < count; i++)
+    {
+        if (!storeModule(*wrappers[i]))
+        {
+            LOG_CLASS_WARNING("::storeMultipleModules() -> Failed to store module %d", wrappers[i]->which_module);
+            return false;
+        }
+    }
+    return true;
+}
+
+bool ModuleProxy::storeModule(const acousea_ModuleWrapper& wrapper)
 {
     // Archivo del módulo
+    const auto wrapperCode = static_cast<acousea_ModuleCode>(wrapper.which_module);
+    if (wrapperCode < _acousea_ModuleCode_MIN + 1 || wrapperCode > _acousea_ModuleCode_MAX)
+    {
+        LOG_CLASS_WARNING("::storeMultipleModules() -> Invalid module code %d in ModuleWrapper",
+                          static_cast<int>(wrapperCode));
+        return false;
+    }
+
     char filePath[10];
-    std::snprintf(filePath, sizeof(filePath), "/mod%d", static_cast<int>(code));
+    std::snprintf(filePath, sizeof(filePath), "/mod%d", static_cast<int>(wrapperCode));
 
     // Buffer temporal compartido
     auto* tmpEncodingBuffer = SharedMemory::tmpBuffer();
@@ -322,7 +391,7 @@ bool ModuleProxy::storeModule(const acousea_ModuleCode code, const acousea_Modul
 
     if (!encodeResultWithEncodedLength.isSuccess())
     {
-        LOG_CLASS_WARNING("::storeModule() -> Failed to encode module %d", static_cast<int>(code));
+        LOG_CLASS_WARNING("::storeModule() -> Failed to encode module %d", static_cast<int>(wrapperCode));
         return false;
     }
 
@@ -347,7 +416,7 @@ bool ModuleProxy::storeModule(const acousea_ModuleCode code, const acousea_Modul
             timestamp) // The timestamp
     )
     {
-        LOG_CLASS_WARNING("::storeModule() -> Failed to wrap module %d", static_cast<int>(code));
+        LOG_CLASS_WARNING("::storeModule() -> Failed to wrap module %d", static_cast<int>(wrapperCode));
         return false;
     }
 
@@ -355,21 +424,26 @@ bool ModuleProxy::storeModule(const acousea_ModuleCode code, const acousea_Modul
     if (const bool appendOk = storage_.appendBytesToFile(filePath, tmpEncodingBuffer, totalRecordSize); !appendOk)
     {
         LOG_CLASS_WARNING("::storeModule() -> Failed to write module %d to file %s",
-                          static_cast<int>(code),
+                          static_cast<int>(wrapperCode),
                           filePath);
         return false;
     }
 
-    writeOffset_[static_cast<int>(code)] += totalRecordSize;
+    writeOffset_[static_cast<int>(wrapperCode)] += totalRecordSize;
 
     LOG_CLASS_INFO("::storeModule() -> Stored module %d (%u bytes) in %s",
-                   static_cast<int>(code),
+                   static_cast<int>(wrapperCode),
                    totalRecordSize,
                    filePath);
 
     return true;
 }
 
+bool ModuleProxy::isModuleFresh(const acousea_ModuleCode code) const
+{
+    const int idx = static_cast<int>(code);
+    return readOffset_[idx] < writeOffset_[idx];
+}
 
 const acousea_ModuleWrapper* ModuleProxy::getIfFresh(const acousea_ModuleCode code)
 {
@@ -461,6 +535,15 @@ const acousea_ModuleWrapper* ModuleProxy::getIfFresh(const acousea_ModuleCode co
     return &optLoadedModule_.value();
 }
 
+
+void ModuleProxy::invalidateMultiple(const acousea_ModuleCode* codes, const pb_size_t count)
+{
+    const pb_size_t safeCount = (count > _acousea_ModuleCode_MAX) ? _acousea_ModuleCode_MAX : count;
+    for (pb_size_t i = 0; i < safeCount; i++)
+    {
+        invalidateModule(codes[i]);
+    }
+}
 
 void ModuleProxy::invalidateModule(const acousea_ModuleCode code)
 {

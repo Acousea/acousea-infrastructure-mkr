@@ -203,7 +203,7 @@ void test_setup()
     hardware::rtc().init();
 
     // Initialize the gps
-    hardware::_gpsMock().init();
+    hardware::gps().init();
 
     // Logger initialization and configuration
     const auto logPath = SD_PATH("/log.csv");

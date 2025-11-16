@@ -25,7 +25,7 @@ public:
     Result<acousea_CommunicationPacket*> execute(acousea_CommunicationPacket* optPacket) override;
 
 private:
-    bool _registerStoreActions(RollbackAgent& agent, const acousea_NodeDevice_ModulesEntry* modules, uint16_t modules_count);
+    bool _storeModules(const acousea_NodeDevice_ModulesEntry* modules, uint16_t modules_count);
 };
 
 

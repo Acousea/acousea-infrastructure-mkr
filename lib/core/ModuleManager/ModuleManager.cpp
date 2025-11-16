@@ -3,6 +3,8 @@
 #include <cinttypes>
 #include <Logger/Logger.h>
 
+#include "SharedMemory/SharedMemory.hpp"
+
 Result<void> ModuleManager::getModules(
     acousea_NodeDevice_ModulesEntry* outModulesArr,
     pb_size_t& outModulesArrSize,
@@ -12,6 +14,10 @@ Result<void> ModuleManager::getModules(
     LOG_CLASS_FREE_MEMORY("::GetModules(start) -> requestedModulesSize=%d", requestedModulesSize);
     const acousea_NodeConfiguration& nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
 
+    // Reset output size
+    acousea_ModuleCode notFreshModuleCodes[_acousea_ModuleCode_MAX];
+    pb_size_t notFreshModulesCount = 0;
+
     for (uint16_t i = 0; i < requestedModulesSize; i++)
     {
         const acousea_ModuleCode& currentModuleCode = requestedModules[i];
@@ -19,9 +25,7 @@ Result<void> ModuleManager::getModules(
 
         LOG_CLASS_INFO("Processing requested module code: %d, index %d, max index=%d, total requested=%d",
                        static_cast<int>(currentModuleCode),
-                       i,
-                       requestedModulesSize - 1,
-                       requestedModulesSize
+                       i, requestedModulesSize - 1, requestedModulesSize
         );
 
         currentEntry = acousea_NodeDevice_ModulesEntry_init_default;
@@ -32,19 +36,18 @@ Result<void> ModuleManager::getModules(
         {
         case acousea_ModuleCode_AMBIENT_MODULE:
             {
-                const bool fetchOk = _fetchModuleEntry(
-                    currentEntry,
-                    acousea_ModuleCode_AMBIENT_MODULE,
-                    acousea_ModuleWrapper_ambient_tag,
-                    ModuleProxy::DeviceAlias::PIDevice
-                );
-
-                if (!fetchOk)
+                if (!moduleProxy.isModuleFresh(currentModuleCode))
                 {
-                    return RESULT_CLASS_VOID_INCOMPLETEF(
-                        "%s", "Ambient module data is not fresh yet (requested from device)");
+                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
+                    break;
                 }
-
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                if (!optWrapper)
+                {
+                    return RESULT_CLASS_VOID_FAILUREF(
+                        "%s", "Ambient module data should be fresh at this point, but it's not");
+                }
+                currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
                 break;
             }
@@ -57,27 +60,27 @@ Result<void> ModuleManager::getModules(
             }
         case acousea_ModuleCode_STORAGE_MODULE:
             {
-                const bool fetchOk = _fetchModuleEntry(
-                    currentEntry,
-                    acousea_ModuleCode_STORAGE_MODULE,
-                    acousea_ModuleWrapper_storage_tag,
-                    ModuleProxy::DeviceAlias::PIDevice
-                );
-
-                if (!fetchOk)
+                if (!moduleProxy.isModuleFresh(currentModuleCode))
                 {
-                    return RESULT_CLASS_VOID_INCOMPLETEF(
-                        "%s", "Storage module data is not fresh yet (requested from device)");
+                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
+                    break;
                 }
 
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                if (!optWrapper)
+                {
+                    return RESULT_CLASS_VOID_FAILUREF(
+                        "%s", "Storage module data should be fresh at this point, but it's not");
+                }
+                currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
                 break;
             }
 
         case acousea_ModuleCode_BATTERY_MODULE:
             {
-                auto batteryStatus = battery.status();
-                auto batteryPercentage = battery.voltageSOC_rounded();
+                const auto batteryStatus = battery.status();
+                const auto batteryPercentage = battery.voltageSOC_rounded();
 
                 currentEntry.value.which_module = acousea_ModuleWrapper_battery_tag;
                 currentEntry.value.module.battery = acousea_BatteryModule_init_default;
@@ -177,86 +180,86 @@ Result<void> ModuleManager::getModules(
 
         case acousea_ModuleCode_ICLISTEN_STATUS:
             {
-                const bool fetchOk = _fetchModuleEntry(
-                    currentEntry,
-                    acousea_ModuleCode_ICLISTEN_STATUS,
-                    acousea_ModuleWrapper_icListenStatus_tag,
-                    ModuleProxy::DeviceAlias::PIDevice
-                );
-
-                if (!fetchOk)
+                if (!moduleProxy.isModuleFresh(currentModuleCode))
                 {
-                    return RESULT_CLASS_VOID_INCOMPLETEF("%s", "ICListen status is not fresh (requested from device)");
+                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
+                    break;
                 }
-
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                if (!optWrapper)
+                {
+                    return RESULT_CLASS_VOID_FAILUREF(
+                        "%s", "ICListen status data should be fresh at this point, but it's not");
+                }
+                currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG:
             {
-                const bool fetchOk = _fetchModuleEntry(
-                    currentEntry,
-                    acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG,
-                    acousea_ModuleWrapper_icListenLoggingConfig_tag,
-                    ModuleProxy::DeviceAlias::PIDevice
-                );
-
-                if (!fetchOk)
+                if (!moduleProxy.isModuleFresh(currentModuleCode))
                 {
-                    return RESULT_CLASS_VOID_INCOMPLETEF(
-                        "%s", "ICListen logging config is not fresh (requested from device)");
+                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
+                    break;
                 }
-
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                if (!optWrapper)
+                {
+                    return RESULT_CLASS_VOID_FAILUREF(
+                        "%s", "ICListen logging config data should be fresh at this point, but it's not");
+                }
+                currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG:
             {
-                const bool fetchOk = _fetchModuleEntry(
-                    currentEntry,
-                    acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG,
-                    acousea_ModuleWrapper_icListenStreamingConfig_tag,
-                    ModuleProxy::DeviceAlias::PIDevice
-                );
-                if (!fetchOk)
+                if (!moduleProxy.isModuleFresh(currentModuleCode))
                 {
-                    return RESULT_CLASS_VOID_INCOMPLETEF(
-                        "%s", "ICListen streaming config is not fresh (requested from device)");
+                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
+                    break;
                 }
-
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                if (!optWrapper)
+                {
+                    return RESULT_CLASS_VOID_FAILUREF(
+                        "%s", "ICListen streaming config data should be fresh at this point, but it's not");
+                }
+                currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_RECORDING_STATS:
             {
-                const bool fetchOk = _fetchModuleEntry(
-                    currentEntry,
-                    acousea_ModuleCode_ICLISTEN_RECORDING_STATS,
-                    acousea_ModuleWrapper_icListenRecordingStats_tag,
-                    ModuleProxy::DeviceAlias::PIDevice
-                );
-                if (!fetchOk)
+                if (!moduleProxy.isModuleFresh(currentModuleCode))
                 {
-                    return RESULT_CLASS_VOID_INCOMPLETEF(
-                        "%s", "ICListen recording stats is not fresh (requested from device)");
+                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
+                    break;
                 }
-
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                if (!optWrapper)
+                {
+                    return RESULT_CLASS_VOID_FAILUREF(
+                        "%s", "ICListen recording stats data should be fresh at this point, but it's not");
+                }
+                currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
                 break;
             }
         case acousea_ModuleCode_ICLISTEN_HF:
             {
-                const bool fetchOk = _fetchModuleEntry(
-                    currentEntry,
-                    acousea_ModuleCode_ICLISTEN_HF,
-                    acousea_ModuleWrapper_icListenHF_tag,
-                    ModuleProxy::DeviceAlias::PIDevice
-                );
-                if (!fetchOk)
+                if (!moduleProxy.isModuleFresh(currentModuleCode))
                 {
-                    return RESULT_CLASS_VOID_INCOMPLETEF("%s", "ICListen HF is not fresh (requested from device)");
+                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
+                    break;
                 }
-
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                if (!optWrapper)
+                {
+                    return RESULT_CLASS_VOID_FAILUREF(
+                        "%s", "ICListen HF complete data should be fresh at this point, but it's not");
+                }
+                currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
                 break;
             }
@@ -266,6 +269,30 @@ Result<void> ModuleManager::getModules(
             currentEntry.key = acousea_ModuleCode_MODULE_UNKNOWN;
             break;
         }
+    }
+
+
+    if (notFreshModulesCount > 0)
+    {
+
+        auto* hexStringBuf = reinterpret_cast<char*>(SharedMemory::tmpBuffer());
+        constexpr size_t HEX_STRING_BUF_SIZE = SharedMemory::tmpBufferSize();
+
+        Logger::vectorToHexString(
+            reinterpret_cast<const unsigned char*>(notFreshModuleCodes), notFreshModulesCount * sizeof(acousea_ModuleCode),
+            hexStringBuf, HEX_STRING_BUF_SIZE
+        );
+
+        LOG_CLASS_WARNING("::GetModules() -> The following modules are not fresh yet: %s", hexStringBuf);
+        moduleProxy.requestMultipleModules(
+            notFreshModuleCodes,
+            notFreshModulesCount,
+            ModuleProxy::DeviceAlias::PIDevice
+        );
+
+        return RESULT_CLASS_VOID_INCOMPLETEF(
+            "The following modules are not fresh yet: %s", hexStringBuf
+        );
     }
     LOG_CLASS_FREE_MEMORY("::GetModules(end) -> outModulesArrSize=%d", outModulesArrSize);
     return RESULT_VOID_SUCCESS();
@@ -345,25 +372,6 @@ Result<void> ModuleManager::setModules(const pb_size_t modules_count,
     // Important:  Store the updated configuration only after processing all modules successfully
     nodeConfigurationRepository.saveConfiguration(nodeConfig);
     return RESULT_VOID_SUCCESS();
-}
-
-bool ModuleManager::_fetchModuleEntry(acousea_NodeDevice_ModulesEntry& outModuleEntry,
-                                      const acousea_ModuleCode code,
-                                      const uint16_t whichTag,
-                                      const ModuleProxy::DeviceAlias alias) const
-{
-    const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFreshOrRequestFromDevice(code, alias);
-    if (!optWrapper)
-    {
-        return false;
-    }
-
-    outModuleEntry.has_value = true;
-    outModuleEntry.key = code;
-    outModuleEntry.value = *optWrapper;
-    outModuleEntry.value.which_module = whichTag;
-
-    return true;
 }
 
 

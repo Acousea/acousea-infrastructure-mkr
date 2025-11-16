@@ -40,12 +40,6 @@ public:
     Result<void> setModules(pb_size_t modules_count, const acousea_SetNodeConfigurationPayload_ModulesEntry* modules);
 
 private:
-    [[nodiscard]] bool _fetchModuleEntry(
-        acousea_NodeDevice_ModulesEntry& outModuleEntry,
-        acousea_ModuleCode code,
-        uint16_t whichTag,
-        ModuleProxy::DeviceAlias alias) const;
-
     [[nodiscard]] Result<void> _setOperationModes(acousea_NodeConfiguration& nodeConfig,
                                                   const acousea_SetNodeConfigurationPayload_ModulesEntry& moduleEntry);
     [[nodiscard]] Result<void> _setReportTypesModule(acousea_NodeConfiguration& nodeConfig,

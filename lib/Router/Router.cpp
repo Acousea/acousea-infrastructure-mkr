@@ -134,9 +134,16 @@ std::optional<std::pair<IPort::PortType, acousea_CommunicationPacket*>> Router::
             continue;
         }
 
+        if (nextPacketRef.packetId == 0)
+        {
+            LOG_CLASS_ERROR("Router::nextPacket -> packet has invalid packetId=0. Setting id based on readOffset_");
+            // Discard the corrupt packet
+            nextPacketRef.packetId = packetQueue_.getReadOffset(port->getTypeU8()) + 1; // +1 to avoid zero packetId
+        }
+
         // Paquete válido encontrado
-        LOG_CLASS_INFO("Router::nextPacket -> OK (sender=%lu, receiver=%lu)", nextPacketRef.routing.sender,
-                       nextPacketRef.routing.receiver);
+        LOG_CLASS_INFO("Router::nextPacket -> OK (id = %lu, sender=%lu, receiver=%lu)",
+                       nextPacketRef.packetId, nextPacketRef.routing.sender, nextPacketRef.routing.receiver);
 
         return std::make_pair(port->getTypeEnum(), &nextPacketRef);
     }
@@ -149,7 +156,7 @@ bool Router::skipToNextPacket(IPort::PortType portType) const
 {
     const auto portU8 = static_cast<uint8_t>(portType);
 
-    if (const bool skipOk = packetQueue_.skipToNextPacket(portU8); skipOk != 0)
+    if (const bool skipOk = packetQueue_.skipToNextPacket(portU8); !skipOk)
     {
         LOG_CLASS_ERROR("::skipToNextPacket -> Failed to skip packet");
         return false;

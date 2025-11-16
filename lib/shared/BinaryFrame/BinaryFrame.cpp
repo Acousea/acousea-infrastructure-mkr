@@ -1,9 +1,61 @@
 #include "BinaryFrame.hpp"
-#include "SharedMemory/SharedMemory.hpp"
+
+#include <cstring>
 
 namespace BinaryFrame
 {
+    bool parseHeader(const uint8_t* buffer, const size_t bufferSize, Header& outHeader) noexcept
+    {
+        if (!buffer)
+        {
+            return false;
+        }
+        if (bufferSize < HEADER_SIZE)
+        {
+            return false;
+        }
 
+        size_t pos = 0;
+        outHeader.startByte = buffer[pos++];
+
+        // Timestamp
+        outHeader.timestamp |= static_cast<uint32_t>(buffer[pos++]);
+        outHeader.timestamp |= static_cast<uint32_t>(buffer[pos++]) << 8;
+        outHeader.timestamp |= static_cast<uint32_t>(buffer[pos++]) << 16;
+        outHeader.timestamp |= static_cast<uint32_t>(buffer[pos++]) << 24;
+
+        // Length
+        outHeader.payloadLength = static_cast<uint16_t>(buffer[pos]) | static_cast<uint16_t>(buffer[pos + 1]) << 8;
+
+        return true;
+    }
+
+    bool encodeHeader(uint8_t* outBuffer, const size_t outBufferSize, const Header& header) noexcept
+    {
+        if (!outBuffer)
+        {
+            return false;
+        }
+        if (outBufferSize < HEADER_SIZE)
+        {
+            return false;
+        }
+
+        size_t pos = 0;
+        outBuffer[pos++] = header.startByte;
+
+        // Timestamp little endian
+        outBuffer[pos++] = static_cast<uint8_t>(header.timestamp & 0xFF);
+        outBuffer[pos++] = static_cast<uint8_t>((header.timestamp >> 8) & 0xFF);
+        outBuffer[pos++] = static_cast<uint8_t>((header.timestamp >> 16) & 0xFF);
+        outBuffer[pos++] = static_cast<uint8_t>((header.timestamp >> 24) & 0xFF);
+
+        // Length little endian
+        outBuffer[pos++] = static_cast<uint8_t>(header.payloadLength & 0xFF);
+        outBuffer[pos++] = static_cast<uint8_t>((header.payloadLength >> 8) & 0xFF);
+
+        return true;
+    }
 
     bool wrapInPlace(uint8_t* outFrameBuffer, const size_t outFrameBufferSize,
                      const uint8_t* payloadBuffer, const uint16_t payloadLen,
