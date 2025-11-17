@@ -58,3 +58,8 @@ Result<acousea_CommunicationPacket*> SetNodeConfigurationRoutine::execute(
         }
     }
 }
+
+void SetNodeConfigurationRoutine::reset()
+{
+    LOG_CLASS_INFO("::reset() -> Routine state reset.");
+}

@@ -33,6 +33,8 @@ public:
     {
     }
 
+    void invalidateModules(const acousea_ModuleCode* requestedModules, pb_size_t requestedModulesSize);
+    Result<void> requestUpdatedModules(const acousea_ModuleCode* requestedModules, pb_size_t requestedModulesSize);
     [[nodiscard]] Result<void> getModules(acousea_NodeDevice_ModulesEntry* outModulesArr,
                                           pb_size_t& outModulesArrSize,
                                           const acousea_ModuleCode* requestedModules,
@@ -48,6 +50,7 @@ private:
     [[nodiscard]] Result<void> _setReportingPeriods(acousea_NodeConfiguration& nodeConfig,
                                                     const acousea_SetNodeConfigurationPayload_ModulesEntry&
                                                     moduleEntry);
+    static bool _areModulesEqual(const acousea_ModuleWrapper& moduleA, const acousea_ModuleWrapper& moduleB);
 };
 
 #endif //ACOUSEA_INFRASTRUCTURE_MKR_MODULE_MANAGER_HPP

@@ -20,20 +20,12 @@ namespace
             return p.body.response.which_response;
         case acousea_CommunicationPacket_report_tag:
             return p.body.report.which_report;
+        case acousea_CommunicationPacket_error_tag:
+            return acousea_ErrorBody_errorMessage_tag; // Has only one payload (no internal one-of -> no which_error)
         default:
             return 0;
         }
     }
-
-    bool mustReport(const unsigned long currentMinute, const unsigned long reportingPeriod,
-                    const unsigned long lastReportMinute)
-    {
-        if (reportingPeriod == 0) return false; // No reporting if period is 0 (disabled)
-        if (lastReportMinute == ULONG_MAX) return true; // Always report if never reported before
-        if (currentMinute == lastReportMinute) return false; // Avoids issues with duplicated reporting for same minute
-        return ((currentMinute - lastReportMinute) >= reportingPeriod);
-    }
-
 
     acousea_CommunicationPacket& buildErrorPacketF(const char* fmt, ...)
     {
@@ -96,6 +88,10 @@ namespace
             case acousea_ReportBody_statusPayload_tag: return "Report->StatusPayload";
             default: return "Report->Unknown";
             }
+        case acousea_CommunicationPacket_error_tag:
+            {
+                return "Error->ErrorMessage";
+            }
         default:
             return "UnknownBody";
         }
@@ -116,7 +112,7 @@ NodeOperationRunner::NodeOperationRunner(
     cache = {
         acousea_OperationMode_init_default,
         0,
-        {ULONG_MAX, ULONG_MAX, ULONG_MAX}
+        {0, 0, 0}
     };
 }
 
@@ -187,23 +183,23 @@ void NodeOperationRunner::processReportingRoutines()
     const auto& currentNodeConfiguration = nodeConfigurationRepository.getNodeConfiguration();
 
     currentNodeConfiguration.has_iridiumModule
-        ? tryReport(IPort::PortType::SBDPort, cache.lastReportMinute.sbd, currentMinute)
+        ? tryReport(IPort::PortType::SBDPort, cache.nextReportMinute.sbd, currentMinute)
         : LOG_CLASS_INFO("Iridium module not present, skipping Iridium report.");
 
 #ifdef PLATFORM_HAS_LORA
     currentNodeConfiguration.has_loraModule
-        ? tryReport(IPort::PortType::LoraPort, cache.lastReportMinute.lora, currentMinute)
+        ? tryReport(IPort::PortType::LoraPort, cache.nextReportMinute.lora, currentMinute)
         : LOG_CLASS_INFO("LoRa module not present, skipping LoRa report.");
 #endif
 #ifdef PLATFORM_HAS_GSM
     currentNodeConfiguration.has_gsmMqttModule
-        ? tryReport(IPort::PortType::GsmMqttPort, cache.lastReportMinute.gsmMqtt, currentMinute)
+        ? tryReport(IPort::PortType::GsmMqttPort, cache.nextReportMinute.gsmMqtt, currentMinute)
         : LOG_CLASS_INFO("GSM-MQTT module not present, skipping GSM-MQTT report.");
 #endif
 }
 
 void NodeOperationRunner::tryReport(const IPort::PortType port,
-                                    unsigned long& lastMinute,
+                                    unsigned long& nextReportMinute,
                                     const unsigned long currentMinute)
 {
     const auto& nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
@@ -217,16 +213,20 @@ void NodeOperationRunner::tryReport(const IPort::PortType port,
 
     auto [modeId, period] = cfgResult.getValueConst();
 
-    LOG_CLASS_INFO("Trying to report on %s. Config: { Period=%lu, Current minute=%lu, Last report minute=%lu }",
+    LOG_CLASS_INFO("Trying to report on %s. Config: { Period=%lu, Current minute=%lu, Next report minute=%lu }",
                    IPort::portTypeToCString(port),
                    period,
                    currentMinute,
-                   lastMinute
+                   nextReportMinute
     );
 
-    if (!mustReport(currentMinute, period, lastMinute))
+    if (currentMinute != nextReportMinute)
     {
-        LOG_CLASS_INFO("%s Not time to report yet. Skipping report...", IPort::portTypeToCString(port));
+        LOG_CLASS_INFO("Not time to report yet on %s (currentMinute=%lu, nextReportMinute=%lu). Skipping...",
+                       IPort::portTypeToCString(port),
+                       currentMinute,
+                       nextReportMinute
+        );
         return;
     }
 
@@ -245,20 +245,33 @@ void NodeOperationRunner::tryReport(const IPort::PortType port,
         LOG_CLASS_ERROR("Report routine for reportTag = %d and payloadTag = %d not found. Cannot send report.",
                         acousea_CommunicationPacket_report_tag, acousea_ReportBody_statusPayload_tag
         );
+        nextReportMinute += period; // Schedule next report
         return;
     }
     LOG_CLASS_INFO("%s Executing routine...", IPort::portTypeToCString(port));
     LOG_CLASS_INFO("Routine pointer address: %p", routinePtr);
 
-    auto [resultType, outPacketPtr] = executeRoutine(
-        routinePtr, // Routine to execute
-        nullptr // No input packet for report routines
-    );
+    auto [resultType, outPacketPtr] = executeRoutine(routinePtr, nullptr); // No input packet for report routines
 
-    if (!outPacketPtr) // Check for null pointer
+    if (resultType == Result<void>::Type::Incomplete)
     {
-        LOG_CLASS_ERROR("%s Report routine for port %s failed to produce an output packet. Aborting report.",
-                        routinePtr->routineName, IPort::portTypeToCString(port));
+        LOG_CLASS_WARNING("Report %s execution incomplete on port %s. Will retry in one minute",
+                          routinePtr->routineName, IPort::portTypeToCString(port)
+        );
+        nextReportMinute += 1; // Force retry in one minute
+        return;
+    }
+
+    // For success and failure we check the output packet
+    if (!outPacketPtr && (resultType == Result<void>::Type::Success || resultType == Result<void>::Type::Failure))
+    {
+        LOG_CLASS_ERROR("%s Report routine with RESULT = %s for port %s failed to produce an output packet.",
+                        routinePtr->routineName,
+                        resultType == Result<void>::Type::Success ? "Success" : "Failure",
+                        IPort::portTypeToCString(port)
+        );
+        routinePtr->reset(); // Reset routine state
+        nextReportMinute += period; // Schedule next report
         return;
     }
 
@@ -269,11 +282,13 @@ void NodeOperationRunner::tryReport(const IPort::PortType port,
         !sendOk)
     {
         LOG_CLASS_ERROR("Failed to send report through %s. Will retry again", IPort::portTypeToCString(port));
+        nextReportMinute += 1; // Force retry in one minute
     }
     else
     {
         LOG_CLASS_INFO("Report packet sent successfully through %s.", IPort::portTypeToCString(port));
-        lastMinute = currentMinute;
+        routinePtr->reset(); // Reset routine state
+        nextReportMinute += period; // Schedule next report
     }
 }
 
@@ -404,6 +419,7 @@ void NodeOperationRunner::processNextIncomingPacket()
             packetId, IPort::portTypeToCString(portType)
         );
         skipPacketForPort(packetId, portType);
+        routinePtr->reset(); // Reset routine state
         return;
     }
     // Ensure that the packet ID is preserved
@@ -411,7 +427,8 @@ void NodeOperationRunner::processNextIncomingPacket()
 
     // Send the packet. If successful, clear the retry entry and skip the packet from the port queue.
     // If sending fails, decrement sending attempts left.
-    if (const bool sendOk = sendResponsePacket(localAddress, portType, nextInPacketSender, outPacketPtr); !sendOk)
+    if (const bool sendOk = sendResponsePacket(localAddress, portType, nextInPacketSender, outPacketPtr);
+        !sendOk)
     {
         retryEntry.sendingAttemptsLeft -= 1; // Sending failed
         LOG_CLASS_WARNING("Packet with id % " PRId32 " on port %s has %d attempts left",
@@ -422,6 +439,7 @@ void NodeOperationRunner::processNextIncomingPacket()
     {
         retryEntry = RetryEntry{0, 0};
         skipPacketForPort(packetId, portType);
+        routinePtr->reset(); // Reset routine state
     }
 }
 

@@ -24,6 +24,8 @@ public:
     // input == nullptr  -> rutina "interna" (sin input)
     // input != nullptr  -> rutina "externa" (usa input)
     virtual Result<Type*> execute(Type* input) = 0; // CONST POINTER. NOT CONST DATA
+
+    virtual void reset() = 0; // Reset the internal state of the routine
 };
 
 #endif // IROUTINE_H

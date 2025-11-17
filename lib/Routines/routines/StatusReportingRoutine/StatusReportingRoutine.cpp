@@ -72,6 +72,15 @@ Result<acousea_CommunicationPacket*> StatusReportingRoutine::execute(
         reportIncludedModulesCount,
         reportIncludedModules] = reportType;
 
+    // If invalidation wasn't requested yet, do it now
+    if (!_didRequestUpdatedModules)
+    {
+        moduleManager.requestUpdatedModules(reportIncludedModules, reportIncludedModulesCount);
+        _didRequestUpdatedModules = true;
+        LOG_CLASS_INFO("::execute() -> Requested updated modules from device");
+    }
+
+
     const auto voidResult = moduleManager.getModules(
         outModulesArr,
         outModulesArrSize,
@@ -91,9 +100,9 @@ Result<acousea_CommunicationPacket*> StatusReportingRoutine::execute(
 
     case Result<void>::Type::Incomplete:
         {
-            return RESULT_CLASS_FAILUREF(
+            return RESULT_CLASS_INCOMPLETEF(
                 acousea_CommunicationPacket*,
-                "Incomplete while building status report modules: %s",
+                "Incomplete: %s",
                 voidResult.getError()
             );
         }
@@ -102,7 +111,7 @@ Result<acousea_CommunicationPacket*> StatusReportingRoutine::execute(
         {
             return RESULT_CLASS_FAILUREF(
                 acousea_CommunicationPacket*,
-                "Error while building status report modules: %s",
+                "Error : %s",
                 voidResult.getError()
             );
         }
@@ -169,4 +178,10 @@ const acousea_ReportType* StatusReportingRoutine::getCurrentReportingConfigurati
     }
 
     return reportType;
+}
+
+void StatusReportingRoutine::reset()
+{
+    LOG_CLASS_INFO("::reset() -> Routine state reset.");
+    _didRequestUpdatedModules = false;
 }

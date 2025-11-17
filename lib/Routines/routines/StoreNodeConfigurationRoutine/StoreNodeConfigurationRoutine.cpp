@@ -90,3 +90,8 @@ bool StoreNodeConfigurationRoutine::_storeModules(
     }
     return true;
 }
+
+void StoreNodeConfigurationRoutine::reset()
+{
+    LOG_CLASS_INFO("::reset() -> Routine state reset.");
+}

@@ -16,6 +16,8 @@ public:
     explicit SetNodeConfigurationRoutine(ModuleManager& moduleManager);
 
     Result<acousea_CommunicationPacket*> execute(acousea_CommunicationPacket* inPacketPtr) override;
+
+    void reset() override;
 };
 
 

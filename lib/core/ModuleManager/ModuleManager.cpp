@@ -1,9 +1,77 @@
 #include "ModuleManager.hpp"
 
 #include <cinttypes>
+#include <cstdio>
 #include <Logger/Logger.h>
 
+#include "pb_encode.h"
 #include "SharedMemory/SharedMemory.hpp"
+
+namespace
+{
+    void buildModuleCodesListString(const acousea_ModuleCode* codes, const pb_size_t count,
+                                    char* outBuf, const size_t outBufSize)
+    {
+        size_t pos = 0;
+        if (outBufSize == 0) return;
+        outBuf[0] = '\0';
+
+        for (pb_size_t i = 0; i < count && pos < outBufSize - 1; ++i)
+        {
+            const unsigned int code = static_cast<unsigned int>(codes[i]);
+
+            // Add separator except first
+            if (i > 0 && pos + 2 < outBufSize - 1)
+            {
+                outBuf[pos++] = ',';
+                outBuf[pos++] = ' ';
+            }
+
+            const int written = snprintf(outBuf + pos, outBufSize - pos, "%u", code);
+            if (written <= 0) break;
+
+            pos += static_cast<size_t>(written);
+        }
+
+        // Null terminate exactly where content ends
+        if (pos < outBufSize) outBuf[pos] = '\0';
+        else outBuf[outBufSize - 1] = '\0';
+    }
+}
+
+void ModuleManager::invalidateModules(
+    const acousea_ModuleCode* requestedModules,
+    const pb_size_t requestedModulesSize)
+{
+    moduleProxy.invalidateMultiple(requestedModules, requestedModulesSize);
+}
+
+Result<void> ModuleManager::requestUpdatedModules(const acousea_ModuleCode* requestedModules,
+                                                  const pb_size_t requestedModulesSize)
+{
+    const bool requestOk = moduleProxy.requestMultipleModules(
+        requestedModules,
+        requestedModulesSize,
+        ModuleProxy::DeviceAlias::PIDevice
+    );
+
+    auto* stringNotFreshModulesBuffer = reinterpret_cast<char*>(SharedMemory::tmpBuffer());
+    constexpr size_t BUF_SIZE = SharedMemory::tmpBufferSize();
+    // Must call buildModuleCodesListString internally since the tmpBuffer is used by requestMultipleModules
+    if (!requestOk)
+    {
+        buildModuleCodesListString(requestedModules, requestedModulesSize, stringNotFreshModulesBuffer, BUF_SIZE);
+        return RESULT_CLASS_VOID_FAILUREF(
+            "Failed to request the following modules from device: %s", stringNotFreshModulesBuffer);
+    }
+
+    buildModuleCodesListString(requestedModules, requestedModulesSize, stringNotFreshModulesBuffer, BUF_SIZE);
+    LOG_CLASS_WARNING(
+        "::requestUpdatedModules() -> The following modules were requested and are NOT fresh from now: %s",
+        stringNotFreshModulesBuffer);
+
+    return RESULT_VOID_SUCCESS();
+}
 
 Result<void> ModuleManager::getModules(
     acousea_NodeDevice_ModulesEntry* outModulesArr,
@@ -13,10 +81,6 @@ Result<void> ModuleManager::getModules(
 {
     LOG_CLASS_FREE_MEMORY("::GetModules(start) -> requestedModulesSize=%d", requestedModulesSize);
     const acousea_NodeConfiguration& nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
-
-    // Reset output size
-    acousea_ModuleCode notFreshModuleCodes[_acousea_ModuleCode_MAX];
-    pb_size_t notFreshModulesCount = 0;
 
     for (uint16_t i = 0; i < requestedModulesSize; i++)
     {
@@ -36,16 +100,13 @@ Result<void> ModuleManager::getModules(
         {
         case acousea_ModuleCode_AMBIENT_MODULE:
             {
-                if (!moduleProxy.isModuleFresh(currentModuleCode))
-                {
-                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
-                    break;
-                }
-                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFreshOrRequestFromDevice(
+                    currentModuleCode, ModuleProxy::DeviceAlias::PIDevice
+                );
                 if (!optWrapper)
                 {
-                    return RESULT_CLASS_VOID_FAILUREF(
-                        "%s", "Ambient module data should be fresh at this point, but it's not");
+                    return RESULT_CLASS_VOID_INCOMPLETEF(
+                        "%s", "Ambient module data is not fresh yet");
                 }
                 currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
@@ -60,17 +121,13 @@ Result<void> ModuleManager::getModules(
             }
         case acousea_ModuleCode_STORAGE_MODULE:
             {
-                if (!moduleProxy.isModuleFresh(currentModuleCode))
-                {
-                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
-                    break;
-                }
-
-                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFreshOrRequestFromDevice(
+                    currentModuleCode, ModuleProxy::DeviceAlias::PIDevice
+                );
                 if (!optWrapper)
                 {
-                    return RESULT_CLASS_VOID_FAILUREF(
-                        "%s", "Storage module data should be fresh at this point, but it's not");
+                    return RESULT_CLASS_VOID_INCOMPLETEF(
+                        "%s", "Storage module data is not fresh yet");
                 }
                 currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
@@ -180,16 +237,13 @@ Result<void> ModuleManager::getModules(
 
         case acousea_ModuleCode_ICLISTEN_STATUS:
             {
-                if (!moduleProxy.isModuleFresh(currentModuleCode))
-                {
-                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
-                    break;
-                }
-                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFreshOrRequestFromDevice(
+                    currentModuleCode, ModuleProxy::DeviceAlias::PIDevice
+                );
                 if (!optWrapper)
                 {
-                    return RESULT_CLASS_VOID_FAILUREF(
-                        "%s", "ICListen status data should be fresh at this point, but it's not");
+                    return RESULT_CLASS_VOID_INCOMPLETEF(
+                        "%s", "ICListen status data is not fresh yet");
                 }
                 currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
@@ -197,16 +251,13 @@ Result<void> ModuleManager::getModules(
             }
         case acousea_ModuleCode_ICLISTEN_LOGGING_CONFIG:
             {
-                if (!moduleProxy.isModuleFresh(currentModuleCode))
-                {
-                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
-                    break;
-                }
-                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFreshOrRequestFromDevice(
+                    currentModuleCode, ModuleProxy::DeviceAlias::PIDevice
+                );
                 if (!optWrapper)
                 {
-                    return RESULT_CLASS_VOID_FAILUREF(
-                        "%s", "ICListen logging config data should be fresh at this point, but it's not");
+                    return RESULT_CLASS_VOID_INCOMPLETEF(
+                        "%s", "ICListen logging config data is not fresh yet");
                 }
                 currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
@@ -214,16 +265,13 @@ Result<void> ModuleManager::getModules(
             }
         case acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG:
             {
-                if (!moduleProxy.isModuleFresh(currentModuleCode))
-                {
-                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
-                    break;
-                }
-                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFreshOrRequestFromDevice(
+                    currentModuleCode, ModuleProxy::DeviceAlias::PIDevice
+                );
                 if (!optWrapper)
                 {
-                    return RESULT_CLASS_VOID_FAILUREF(
-                        "%s", "ICListen streaming config data should be fresh at this point, but it's not");
+                    return RESULT_CLASS_VOID_INCOMPLETEF(
+                        "%s", "ICListen streaming config data is not fresh yet");
                 }
                 currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
@@ -231,16 +279,13 @@ Result<void> ModuleManager::getModules(
             }
         case acousea_ModuleCode_ICLISTEN_RECORDING_STATS:
             {
-                if (!moduleProxy.isModuleFresh(currentModuleCode))
-                {
-                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
-                    break;
-                }
-                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFreshOrRequestFromDevice(
+                    currentModuleCode, ModuleProxy::DeviceAlias::PIDevice
+                );
                 if (!optWrapper)
                 {
-                    return RESULT_CLASS_VOID_FAILUREF(
-                        "%s", "ICListen recording stats data should be fresh at this point, but it's not");
+                    return RESULT_CLASS_VOID_INCOMPLETEF(
+                        "%s", "ICListen recording stats data is not fresh yet");
                 }
                 currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
@@ -248,16 +293,13 @@ Result<void> ModuleManager::getModules(
             }
         case acousea_ModuleCode_ICLISTEN_HF:
             {
-                if (!moduleProxy.isModuleFresh(currentModuleCode))
-                {
-                    notFreshModuleCodes[notFreshModulesCount++] = currentModuleCode;
-                    break;
-                }
-                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFresh(currentModuleCode);
+                const acousea_ModuleWrapper* optWrapper = moduleProxy.getIfFreshOrRequestFromDevice(
+                    currentModuleCode, ModuleProxy::DeviceAlias::PIDevice
+                );
                 if (!optWrapper)
                 {
-                    return RESULT_CLASS_VOID_FAILUREF(
-                        "%s", "ICListen HF complete data should be fresh at this point, but it's not");
+                    return RESULT_CLASS_VOID_INCOMPLETEF(
+                        "%s", "ICListen HF data is not fresh yet");
                 }
                 currentEntry.value = *optWrapper;
                 outModulesArr[outModulesArrSize++] = currentEntry;
@@ -271,29 +313,6 @@ Result<void> ModuleManager::getModules(
         }
     }
 
-
-    if (notFreshModulesCount > 0)
-    {
-
-        auto* hexStringBuf = reinterpret_cast<char*>(SharedMemory::tmpBuffer());
-        constexpr size_t HEX_STRING_BUF_SIZE = SharedMemory::tmpBufferSize();
-
-        Logger::vectorToHexString(
-            reinterpret_cast<const unsigned char*>(notFreshModuleCodes), notFreshModulesCount * sizeof(acousea_ModuleCode),
-            hexStringBuf, HEX_STRING_BUF_SIZE
-        );
-
-        LOG_CLASS_WARNING("::GetModules() -> The following modules are not fresh yet: %s", hexStringBuf);
-        moduleProxy.requestMultipleModules(
-            notFreshModuleCodes,
-            notFreshModulesCount,
-            ModuleProxy::DeviceAlias::PIDevice
-        );
-
-        return RESULT_CLASS_VOID_INCOMPLETEF(
-            "The following modules are not fresh yet: %s", hexStringBuf
-        );
-    }
     LOG_CLASS_FREE_MEMORY("::GetModules(end) -> outModulesArrSize=%d", outModulesArrSize);
     return RESULT_VOID_SUCCESS();
 }
@@ -304,6 +323,7 @@ Result<void> ModuleManager::setModules(const pb_size_t modules_count,
 {
     LOG_CLASS_FREE_MEMORY("::SetModules(start)");
     acousea_NodeConfiguration& nodeConfig = nodeConfigurationRepository.getNodeConfiguration();
+
     for (size_t i = 0; i < modules_count; ++i)
     {
         const auto& module = modules[i];
@@ -312,11 +332,15 @@ Result<void> ModuleManager::setModules(const pb_size_t modules_count,
             return RESULT_CLASS_VOID_FAILUREF("Module with key: %" PRId32 " has no value. Skipping.", module.key);
         }
 
-        switch (module.key)
+        const auto& moduleCode = static_cast<acousea_ModuleCode>(module.key);
+        const auto& moduleWrapper = module.value;
+
+        switch (moduleCode)
         {
         case acousea_ModuleCode::acousea_ModuleCode_OPERATION_MODES_MODULE:
             {
-                if (const auto result = _setOperationModes(nodeConfig, module); result.isError())
+                if (const auto result = _setOperationModes(nodeConfig, module);
+                    result.isError())
                 {
                     return RESULT_CLASS_VOID_FAILUREF("%s", result.getError());
                 }
@@ -324,7 +348,8 @@ Result<void> ModuleManager::setModules(const pb_size_t modules_count,
             }
         case acousea_ModuleCode::acousea_ModuleCode_REPORTING_TYPES_MODULE:
             {
-                if (const auto result = _setReportTypesModule(nodeConfig, module); result.isError())
+                if (const auto result = _setReportTypesModule(nodeConfig, module);
+                    result.isError())
                 {
                     return RESULT_CLASS_VOID_FAILUREF("%s", result.getError());
                 }
@@ -335,7 +360,8 @@ Result<void> ModuleManager::setModules(const pb_size_t modules_count,
         case acousea_ModuleCode::acousea_ModuleCode_LORA_REPORTING_MODULE:
         case acousea_ModuleCode::acousea_ModuleCode_GSM_MQTT_REPORTING_MODULE:
             {
-                if (const auto result = _setReportingPeriods(nodeConfig, module); result.isError())
+                if (const auto result = _setReportingPeriods(nodeConfig, module);
+                    result.isError())
                 {
                     return RESULT_CLASS_VOID_FAILUREF("%s", result.getError());
                 }
@@ -347,17 +373,43 @@ Result<void> ModuleManager::setModules(const pb_size_t modules_count,
         case acousea_ModuleCode::acousea_ModuleCode_ICLISTEN_STREAMING_CONFIG:
         case acousea_ModuleCode::acousea_ModuleCode_ICLISTEN_HF:
             {
-                const auto setICListenWrapperPtr = moduleProxy.getIfFreshOrSetOnDevice(
-                    static_cast<acousea_ModuleCode>(module.key),
-                    module.value,
-                    ModuleProxy::DeviceAlias::PIDevice
+                // First we try to load the module (if not loaded it requests it from device)
+                const auto setICListenWrapperPtr = moduleProxy.getIfFreshOrRequestFromDevice(
+                    moduleCode, ModuleProxy::DeviceAlias::PIDevice
                 );
+
                 if (setICListenWrapperPtr == nullptr)
                 {
                     return RESULT_CLASS_VOID_INCOMPLETEF("%s", "ICListen module configuration not set on device yet.");
                 }
-                LOG_CLASS_INFO("ICListen configuration module with key: %" PRId32 " set on device successfully.",
+                LOG_CLASS_INFO("ICListen configuration module with key: %" PRId32 " loaded from device.",
                                module.key);
+
+                // Then we compare if the module being set is different from the one already set
+                if (_areModulesEqual(*setICListenWrapperPtr, moduleWrapper))
+                {
+                    LOG_CLASS_INFO("ICListen configuration module with key: %" PRId32
+                                   " is set correctly on device.",
+                                   module.key);
+                    break;
+                }
+                LOG_CLASS_INFO("ICListen configuration module with key: %" PRId32
+                               " differs from the one set on device. Updating...",
+                               module.key);
+
+                // If they're different we set it on the device (send internally invalidates the module until confirmed)
+                if (const bool sendOk = moduleProxy.sendModule(moduleWrapper, ModuleProxy::DeviceAlias::PIDevice);
+                    !sendOk)
+                {
+                    return RESULT_CLASS_VOID_FAILUREF("Failed to send ICListen module with key: %" PRId32
+                                                      " to device.", module.key);
+                }
+
+                LOG_CLASS_INFO(
+                    "ICListen configuration module with key: %" PRId32
+                    " sent successfully. Waiting for confirmation...",
+                    module.key);
+
                 break;
             }
 
@@ -439,4 +491,35 @@ Result<void> ModuleManager::_setReportingPeriods(
     }
     LOG_CLASS_FREE_MEMORY("::SetModules(end)");
     return RESULT_VOID_SUCCESS();
+}
+
+
+bool ModuleManager::_areModulesEqual(
+    const acousea_ModuleWrapper& moduleA,
+    const acousea_ModuleWrapper& moduleB)
+{
+    // We make sure during compilation that we have reserved enough space in SharedMemory::tmpBuffer to compare two modules
+    static_assert(
+        SharedMemory::tmpBufferSize() >= 2 * acousea_ModuleWrapper_size,
+        "SharedMemory::tmpBuffer is too small for encoding two ModuleWrapper messages"
+    );
+
+    SharedMemory::clearTmpBuffer(); // Fundamental to clear the buffer before use to avoid garbage data during comparison
+
+    if (moduleA.which_module != moduleB.which_module)
+    {
+        return false;
+    }
+
+    uint8_t* buf = SharedMemory::tmpBuffer();
+    constexpr size_t HALF = SharedMemory::tmpBufferSize() / 2;
+
+    pb_ostream_t sa = pb_ostream_from_buffer(buf, HALF);
+    pb_ostream_t sb = pb_ostream_from_buffer(buf + HALF, HALF);
+
+    if (!pb_encode(&sa, acousea_ModuleWrapper_fields, &moduleA)) return false;
+    if (!pb_encode(&sb, acousea_ModuleWrapper_fields, &moduleB)) return false;
+
+    return sa.bytes_written == sb.bytes_written &&
+        memcmp(buf, buf + HALF, sa.bytes_written) == 0;
 }

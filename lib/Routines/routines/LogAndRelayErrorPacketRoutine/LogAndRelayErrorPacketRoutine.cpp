@@ -32,3 +32,8 @@ Result<acousea_CommunicationPacket*> LogAndRelayErrorPacketRoutine::execute(
 
     return RESULT_SUCCESS(acousea_CommunicationPacket*, &inPacket);
 }
+
+void LogAndRelayErrorPacketRoutine::reset()
+{
+    LOG_CLASS_INFO("::reset() -> Routine state reset.");
+}

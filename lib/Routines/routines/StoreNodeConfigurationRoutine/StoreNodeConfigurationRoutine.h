@@ -24,6 +24,8 @@ public:
 
     Result<acousea_CommunicationPacket*> execute(acousea_CommunicationPacket* optPacket) override;
 
+    void reset() override;
+
 private:
     bool _storeModules(const acousea_NodeDevice_ModulesEntry* modules, uint16_t modules_count);
 };

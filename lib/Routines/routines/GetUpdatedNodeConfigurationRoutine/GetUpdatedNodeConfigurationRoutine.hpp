@@ -12,6 +12,10 @@
 
 class GetUpdatedNodeConfigurationRoutine final : public IRoutine<acousea_CommunicationPacket>
 {
+
+private:
+    bool _didRequestUpdatedModules = false;
+
 private:
     ModuleManager& moduleManager;
 
@@ -21,6 +25,8 @@ public:
     explicit GetUpdatedNodeConfigurationRoutine(ModuleManager& moduleManager);
 
     Result<acousea_CommunicationPacket*> execute(acousea_CommunicationPacket* optPacket) override;
+
+    void reset() override;
 
 };
 

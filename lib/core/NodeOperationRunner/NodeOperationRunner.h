@@ -52,21 +52,21 @@ private:
     struct Cache
     {
         acousea_OperationMode currentOperationMode;
-        uint8_t cycleCount;
+        uint32_t cycleCount;
 
         struct
         {
             unsigned long sbd;
             unsigned long lora;
             unsigned long gsmMqtt;
-        } lastReportMinute;
+        } nextReportMinute;
     } cache{};
 
 private:
     [[nodiscard]] IRoutine<acousea_CommunicationPacket>* findRoutine(
         uint8_t bodyTag, uint8_t payloadTag) const;
     void tryTransitionOpMode();
-    void tryReport(IPort::PortType port, unsigned long& lastMinute, unsigned long currentMinute);
+    void tryReport(IPort::PortType port, unsigned long& nextReportMinute, unsigned long currentMinute);
     void skipPacketForPort(uint32_t packetId, IPort::PortType portType);
     [[nodiscard]] bool sendResponsePacket(const uint32_t& sender, IPort::PortType portType,
                                           uint8_t destination, acousea_CommunicationPacket* outPacketPtr);
@@ -76,8 +76,9 @@ private:
 
     void processNextIncomingPacket();
 
-    std::pair<Result<void>::Type, acousea_CommunicationPacket*> executeRoutine(IRoutine<acousea_CommunicationPacket>* routine,
-                                                acousea_CommunicationPacket* optInputPacket);
+    std::pair<Result<void>::Type, acousea_CommunicationPacket*> executeRoutine(
+        IRoutine<acousea_CommunicationPacket>* routine,
+        acousea_CommunicationPacket* optInputPacket);
 
     [[nodiscard]] Result<acousea_OperationMode> searchForOperationMode(uint8_t modeId) const;
     [[nodiscard]] Result<acousea_ReportingPeriodEntry> getReportingEntryForCurrentOperationMode(

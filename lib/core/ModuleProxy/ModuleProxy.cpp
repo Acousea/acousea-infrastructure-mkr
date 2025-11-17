@@ -100,8 +100,8 @@ bool ModuleProxy::requestMultipleModules(const acousea_ModuleCode* codes,
                           toString(alias));
         return false;
     }
-    // The modules will be marked as not fresh when the response is received
-    invalidateMultiple(codes, count);
+
+    invalidateMultiple(codes, count); // The modules will be marked as fresh when the response is received
     LOG_CLASS_INFO("Requesting %d modules through %s for alias %s", static_cast<int>(count),
                    IPort::portTypeToCString(portType), toString(alias)
     );
@@ -428,7 +428,10 @@ bool ModuleProxy::storeModule(const acousea_ModuleWrapper& wrapper)
                           filePath);
         return false;
     }
+    // First we need to update the read offset to the current write offset, to avoid reading more data from previous writes
+    readOffset_[static_cast<int>(wrapperCode)] = writeOffset_[static_cast<int>(wrapperCode)];
 
+    // Then we update the write offset to account for the newly written data
     writeOffset_[static_cast<int>(wrapperCode)] += totalRecordSize;
 
     LOG_CLASS_INFO("::storeModule() -> Stored module %d (%u bytes) in %s",
@@ -450,7 +453,7 @@ const acousea_ModuleWrapper* ModuleProxy::getIfFresh(const acousea_ModuleCode co
     const int idx = static_cast<int>(code);
 
     // Si ya está cargado en RAM → devolverlo
-    if (optLoadedModule_.has_value())
+    if (optLoadedModule_.has_value() && optLoadedModule_->which_module == code)
         return &optLoadedModule_.value();
 
     // Si no hay datos nuevos → no está fresco
@@ -522,9 +525,6 @@ const acousea_ModuleWrapper* ModuleProxy::getIfFresh(const acousea_ModuleCode co
         readOffset_[idx] = writeOffset_[idx];
         return nullptr;
     }
-
-    // --- Avanzar offset ---
-    readOffset_[idx] += totalFrameSize;
 
     LOG_CLASS_INFO("::getIfFresh() -> Loaded module %d (ts=%lu, size=%u) nextOffset=%llu",
                    idx,

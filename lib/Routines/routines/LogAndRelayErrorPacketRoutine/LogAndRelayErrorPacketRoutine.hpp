@@ -23,6 +23,8 @@ public:
     explicit LogAndRelayErrorPacketRoutine(Router& router);
 
     Result<acousea_CommunicationPacket*> execute(acousea_CommunicationPacket* optPacket) override;
+
+    void reset() override;
 };
 
 

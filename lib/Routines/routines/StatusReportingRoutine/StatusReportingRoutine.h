@@ -17,6 +17,9 @@ class StatusReportingRoutine final : public IRoutine<acousea_CommunicationPacket
     NodeConfigurationRepository& nodeConfigurationRepository;
     ModuleManager& moduleManager;
 
+private:
+    bool _didRequestUpdatedModules = false;
+
 public:
     CLASS_NAME(StatusReportingRoutine)
 
@@ -24,6 +27,8 @@ public:
                                 ModuleManager& moduleManager);
 
     Result<acousea_CommunicationPacket*> execute(acousea_CommunicationPacket* const /*optPacket*/) override;
+
+    void reset() override;
 
 private:
     static const acousea_ReportType* getCurrentReportingConfiguration(const acousea_NodeConfiguration& nodeConfig);

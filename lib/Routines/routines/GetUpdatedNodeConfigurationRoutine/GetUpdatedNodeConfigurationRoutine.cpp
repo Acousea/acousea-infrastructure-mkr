@@ -31,13 +31,21 @@ Result<acousea_CommunicationPacket*> GetUpdatedNodeConfigurationRoutine::execute
                                      "Packet command is not of type requestedConfiguration");
     }
 
-
     // Copy the requested modules beforehand (the packet later is overwritten to build the response)
     const acousea_GetUpdatedNodeConfigurationPayload reqConfigPayloadCopy = inPacket.body.command.command.
         requestedConfiguration;
 
     const acousea_ModuleCode* reqModules = reqConfigPayloadCopy.requestedModules;
     const pb_size_t& modulesCount = reqConfigPayloadCopy.requestedModules_count;
+
+    // If invalidation wasn't requested yet, do it now
+    if (!_didRequestUpdatedModules)
+    {
+        moduleManager.requestUpdatedModules(reqModules, modulesCount);
+        _didRequestUpdatedModules = true;
+        LOG_CLASS_INFO("::execute() -> Requested updated modules from device");
+    }
+
 
     // ----------------  Prepare response packet ----------------
     SharedMemory::resetCommunicationPacket();
@@ -64,7 +72,7 @@ Result<acousea_CommunicationPacket*> GetUpdatedNodeConfigurationRoutine::execute
     const Result<void> resultGetModules = moduleManager.getModules(outModulesArray, outModulesCount, reqModules,
                                                                    modulesCount);
 
-    LOG_CLASS_INFO("GetUpdatedNodeConfigurationRoutine::execute() -> Retrieved %d updated modules", outModulesCount);
+    LOG_CLASS_INFO("::execute() -> Retrieved %d updated modules", outModulesCount);
 
     switch (resultGetModules.getStatus())
     {
@@ -98,4 +106,10 @@ Result<acousea_CommunicationPacket*> GetUpdatedNodeConfigurationRoutine::execute
             );
         }
     }
+}
+
+void GetUpdatedNodeConfigurationRoutine::reset()
+{
+    _didRequestUpdatedModules = false;
+    LOG_CLASS_INFO("::reset() -> Routine state reset.");
 }

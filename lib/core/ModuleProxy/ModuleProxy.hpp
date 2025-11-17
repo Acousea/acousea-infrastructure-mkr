@@ -70,7 +70,7 @@ public:
     [[nodiscard]] bool sendModule(const acousea_ModuleWrapper& module, DeviceAlias alias);
 
     [[nodiscard]] bool storeModule(const acousea_ModuleWrapper& wrapper);
-    bool isModuleFresh(acousea_ModuleCode code) const;
+    [[nodiscard]] bool isModuleFresh(acousea_ModuleCode code) const;
 
 private:
     Router& router;
