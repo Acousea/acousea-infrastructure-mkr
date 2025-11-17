@@ -33,17 +33,106 @@ system::update() {
   sudo apt update
 }
 
+system::install_go() {
+  log "Installing Go 1.25.4..."
+
+  wget -O go.tar.gz https://go.dev/dl/go1.25.4.linux-arm64.tar.gz
+  rm -rf /usr/local/go && sudo tar -C /usr/local -xzvf go.tar.gz
+
+  rm -f go1.25.4.linux-arm64.tar.gz
+
+  # Export PATH for current session
+  export PATH="$PATH:/usr/local/go/bin"
+
+  # Ensure ~/.bashrc contains Go PATH exactly once
+  local go_path_line='export PATH="$PATH:/usr/local/go/bin"'
+
+  if ! grep -qxF "$go_path_line" ~/.bashrc; then
+    log "Adding Go path to ~/.bashrc..."
+    echo "$go_path_line" >> ~/.bashrc
+  else
+    log "Go path already present in ~/.bashrc"
+  fi
+
+  log "Go installed to /usr/local/go"
+}
+
+
 system::install_base() {
   log "Installing base development tools..."
-  sudo apt install -y build-essential cmake git pkg-config autoconf automake autopoint libtool wget curl unzip sshpass gpiod scons
+  sudo apt install -y build-essential cmake git pkg-config autoconf automake autopoint libtool wget curl unzip sshpass gpiod scons python3-full python3-pip python3-venv iptables-persistent ncdu
+  system::install_go
 }
+
 
 # -------------------------
 # Namespace: sqlite
 # -------------------------
+sqlite::termdbms_install() {
+  log "Installing TermDBMS (SQLite3 TUI)..."
+  go install github.com/mathaou/termdbms@latest
+  go install -x -v github.com/mathaou/termdbms@latest
+  mv -v "$HOME/go/bin/termdbms" "/usr/local/bin/termdbms"
+
+  log "TermDBMS (SQLite3 TUI) installed to /usr/local/bin/termdbms"
+}
+
+sqlite::sqlite_web_install() {
+  log "Installing sqlite-web (SQLite3 Web UI)..."
+
+  local app_dir="/usr/local/sqlite-web"
+  local venv_dir="$app_dir/.venv"
+
+  sudo mkdir -p "$app_dir"
+
+  # Instalar dependencias del sistema necesarias
+  log "Updating package lists..."
+  sudo apt update
+  log "Installing system dependencies for sqlite-web..."
+  sudo apt install -y python3-full python3-venv python3-pip
+
+  # Crear entorno virtual
+  log "Creating Python virtual environment in $venv_dir..."
+  sudo python3 -m venv "$venv_dir"
+
+  # Instalar sqlite-web dentro del venv
+  log "Installing sqlite-web inside venv..."
+  sudo "$venv_dir/bin/pip" install --upgrade pip wheel
+  sudo "$venv_dir/bin/pip" install sqlite-web
+
+  # Crear servicio systemd
+  local service_file="/etc/systemd/system/sqlite-web.service"
+  log "Installing sqlite-web systemd service..."
+
+  sudo tee "$service_file" > /dev/null <<EOF
+[Unit]
+Description=SQLite Web UI
+After=network.target
+
+[Service]
+ExecStart=$venv_dir/bin/sqlite_web /usr/local/iclisten-api/iclisten.db --host 0.0.0.0 --port 8081
+WorkingDirectory=$app_dir
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  sudo systemctl daemon-reload
+  sudo systemctl enable sqlite-web.service
+  sudo systemctl start sqlite-web.service
+
+  log "sqlite-web installed using a dedicated venv."
+  log "Access UI at: http://<THIS_DEVICE_IP>:8081"
+}
+
+
 sqlite::install() {
   log "Installing SQLite3..."
   sudo apt install -y libsqlite3-dev
+#  sqlite::termdbms_install  # Disabled by default due to poor usability through SSH
+#  sqlite::sqlite_web_install # Disabled by default to avoid extra resource usage (very slow compilation on SBCs)
 }
 
 # -------------------------
@@ -220,6 +309,47 @@ iclisten::configure_network_eth_route() {
   done
 }
 
+iclisten::configure_iptables_redirect_8080() {
+    local target_ip="192.168.10.150"
+    local target_port="80"
+
+    log "Enabling IPv4 forwarding..."
+    # Runtime
+    sudo sysctl -w net.ipv4.ip_forward=1 >/dev/null
+    # Persistente
+    if ! grep -q "^net.ipv4.ip_forward=1" /etc/sysctl.conf; then
+        sudo sed -i 's/^#*net.ipv4.ip_forward=.*/net.ipv4.ip_forward=1/' /etc/sysctl.conf
+    fi
+
+    log "Applying iptables NAT rules (idempotent)..."
+
+    # Avoid duplicates for DNAT
+    # Redirects all incoming traffic on this machine at port 8080 → 192.168.10.150:80
+    if ! sudo iptables -t nat -C PREROUTING -p tcp --dport 8080 -j DNAT --to-destination ${target_ip}:${target_port} 2>/dev/null; then
+        sudo iptables -t nat -A PREROUTING -p tcp --dport 8080 -j DNAT --to-destination ${target_ip}:${target_port}
+        log "Added DNAT rule: 8080 → ${target_ip}:${target_port}"
+    else
+        log "DNAT rule already exists, skipping"
+    fi
+
+    # Evitar duplicados para MASQUERADE
+    if ! sudo iptables -t nat -C POSTROUTING -j MASQUERADE 2>/dev/null; then
+        sudo iptables -t nat -A POSTROUTING -j MASQUERADE
+        log "Added MASQUERADE rule"
+    else
+        log "MASQUERADE already exists, skipping"
+    fi
+
+    log "Installing iptables-persistent if required..."
+    sudo apt install -y iptables-persistent
+
+    log "Saving iptables rules persistently..."
+    sudo netfilter-persistent save
+
+    log "Final NAT rules:"
+    sudo iptables -t nat -L -v -n
+}
+
 
 
 
@@ -274,6 +404,13 @@ EOF
 iclisten::info() {
   warn "ICListen SDK must be installed manually from vendor."
   warn "Ensure it provides /usr/local/lib/cmake/iclisten/iclistenConfig.cmake"
+}
+
+iclisten::all() {
+  iclisten::configure_network_eth_route
+  iclisten::configure_iptables_redirect_8080
+  iclisten::api
+  iclisten::info
 }
 
 # -------------------------
@@ -455,10 +592,10 @@ EOF
 # -------------------------
 # Namespace: test
 # -------------------------
-test::deps() {
-  log "Testing installed dependencies with CMake..."
+test::generate_CMakeLists() {
+  local tmp_dir="${1:-/tmp/test_deps}"   # si no pasas argumento usa /tmp/test_deps por defecto
 
-  local tmp_dir="/tmp/test_deps"
+  log "Testing installed dependencies with CMake..."
   rm -rf "$tmp_dir"
   mkdir -p "$tmp_dir"
   cat > "$tmp_dir/CMakeLists.txt" <<'EOF'
@@ -548,10 +685,117 @@ else ()
 endif ()
 EOF
 
-  # Run cmake in test mode
-  cmake -S "$tmp_dir" -B "$tmp_dir/build"
 }
 
+
+test::cmake_dependencies() {
+  log "Generating installation summary table..."
+  local cmakelists_file="/tmp/test_dependencies"
+  test::generate_CMakeLists "$cmakelists_file"
+
+  local tmp_dir="/tmp/test_summary"
+  rm -rf "$tmp_dir"
+  mkdir -p "$tmp_dir"
+
+  # Ejecutar CMake y capturar salida
+  local output_file="$tmp_dir/output.log"
+  cmake -S "$cmakelists_file" -B "$tmp_dir/build" 2>&1 | tee "$output_file" || true
+
+
+  # Mapa local de dependencias esperadas
+  declare -A TEST_DEPS_MAP=(
+    ["ASIO"]="1"
+    ["CROW"]="1"
+    ["SQLITE3"]="1"
+    ["SNDFILE"]="1"
+    ["PROTOBUF"]="1"
+    ["LIBUSB"]="1"
+    ["GTEST"]="1"
+    ["ICLISTEN"]="1"
+  )
+
+  # Tabla
+  printf "\n%-15s | %-6s | %s\n" "DEPENDENCY" "STATUS" "DETAILS"
+  printf "%-15s-+-%-6s-+-%s\n" "---------------" "------" "----------------------------"
+
+  # Leer resultados
+  while read -r line; do
+    if [[ "$line" =~ \[(.*)\]\ (.*) ]]; then
+      dep="${BASH_REMATCH[1]}"
+      msg="${BASH_REMATCH[2]}"
+
+      if [[ -n "${TEST_DEPS_MAP[$dep]+exists}" ]]; then
+        if [[ "$msg" == *"Found"* ]] || [[ "$msg" == *"Detected"* ]]; then
+          printf "%-15s | %-6s | %s\n" "$dep" "OK" "$msg"
+        else
+          printf "%-15s | %-6s | %s\n" "$dep" "FAIL" "$msg"
+        fi
+      fi
+    fi
+  done < "$output_file"
+
+  printf "\n"
+}
+
+test::system_programs() {
+  log "Checking system-level installed tools..."
+
+  declare -A PROGRAMS=(
+    ["gcc"]="command -v gcc"
+    ["g++"]="command -v g++"
+    ["cmake"]="command -v cmake"
+    ["git"]="command -v git"
+    ["pkg-config"]="command -v pkg-config"
+    ["autoconf"]="command -v autoconf"
+    ["automake"]="command -v automake"
+    ["libtool"]="command -v libtoolize"
+    ["wget"]="command -v wget"
+    ["curl"]="command -v curl"
+    ["unzip"]="command -v unzip"
+    ["sshpass"]="command -v sshpass"
+    ["gpiod"]="command -v gpioinfo && command -v gpioset && command -v gpioget && command -v gpiodetect && command -v gpiofind"
+    ["scons"]="command -v scons"
+    ["go"]="command -v go"
+    ["termdbms"]="command -v termdbms"
+    ["sqlite-web"]="command -v /usr/local/sqlite-web/.venv/bin/sqlite_web"
+    ["python3"]="command -v python3"
+    ["pip3"]="command -v pip3"
+    ["python3-venv"]="command -v python3 -m venv --help"
+    ["protoc"]="command -v protoc"
+    ["dtc"]="command -v dtc"
+    ["gpsd"]="command -v gpsd"
+    ["ppstest"]="command -v ppstest"
+    ["chronyc"]="command -v chronyc"
+    ["cgps"]="command -v cgps"
+    ["netfilter-persistent"]="command -v netfilter-persistent"
+    ["ncdu"]="command -v ncdu"
+
+
+    # Servicios
+    ["iclisten-api"]="systemctl status iclisten-api.service"
+    ["drifterCtrl"]="systemctl status drifterCtrl.service"
+  )
+
+  printf "\n%-20s | %-6s | %s\n" "PROGRAM" "STATUS" "DETAILS"
+  printf "%-20s-+-%-6s-+-%s\n" "--------------------" "------" "----------------------------"
+
+  for prog in "${!PROGRAMS[@]}"; do
+    check_cmd="${PROGRAMS[$prog]}"
+
+    if eval $check_cmd > /dev/null 2>&1; then
+      printf "%-20s | %-6s | %s\n" "$prog" "OK" "Installed"
+    else
+      printf "%-20s | %-6s | %s\n" "$prog" "FAIL" "Not installed or not in PATH"
+    fi
+  done
+
+  printf "\n"
+}
+
+test::summary() {
+  test::cmake_dependencies
+  test::system_programs
+}
 
 
 # -------------------------
@@ -573,10 +817,8 @@ all::install() {
   pps::install
   pps::configure
   daemon::install
-  iclisten::info
-  iclisten::api
-  iclisten::configure_network_eth_route
-  test::deps
+  iclisten::all
+  test::summary
   log "All dependencies installed."
 }
 
@@ -614,7 +856,11 @@ case "${1:-}" in
   overlays)   overlays::install ;;
   pps)        pps::install; pps::configure ;;
   daemon)     daemon::install ;;
-  iclisten)   iclisten::info; iclisten::api; iclisten::configure_network_eth_route ;;
-  test)       test::deps ;;
-  *)          echo "Usage: $0 {all|only_packages|system|sqlite|protobuf|libusb|util_linux|libboost|gtest|asio|sndfile|crow|overlays|pps|daemon|iclisten|test}" ;;
+  iclisten)   iclisten::all ;;
+  test)       test::summary ;;
+  test_cmake)    test::cmake_dependencies ;;
+  test_system)       test::system_programs ;;
+
+  *)          echo "Usage: $0 {all|only_packages|system|sqlite|protobuf|libusb|util_linux|libboost|gtest|asio
+  |sndfile|crow|overlays|pps|daemon|iclisten|test|test_cmake|test_system}" ;;
 esac
